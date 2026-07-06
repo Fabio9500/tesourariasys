@@ -1,0 +1,25 @@
+{
+  "name": "TesourariaSys",
+  "short_name": "TesourariaSys",
+  "description": "Controle de contas bancárias PF/PJ e contas a pagar integrado — Telasul e Construsul",
+  "start_url": "./tesourariasys.html",
+  "scope": "./tesourariasys.html",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
