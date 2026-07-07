@@ -447,7 +447,11 @@ async function seedInicial(){
       {id:uid(),tipo:'despesa',nome:'Previdência (Aporte)'},
       {id:uid(),tipo:'despesa',nome:'Capitalização (Parcela)'},
       {id:uid(),tipo:'despesa',nome:'Seguros (Prêmio)'},
+      {id:uid(),tipo:'despesa',nome:'Fatura Cartão de Crédito'},
     ];
+  }
+  if(!categoriaPorNome('Fatura Cartão de Crédito','despesa')){
+    DB.categorias.push({id:uid(),tipo:'despesa',nome:'Fatura Cartão de Crédito'});
   }
   if(!DB.centrosCusto||DB.centrosCusto.length===0){
     DB.centrosCusto = [
@@ -896,7 +900,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.6';
+const VERSAO = 'v1.7';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1151,15 +1155,69 @@ function htmlResumoCartoesCard(){
         ${B('🔄','atualizarResumoCartoes(false)','var(--sur)','var(--txt)',1,'Atualizar agora')}
       </div>
     </div>
-    <div style="font-size:13px;line-height:1.9">
+    <div style="font-size:13px;line-height:1.9;margin-bottom:8px">
       ${r ? linha('PF',r.pf,r.erroPf) : '<div style="color:var(--mut)">Toque em 🔄 para carregar o resumo pela primeira vez.</div>'}
       ${r ? linha('PJ',r.pj,r.erroPj) : ''}
     </div>
+    ${BPerm('lancamentos','💳 Registrar Pagamento de Fatura','abrirPagamentoFaturaCartao()','var(--acc)')}
   </div>`;
 }
 function totalFaturasCartoesAberto(){
   if(!_resumoCartoes) return 0;
   return (_resumoCartoes.pf?.totalAberto||0) + (_resumoCartoes.pj?.totalAberto||0);
+}
+
+// ── Registro de Pagamento de Fatura de Cartão (apenas lança a saída — NUNCA sincroniza de volta com CartoesPF/PJ) ──
+function abrirPagamentoFaturaCartao(){
+  const r = _resumoCartoes;
+  const sugestaoPF = r?.pf?.totalAberto||0;
+  const sugestaoPJ = r?.pj?.totalAberto||0;
+  AM('💳 Registrar Pagamento de Fatura de Cartão',`
+    ${EH('e-pagcc')}
+    <div style="font-size:11px;color:var(--mut);margin-bottom:10px;line-height:1.5">
+      Isso lança a saída no seu extrato bancário do TesourariaSys. <strong>Não altera nada no CartoesPF/PJ</strong> — continue fechando a fatura por lá normalmente.
+    </div>
+    <div class="row">
+      ${C('Cartão *',`<select id="pagcc-tipo" onchange="atualizarSugestaoPagamentoCC()">
+        <option value="pf">CartoesPF${sugestaoPF?' — sugestão R$ '+fmt(sugestaoPF):''}</option>
+        <option value="pj">CartoesPJ${sugestaoPJ?' — sugestão R$ '+fmt(sugestaoPJ):''}</option>
+      </select>`,'1','220')}
+      ${C('Conta de Pagamento *',`<select id="pagcc-conta">${opcoesContas()}</select>`,'1','200')}
+    </div>
+    <div class="row">
+      ${C('Valor (R$) *',`<input id="pagcc-valor" value="${sugestaoPF?fmt(sugestaoPF):''}" placeholder="0,00">`,'1','160')}
+      ${C('Data do Pagamento *',`<input type="date" id="pagcc-data" value="${hoje()}">`,'1','150')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      ${B('✅ Confirmar Pagamento','confirmarPagamentoFaturaCartao()','var(--grn)','#fff')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function atualizarSugestaoPagamentoCC(){
+  const tipo = document.getElementById('pagcc-tipo').value;
+  const r = _resumoCartoes;
+  const val = tipo==='pf' ? (r?.pf?.totalAberto||0) : (r?.pj?.totalAberto||0);
+  document.getElementById('pagcc-valor').value = val?fmt(val):'';
+}
+function confirmarPagamentoFaturaCartao(){
+  const tipo = document.getElementById('pagcc-tipo').value;
+  const contaId = document.getElementById('pagcc-conta').value;
+  const valor = parseValor(document.getElementById('pagcc-valor').value);
+  const data = document.getElementById('pagcc-data').value||hoje();
+  if(!contaId){ ME('e-pagcc','Selecione a conta de pagamento.'); return; }
+  if(!valor||valor<=0){ ME('e-pagcc','Informe um valor válido maior que zero.'); return; }
+  const catFatCartao = categoriaPorNome('Fatura Cartão de Crédito','despesa');
+  const novo = {
+    id:uid(), contaId, data, tipo:'saida', valor,
+    categoriaId: catFatCartao?catFatCartao.id:'', centroCustoId:'',
+    contraparte: tipo==='pf'?'CartoesPF':'CartoesPJ',
+    descricao: `Pagamento fatura cartão ${tipo==='pf'?'PF':'PJ'}`,
+    origem:'manual', contaPagarId:null,
+    criadoEm: new Date().toISOString()
+  };
+  salvar({...DB, lancamentos:[...(DB.lancamentos||[]), novo]});
+  FM();
 }
 
 // ══════════════════════════════════════════
@@ -3703,6 +3761,6 @@ function mostrarAtualizacaoSW(){
 }
 registrarSW();
 </script>
-<!-- Gerado em 06/07/2026 07:15 -->
+<!-- Gerado em 07/07/2026 00:12 -->
 </body>
 </html>
