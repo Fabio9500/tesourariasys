@@ -1,0 +1,234 @@
+{
+  "usuarios": [
+    {
+      "id": "mrmcnqmyyu59r",
+      "nome": "Fabio",
+      "login": "fabio",
+      "hash": "fc613b4dfd6736a7bd268c8a0e74ed0d1c04a959f59dd74ef2874983fd443fc9",
+      "perfil": "master",
+      "ativo": true
+    }
+  ],
+  "contas": [
+    {
+      "id": "mrmcnqmzolcyi",
+      "tipo": "PF",
+      "titular": "Conta PF 1",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnzfi0l6",
+      "tipo": "PF",
+      "titular": "Conta PF 2",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnzndtrz",
+      "tipo": "PF",
+      "titular": "Conta PF 3",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnzta52n",
+      "tipo": "PF",
+      "titular": "Conta PF 4",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnzjulp4",
+      "tipo": "PF",
+      "titular": "Conta PF 5",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnznyvjr",
+      "tipo": "PF",
+      "titular": "Conta PF 6",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnzp0wm8",
+      "tipo": "PJ",
+      "titular": "Conta PJ 1",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnz38d3t",
+      "tipo": "PJ",
+      "titular": "Conta PJ 2",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnz6fhil",
+      "tipo": "PJ",
+      "titular": "Conta PJ 3",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrmcnqnzhtsyz",
+      "tipo": "PJ",
+      "titular": "Conta PJ 4",
+      "banco": "",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-15",
+      "ativa": true,
+      "obs": ""
+    }
+  ],
+  "categorias": [
+    {
+      "id": "mrmcnqnz839ky",
+      "tipo": "receita",
+      "nome": "Vendas / Recebimentos"
+    },
+    {
+      "id": "mrmcnqnzvvojb",
+      "tipo": "receita",
+      "nome": "Rendimentos Financeiros"
+    },
+    {
+      "id": "mrmcnqnznkwec",
+      "tipo": "receita",
+      "nome": "Outras Receitas"
+    },
+    {
+      "id": "mrmcnqnzbuffd",
+      "tipo": "despesa",
+      "nome": "Fornecedores"
+    },
+    {
+      "id": "mrmcnqnz6ri3l",
+      "tipo": "despesa",
+      "nome": "Salários e Encargos"
+    },
+    {
+      "id": "mrmcnqnzkx1n1",
+      "tipo": "despesa",
+      "nome": "Impostos e Taxas"
+    },
+    {
+      "id": "mrmcnqnz3d104",
+      "tipo": "despesa",
+      "nome": "Tarifas Bancárias"
+    },
+    {
+      "id": "mrmcnqnz4bhte",
+      "tipo": "despesa",
+      "nome": "Aluguel"
+    },
+    {
+      "id": "mrmcnqnz5wm06",
+      "tipo": "despesa",
+      "nome": "Manutenção"
+    },
+    {
+      "id": "mrmcnqnzfzdnb",
+      "tipo": "despesa",
+      "nome": "Outras Despesas"
+    },
+    {
+      "id": "mrmcnqnzb2x2r",
+      "tipo": "despesa",
+      "nome": "Investimentos (Aporte)"
+    },
+    {
+      "id": "mrmcnqnzc28ph",
+      "tipo": "despesa",
+      "nome": "Previdência (Aporte)"
+    },
+    {
+      "id": "mrmcnqnzba0ue",
+      "tipo": "despesa",
+      "nome": "Capitalização (Parcela)"
+    },
+    {
+      "id": "mrmcnqnzoxqef",
+      "tipo": "despesa",
+      "nome": "Seguros (Prêmio)"
+    }
+  ],
+  "centrosCusto": [
+    {
+      "id": "mrmcnqnz6leno",
+      "nome": "Telasul"
+    },
+    {
+      "id": "mrmcnqnzhr8ao",
+      "nome": "Construsul"
+    },
+    {
+      "id": "mrmcnqnzykueu",
+      "nome": "Administrativo"
+    },
+    {
+      "id": "mrmcnqnz14va0",
+      "nome": "Pessoal"
+    }
+  ],
+  "lancamentos": [],
+  "contasPagar": [],
+  "contasReceber": [],
+  "fornecedores": [],
+  "clientes": [],
+  "chequesEmitidos": [],
+  "investimentos": [],
+  "previdencias": [],
+  "capitalizacoes": [],
+  "seguros": []
+}
