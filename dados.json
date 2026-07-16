@@ -1,0 +1,311 @@
+{
+  "usuarios": [
+    {
+      "id": "mrnty0ggl73wl",
+      "nome": "Fabio",
+      "login": "fabio",
+      "hash": "fc613b4dfd6736a7bd268c8a0e74ed0d1c04a959f59dd74ef2874983fd443fc9",
+      "perfil": "master",
+      "ativo": true
+    }
+  ],
+  "contas": [
+    {
+      "id": "mrnty0gh9748t",
+      "tipo": "PF",
+      "titular": "Bradesco",
+      "banco": "Bradesco",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0ghft9zz",
+      "tipo": "PF",
+      "titular": "Santander",
+      "banco": "Santander",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0gh925rf",
+      "tipo": "PF",
+      "titular": "Cef",
+      "banco": "Cef",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0gh0cojz",
+      "tipo": "PF",
+      "titular": "PicPay",
+      "banco": "PicPay",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0ghhcv08",
+      "tipo": "PF",
+      "titular": "C6",
+      "banco": "C6",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0gh80gr3",
+      "tipo": "PF",
+      "titular": "Bc. Brasil",
+      "banco": "Bc. Brasil",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0ghvteo1",
+      "tipo": "PJ",
+      "titular": "Bradesco 1",
+      "banco": "Bradesco 1",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0ghe9nr1",
+      "tipo": "PJ",
+      "titular": "Bradesco 2",
+      "banco": "Bradesco 2",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0ghfjohr",
+      "tipo": "PJ",
+      "titular": "SICRED 1",
+      "banco": "SICRED 1",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrnty0ghn85rn",
+      "tipo": "PJ",
+      "titular": "SICRED 2",
+      "banco": "SICRED 2",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrntzv0bysnw0",
+      "tipo": "PF",
+      "titular": "Inter",
+      "banco": "Inter",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrntzv0bzlw1q",
+      "tipo": "PF",
+      "titular": "Santander 2",
+      "banco": "Santander 2",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrntzv0b4cuwm",
+      "tipo": "PJ",
+      "titular": "Cef 1",
+      "banco": "Cef 1",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrntzv0bvufp8",
+      "tipo": "PJ",
+      "titular": "Cef 2",
+      "banco": "Cef 2",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrntzv0b20tht",
+      "tipo": "PJ",
+      "titular": "InfinitePay",
+      "banco": "InfinitePay",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    },
+    {
+      "id": "mrntzv0bpr6y8",
+      "tipo": "PJ",
+      "titular": "PagSeg",
+      "banco": "PagSeg",
+      "agencia": "",
+      "conta": "",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-16",
+      "ativa": true,
+      "obs": ""
+    }
+  ],
+  "categorias": [
+    {
+      "id": "mrnty0ghgioaj",
+      "tipo": "receita",
+      "nome": "Vendas / Recebimentos"
+    },
+    {
+      "id": "mrnty0ghthouw",
+      "tipo": "receita",
+      "nome": "Rendimentos Financeiros"
+    },
+    {
+      "id": "mrnty0ghwuaoz",
+      "tipo": "receita",
+      "nome": "Outras Receitas"
+    },
+    {
+      "id": "mrnty0ghwv185",
+      "tipo": "despesa",
+      "nome": "Fornecedores"
+    },
+    {
+      "id": "mrnty0ghusttx",
+      "tipo": "despesa",
+      "nome": "Salários e Encargos"
+    },
+    {
+      "id": "mrnty0ghjsvgu",
+      "tipo": "despesa",
+      "nome": "Impostos e Taxas"
+    },
+    {
+      "id": "mrnty0gh0d7u2",
+      "tipo": "despesa",
+      "nome": "Tarifas Bancárias"
+    },
+    {
+      "id": "mrnty0ghe7l0f",
+      "tipo": "despesa",
+      "nome": "Aluguel"
+    },
+    {
+      "id": "mrnty0gh5imm3",
+      "tipo": "despesa",
+      "nome": "Manutenção"
+    },
+    {
+      "id": "mrnty0ghhldot",
+      "tipo": "despesa",
+      "nome": "Outras Despesas"
+    },
+    {
+      "id": "mrnty0ghkw3ro",
+      "tipo": "despesa",
+      "nome": "Investimentos (Aporte)"
+    },
+    {
+      "id": "mrnty0ghw8me0",
+      "tipo": "despesa",
+      "nome": "Previdência (Aporte)"
+    },
+    {
+      "id": "mrnty0ghn9yrg",
+      "tipo": "despesa",
+      "nome": "Capitalização (Parcela)"
+    },
+    {
+      "id": "mrnty0gh7xffz",
+      "tipo": "despesa",
+      "nome": "Seguros (Prêmio)"
+    },
+    {
+      "id": "mrnty0ghmi40z",
+      "tipo": "despesa",
+      "nome": "Fatura Cartão de Crédito"
+    }
+  ],
+  "centrosCusto": [
+    {
+      "id": "mrnty0gh9dc5u",
+      "nome": "Telasul"
+    },
+    {
+      "id": "mrnty0gh1g9dy",
+      "nome": "Construsul"
+    },
+    {
+      "id": "mrnty0gh0mdau",
+      "nome": "Administrativo"
+    },
+    {
+      "id": "mrnty0gh5bqi7",
+      "nome": "Pessoal"
+    }
+  ],
+  "lancamentos": [],
+  "contasPagar": [],
+  "contasReceber": [],
+  "fornecedores": [],
+  "clientes": [],
+  "chequesEmitidos": [],
+  "investimentos": [],
+  "previdencias": [],
+  "capitalizacoes": [],
+  "seguros": []
+}
