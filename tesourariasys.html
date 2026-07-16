@@ -453,6 +453,15 @@ async function seedInicial(){
   if(!categoriaPorNome('Fatura Cartão de Crédito','despesa')){
     DB.categorias.push({id:uid(),tipo:'despesa',nome:'Fatura Cartão de Crédito'});
   }
+  if(!categoriaPorNome('Operação ChequeSys','despesa')){
+    DB.categorias.push({id:uid(),tipo:'despesa',nome:'Operação ChequeSys'});
+  }
+  if(!categoriaPorNome('Operação ChequeSys','receita')){
+    DB.categorias.push({id:uid(),tipo:'receita',nome:'Operação ChequeSys'});
+  }
+  if(!DB.integracaoChequeSys){
+    DB.integracaoChequeSys = { mapaContas:{}, contaPadrao:null, sincronizados:{} };
+  }
   if(!DB.centrosCusto||DB.centrosCusto.length===0){
     DB.centrosCusto = [
       {id:uid(),nome:'Telasul'},
@@ -473,7 +482,7 @@ async function seedInicial(){
   if(!DB.seguros) DB.seguros = [];
 }
 
-function dbVazio(){ return {usuarios:[],contas:[],categorias:[],centrosCusto:[],lancamentos:[],contasPagar:[],contasReceber:[],fornecedores:[],clientes:[],chequesEmitidos:[],investimentos:[],previdencias:[],capitalizacoes:[],seguros:[]}; }
+function dbVazio(){ return {usuarios:[],contas:[],categorias:[],centrosCusto:[],lancamentos:[],contasPagar:[],contasReceber:[],fornecedores:[],clientes:[],chequesEmitidos:[],investimentos:[],previdencias:[],capitalizacoes:[],seguros:[],integracaoChequeSys:{mapaContas:{},contaPadrao:null,sincronizados:{}}}; }
 
 // ══════════════════════════════════════════
 // BIOMETRIA (WebAuthn / Face ID / Touch ID)
@@ -820,7 +829,7 @@ function iniciarApp(){
   atualizarIndicadorConexao();
   iniciarSincronizacaoAutomatica();
   atualizarResumoCartoes(true).catch(()=>{});
-  atualizarResumoChequeSys(true).catch(()=>{});
+  atualizarResumoChequeSys(true).then(()=>sincronizarCaixaChequeSys(true)).catch(()=>{});
 }
 
 (async function init(){
@@ -938,7 +947,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.11';
+const VERSAO = 'v1.12';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1276,14 +1285,139 @@ function configurarTokenChequeSys(){
 function salvarTokenChequeSys(){
   setTokenChequeSys(document.getElementById('tok-chq').value.trim());
   FM();
-  atualizarResumoChequeSys(false);
+  atualizarResumoChequeSys(false).then(()=>sincronizarCaixaChequeSys(true));
 }
-function totalSaldoChequeSys(){ return _resumoChequeSys?.total||0; }
+
+// ══════════════════════════════════════════
+// 🔗 SINCRONIZAÇÃO DE CAIXA — ChequeSys → TesourariaSys (só nesse sentido;
+// o TesourariaSys nunca escreve no dados.json do ChequeSys).
+// Cada conta do ChequeSys pode ser "mapeada" para uma conta real do
+// TesourariaSys; a partir daí, todo lançamento de DB.caixa daquela conta
+// vira um lançamento de verdade aqui (criado/editado/removido em espelho).
+// Lançamentos do ChequeSys sem conta definida caem na "conta padrão".
+// Contas do ChequeSys SEM mapeamento continuam só no resumo somente-leitura
+// (linhasContasChequeSys/totalSaldoChequeSys), como já era antes.
+// ══════════════════════════════════════════
+function categoriaOperacaoChequeSys(tipoLancamento){
+  return categoriaPorNome('Operação ChequeSys', tipoLancamento==='entrada'?'receita':'despesa');
+}
+function abrirMapeamentoChequeSys(){
+  if(!_resumoChequeSys || _resumoChequeSys.erro){
+    AM('🔗 Sincronizar Caixa do ChequeSys',`
+      <div style="font-size:13px;color:var(--mut);line-height:1.6">
+        Configure e atualize primeiro o token do ChequeSys (botão ⚙ ao lado do resumo) antes de mapear as contas.
+      </div>
+      <div style="margin-top:14px">${B('Entendi','FM()','var(--sur)','var(--txt)')}</div>
+    `);
+    return;
+  }
+  const integ = DB.integracaoChequeSys||{mapaContas:{},contaPadrao:null,sincronizados:{}};
+  const contasChq = _resumoChequeSys.contas||[];
+  const linhas = contasChq.map(c=>`
+    <div class="row" style="align-items:center">
+      ${C(`${esc(c.nome)}${c.bancoNome?' — '+esc(c.bancoNome):''}`,`<select id="map-chq-${c.id}"><option value="">— não sincronizar —</option>${opcoesContas(integ.mapaContas[c.id]||'')}</select>`)}
+    </div>
+  `).join('');
+  AM('🔗 Sincronizar Caixa do ChequeSys',`
+    ${EH('e-map-chq')}
+    <div style="font-size:11px;color:var(--mut);margin-bottom:12px;line-height:1.5">
+      Para cada conta do ChequeSys, escolha a conta do TesourariaSys que vai receber os lançamentos de caixa automaticamente.
+      Deixe em branco pra não sincronizar aquela conta (ela continua aparecendo só como resumo, do jeito que já era).
+    </div>
+    ${linhas}
+    <div style="margin:10px 0">
+      ${C('Lançamentos sem conta definida no ChequeSys ("Dinheiro/Outros")',`<select id="map-chq-padrao"><option value="">— ignorar —</option>${opcoesContas(integ.contaPadrao||'')}</select>`)}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      ${B('💾 Salvar Mapeamento','salvarMapeamentoChequeSys()','var(--acc)')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function salvarMapeamentoChequeSys(){
+  const contasChq = _resumoChequeSys?.contas||[];
+  const mapaContas = {};
+  contasChq.forEach(c=>{
+    const v = document.getElementById(`map-chq-${c.id}`).value;
+    if(v) mapaContas[c.id] = v;
+  });
+  const contaPadrao = document.getElementById('map-chq-padrao').value || null;
+  const integ = DB.integracaoChequeSys||{sincronizados:{}};
+  salvar({...DB, integracaoChequeSys:{...integ, mapaContas, contaPadrao}});
+  FM();
+  sincronizarCaixaChequeSys(false);
+}
+async function sincronizarCaixaChequeSys(silencioso){
+  const token = getTokenChequeSys();
+  const integ = DB.integracaoChequeSys||{mapaContas:{},contaPadrao:null,sincronizados:{}};
+  const mapaContas = integ.mapaContas||{};
+  if(!token || (!Object.keys(mapaContas).length && !integ.contaPadrao)) return;
+  if(!isOnline()) return;
+  let dados;
+  try{ dados = await buscarDadosChequeSys(token); }
+  catch(e){ if(!silencioso){ setStatus('err','⚠ Não foi possível sincronizar com o ChequeSys'); setTimeout(()=>{document.getElementById('status').style.display='none';},4000); } return; }
+
+  const caixa = dados.caixa||[];
+  const sincronizados = {...(integ.sincronizados||{})};
+  let lancamentos = [...(DB.lancamentos||[])];
+  let mudou = false;
+  const destinoConta = (contaId) => contaId ? (mapaContas[contaId]||null) : (integ.contaPadrao||null);
+
+  const idsAtuais = new Set();
+  for(const chq of caixa){
+    const contaDestino = destinoConta(chq.contaId);
+    if(!contaDestino) continue;
+    idsAtuais.add(chq.id);
+    const fingerprint = `${chq.tipo}|${chq.valor}|${chq.data}|${chq.desc||''}|${contaDestino}`;
+    const reg = sincronizados[chq.id];
+    if(!reg){
+      const cat = categoriaOperacaoChequeSys(chq.tipo);
+      const novo = {
+        id:uid(), contaId:contaDestino, data:chq.data, tipo:chq.tipo, valor:Number(chq.valor||0),
+        categoriaId: cat?cat.id:'', centroCustoId:'', contraparte:'',
+        descricao:`[ChequeSys] ${chq.desc||''}`, origem:'chequesys', origemId:chq.id,
+        contaPagarId:null, criadoEm:new Date().toISOString()
+      };
+      lancamentos.push(novo);
+      sincronizados[chq.id] = {lancId:novo.id, fingerprint};
+      mudou = true;
+    } else if(reg.fingerprint !== fingerprint){
+      lancamentos = lancamentos.map(l=> l.id===reg.lancId ? {...l, contaId:contaDestino, data:chq.data, tipo:chq.tipo, valor:Number(chq.valor||0), descricao:`[ChequeSys] ${chq.desc||''}`} : l);
+      sincronizados[chq.id] = {...reg, fingerprint};
+      mudou = true;
+    }
+  }
+  for(const chqId of Object.keys(sincronizados)){
+    if(!idsAtuais.has(chqId)){
+      const reg = sincronizados[chqId];
+      lancamentos = lancamentos.filter(l=>l.id!==reg.lancId);
+      delete sincronizados[chqId];
+      mudou = true;
+    }
+  }
+  if(mudou){
+    salvar({...DB, lancamentos, integracaoChequeSys:{...integ, sincronizados}});
+    if(!silencioso){ setStatus('ok','✅ Caixa do ChequeSys sincronizado'); setTimeout(()=>{document.getElementById('status').style.display='none';},3000); }
+  } else if(!silencioso){
+    setStatus('ok','✅ Já estava tudo sincronizado');
+    setTimeout(()=>{document.getElementById('status').style.display='none';},3000);
+  }
+}
+function totalSaldoChequeSys(){
+  const mapa = DB.integracaoChequeSys?.mapaContas||{};
+  return (_resumoChequeSys?.contas||[]).filter(c=>!mapa[c.id]).reduce((s,c)=>s+c.saldo,0);
+}
 // Linhas de conta do ChequeSys, no mesmo formato usado nas tabelas de
 // "Saldo por Conta" do Dashboard e Relatórios — pra aparecerem juntas.
+// Só mostra contas AINDA NÃO mapeadas: as mapeadas já têm lançamentos
+// de verdade sincronizados dentro de uma conta real do TesourariaSys,
+// então aparecem na tabela normal de contas — mostrar aqui também
+// duplicaria o saldo.
 function linhasContasChequeSys(){
-  if(!_resumoChequeSys || !_resumoChequeSys.contas.length) return '';
-  return _resumoChequeSys.contas.map(c=>`<tr>
+  const mapa = DB.integracaoChequeSys?.mapaContas||{};
+  const naoMapeadas = (_resumoChequeSys?.contas||[]).filter(c=>!mapa[c.id]);
+  if(!naoMapeadas.length) return '';
+  return naoMapeadas.map(c=>`<tr>
     <td>${esc(c.nome)} ${T('ChequeSys','pur')}</td>
     <td>${esc(c.bancoNome||'-')}</td>
     <td style="text-align:right;font-weight:700;color:${c.saldo<0?'var(--red)':'var(--txt)'}">R$ ${fmt(c.saldo)}</td>
@@ -1870,6 +2004,16 @@ function editarLancamento(id){
     `);
     return;
   }
+  if(l.origem==='chequesys'){
+    AM('ℹ Lançamento do ChequeSys',`
+      <div style="font-size:13px;color:var(--mut);line-height:1.6">
+        Este lançamento foi sincronizado automaticamente do <strong>ChequeSys</strong> (caixa da operação de factoring).<br><br>
+        Para alterá-lo ou excluí-lo, faça isso diretamente no ChequeSys — a próxima sincronização (automática ao abrir o app, ou pelo botão 🔄) atualiza ou remove o espelho aqui.
+      </div>
+      <div style="margin-top:14px">${B('Entendi','FM()','var(--sur)','var(--txt)')}</div>
+    `);
+    return;
+  }
   AM('✏ Editar Lançamento',`
     ${EH('e-lanc-ed')}
     <div class="row">
@@ -1918,6 +2062,15 @@ function salvarEdicaoLancamento(id){
 }
 function excluirLancamento(id){
   const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
+  if(l.origem==='chequesys'){
+    AM('ℹ Lançamento do ChequeSys',`
+      <div style="font-size:13px;color:var(--mut);line-height:1.6">
+        Este lançamento veio do ChequeSys — exclua-o por lá; a sincronização remove o espelho automaticamente aqui.
+      </div>
+      <div style="margin-top:14px">${B('Entendi','FM()','var(--sur)','var(--txt)')}</div>
+    `);
+    return;
+  }
   const nomesOrigem = {investimento:'Investimento',previdencia:'Previdência',capitalizacao:'Capitalização',seguro:'Seguro'};
   const msg = l.origem==='pagamento'
     ? 'Este lançamento pertence a um pagamento de Conta a Pagar. Excluir vai reverter a conta para "pendente" novamente. Confirma?'
@@ -3895,20 +4048,24 @@ function htmlCadastros(){
         </div>
       </div>
       <div class="card">
-        <div style="font-weight:700;margin-bottom:8px">🔒 ChequeSys</div>
+        <div style="font-weight:700;margin-bottom:8px">🔗 ChequeSys</div>
         <div style="font-size:12px;color:var(--mut);margin-bottom:12px;line-height:1.5">
-          Integração somente-leitura: o TesourariaSys lê o saldo das "Minhas Contas" direto do repositório Fabio9500/chequesys, sem nunca alterar nada por lá.
+          O TesourariaSys lê o dados.json do ChequeSys, sem nunca alterar nada por lá. Contas que você mapear abaixo passam a ter os lançamentos de caixa do ChequeSys espelhados automaticamente como lançamentos reais aqui.
         </div>
         <div style="font-size:13px;line-height:1.8;margin-bottom:12px">
           <div>Token ChequeSys: ${getTokenChequeSys()?T('Configurado','vd'):T('Não configurado','cz')}</div>
           ${rq?.erro?`<div style="color:var(--mut);font-size:11px">${esc(rq.erro)}</div>`:''}
-          ${rq?.contas?.length?`<div style="margin-top:4px">${rq.contas.length} conta(s) encontrada(s) — total R$ ${fmt(rq.total)}</div>`:''}
+          ${rq?.contas?.length?`<div style="margin-top:4px">${rq.contas.length} conta(s) encontrada(s) no ChequeSys — total R$ ${fmt(rq.total)}</div>`:''}
+          <div style="margin-top:4px">Contas mapeadas (sincronizando): ${Object.keys(DB.integracaoChequeSys?.mapaContas||{}).length}${DB.integracaoChequeSys?.contaPadrao?' + conta padrão':''}</div>
+          <div style="margin-top:4px">Lançamentos sincronizados: ${Object.keys(DB.integracaoChequeSys?.sincronizados||{}).length}</div>
           ${rq?.atualizadoEm?`<div style="color:var(--mut);font-size:11px;margin-top:6px">Última atualização: ${new Date(rq.atualizadoEm).toLocaleString('pt-BR')}</div>`:''}
         </div>
         <div class="row">
           ${B('⚙ Configurar Token','configurarTokenChequeSys()','var(--acc)')}
-          ${B('🔄 Atualizar Agora','atualizarResumoChequeSys(false)','var(--sur)','var(--txt)')}
+          ${B('🔗 Mapear Contas','abrirMapeamentoChequeSys()','var(--acc)')}
+          ${B('🔄 Sincronizar Agora','sincronizarCaixaChequeSys(false)','var(--sur)','var(--txt)')}
         </div>
+
       </div>`;
   }
 
@@ -4035,6 +4192,6 @@ function mostrarAtualizacaoSW(){
 }
 registrarSW();
 </script>
-<!-- Gerado em 16/07/2026 14:00 -->
+<!-- Gerado em 16/07/2026 17:30 -->
 </body>
 </html>
