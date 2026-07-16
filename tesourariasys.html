@@ -820,6 +820,7 @@ function iniciarApp(){
   atualizarIndicadorConexao();
   iniciarSincronizacaoAutomatica();
   atualizarResumoCartoes(true).catch(()=>{});
+  atualizarResumoChequeSys(true).catch(()=>{});
 }
 
 (async function init(){
@@ -937,7 +938,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.7.1';
+const VERSAO = 'v1.11';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1179,22 +1180,23 @@ function salvarTokensCartoes(){
   FM();
   atualizarResumoCartoes(false);
 }
-function htmlResumoCartoesCard(){
+function htmlResumoCartoesCard(filtro){
+  filtro = filtro || 'todos';
   const r = _resumoCartoes;
   const linha = (label,dado,erro) => dado
     ? `<div>${label}: <strong>R$ ${fmt(dado.totalAberto)}</strong> em aberto${dado.proximaVenc?` · próxima fatura ${fmtD(dado.proximaVenc)} — R$ ${fmt(dado.proximoValor)}`:''}</div>`
     : `<div style="color:var(--mut)">${label}: ${esc(erro||'carregando...')}</div>`;
   return `<div class="card" style="margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-weight:700">💳 Cartões de Crédito (CartoesPF/PJ)</div>
+      <div style="font-weight:700">💳 Cartões de Crédito ${filtro==='todos'?'(CartoesPF/PJ)':filtro==='PF'?'(CartoesPF)':'(CartoesPJ)'}</div>
       <div>
         ${B('⚙','configurarTokensCartoes()','var(--sur)','var(--txt)',1,'Configurar tokens')}
         ${B('🔄','atualizarResumoCartoes(false)','var(--sur)','var(--txt)',1,'Atualizar agora')}
       </div>
     </div>
     <div style="font-size:13px;line-height:1.9;margin-bottom:8px">
-      ${r ? linha('PF',r.pf,r.erroPf) : '<div style="color:var(--mut)">Toque em 🔄 para carregar o resumo pela primeira vez.</div>'}
-      ${r ? linha('PJ',r.pj,r.erroPj) : ''}
+      ${r && filtro!=='PJ' ? linha('PF',r.pf,r.erroPf) : (filtro!=='PJ' ? '<div style="color:var(--mut)">Toque em 🔄 para carregar o resumo pela primeira vez.</div>' : '')}
+      ${r && filtro!=='PF' ? linha('PJ',r.pj,r.erroPj) : ''}
     </div>
     ${BPerm('lancamentos','💳 Registrar Pagamento de Fatura','abrirPagamentoFaturaCartao()','var(--acc)')}
   </div>`;
@@ -1202,6 +1204,90 @@ function htmlResumoCartoesCard(){
 function totalFaturasCartoesAberto(){
   if(!_resumoCartoes) return 0;
   return (_resumoCartoes.pf?.totalAberto||0) + (_resumoCartoes.pj?.totalAberto||0);
+}
+
+// ══════════════════════════════════════════
+// INTEGRAÇÃO — CONTAS DO CHEQUESYS (Sessão 5)
+// Leitura somente-leitura (nunca grava) direto do repositório
+// Fabio9500/chequesys — mesmo padrão da integração com CartoesPF/PJ acima.
+// Objetivo: ver o saldo de TODAS as contas (TesourariaSys + ChequeSys)
+// num lugar só, sem duplicar cadastro de conta em cada sistema.
+// ══════════════════════════════════════════
+function getTokenChequeSys(){ return localStorage.getItem('tsr_chq_token') || localStorage.getItem('chqsys_token') || ''; }
+function setTokenChequeSys(t){ localStorage.setItem('tsr_chq_token', t); }
+
+let _resumoChequeSys = null;
+try{ const _qRaw = localStorage.getItem('tsr_resumo_chequesys'); if(_qRaw) _resumoChequeSys = JSON.parse(_qRaw); }catch(e){}
+
+async function buscarDadosChequeSys(token){
+  const url = `https://api.github.com/repos/Fabio9500/chequesys/contents/dados.json`;
+  const r = await fetch(url, { headers:{ 'Authorization':`token ${token}`, 'Accept':'application/vnd.github.v3+json' } });
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const j = await r.json();
+  if(!j.content || j.content.trim()===''){
+    const r2 = await fetch(j.download_url);
+    if(!r2.ok) throw new Error('download falhou');
+    return await r2.json();
+  }
+  return JSON.parse(atob(j.content.replace(/\n/g,'')));
+}
+// O ChequeSys não guarda "saldo" pronto por conta — cada conta acumula
+// entradas/saídas dentro de DB.caixa. Reconstruímos o saldo aqui do
+// mesmo jeito que o próprio ChequeSys faz no relatório "Minhas Contas".
+function resumoContasDeChequeSys(dados){
+  const contas = dados.contas||[];
+  const caixa = dados.caixa||[];
+  const porConta = contas.map(ct=>{
+    const movs = caixa.filter(l=>l.contaId===ct.id);
+    const saldo = movs.reduce((s,l)=>s+(l.tipo==='entrada'?Number(l.valor||0):-Number(l.valor||0)),0);
+    return {id:ct.id, nome:ct.nome||'(sem nome)', bancoNome:ct.bancoNome||'', saldo};
+  });
+  const total = porConta.reduce((s,c)=>s+c.saldo,0);
+  return { contas: porConta, total };
+}
+async function atualizarResumoChequeSys(silencioso){
+  const token = getTokenChequeSys();
+  const resultado = { contas:[], total:0, erro:null, atualizadoEm:new Date().toISOString() };
+  if(token){
+    try{
+      const dados = await buscarDadosChequeSys(token);
+      const r = resumoContasDeChequeSys(dados);
+      resultado.contas = r.contas; resultado.total = r.total;
+    }catch(e){ resultado.erro = 'Não foi possível conectar (verifique o token).'; }
+  } else { resultado.erro = 'Token não configurado.'; }
+  _resumoChequeSys = resultado;
+  try{ localStorage.setItem('tsr_resumo_chequesys', JSON.stringify(resultado)); }catch(e){}
+  if(!silencioso){ renderAba(); setStatus('ok','✅ Resumo do ChequeSys atualizado'); setTimeout(()=>{document.getElementById('status').style.display='none';},3000); }
+}
+function configurarTokenChequeSys(){
+  AM('⚙ Integração com ChequeSys',`
+    ${EH('e-tokchq')}
+    <div style="font-size:11px;color:var(--mut);margin-bottom:12px;line-height:1.5">
+      Esse token permite que o TesourariaSys <strong>leia</strong> (nunca altera) o saldo das "Minhas Contas" do ChequeSys.
+      Se você já usa o ChequeSys neste mesmo navegador, o token já deve estar preenchido automaticamente abaixo.
+    </div>
+    ${C('Token GitHub — ChequeSys',`<input type="password" id="tok-chq" value="${esc(getTokenChequeSys())}" placeholder="github_pat_...">`)}
+    <div style="display:flex;gap:8px;margin-top:8px">
+      ${B('💾 Salvar e Atualizar','salvarTokenChequeSys()','var(--acc)')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function salvarTokenChequeSys(){
+  setTokenChequeSys(document.getElementById('tok-chq').value.trim());
+  FM();
+  atualizarResumoChequeSys(false);
+}
+function totalSaldoChequeSys(){ return _resumoChequeSys?.total||0; }
+// Linhas de conta do ChequeSys, no mesmo formato usado nas tabelas de
+// "Saldo por Conta" do Dashboard e Relatórios — pra aparecerem juntas.
+function linhasContasChequeSys(){
+  if(!_resumoChequeSys || !_resumoChequeSys.contas.length) return '';
+  return _resumoChequeSys.contas.map(c=>`<tr>
+    <td>${esc(c.nome)} ${T('ChequeSys','pur')}</td>
+    <td>${esc(c.bancoNome||'-')}</td>
+    <td style="text-align:right;font-weight:700;color:${c.saldo<0?'var(--red)':'var(--txt)'}">R$ ${fmt(c.saldo)}</td>
+  </tr>`).join('');
 }
 
 // ── Registro de Pagamento de Fatura de Cartão (apenas lança a saída — NUNCA sincroniza de volta com CartoesPF/PJ) ──
@@ -1301,6 +1387,66 @@ function salvarNovaConta(){
   salvar({...DB, contas:[...(DB.contas||[]), nova]});
   FM();
 }
+// ══════════════════════════════════════════
+// 🏷 IDENTIFICAR CONTAS PF/PJ — a pedido de Fabio: renomeia as contas
+// criadas automaticamente ("Conta PF 1", "Conta PJ 1"...) pros bancos
+// reais, mantendo o MESMO id de cada uma pra não quebrar nenhum
+// lançamento/conta a pagar/cheque que já esteja vinculado a elas. Se
+// a lista nova tiver mais contas do que já existem, cria as extras.
+// Roda 1x — depois disso, editar normalmente pela tela de Contas.
+// ══════════════════════════════════════════
+const NOMES_CONTAS_PF = ['Bradesco','Santander','Cef','PicPay','C6','Bc. Brasil','Inter','Santander 2'];
+const NOMES_CONTAS_PJ = ['Bradesco 1','Bradesco 2','SICRED 1','SICRED 2','Cef 1','Cef 2','InfinitePay','PagSeg'];
+
+function abrirIdentificarContas(){
+  const contasPF = (DB.contas||[]).filter(c=>c.tipo==='PF');
+  const contasPJ = (DB.contas||[]).filter(c=>c.tipo==='PJ');
+  const linhaPreview = (nomes, contasAtuais, tipo) => nomes.map((nome,i)=>{
+    const atual = contasAtuais[i];
+    const acao = atual ? `${esc(atual.titular)} → <strong>${esc(nome)}</strong>` : `<span style="color:var(--grn)">+ Nova conta: <strong>${esc(nome)}</strong></span>`;
+    return `<div style="padding:4px 0;border-bottom:1px solid var(--bor);font-size:12px">${acao}</div>`;
+  }).join('');
+  AM('🏷 Identificar Contas PF/PJ', `
+    <div style="font-size:12px;color:var(--mut);margin-bottom:14px;line-height:1.5">
+      Isso vai renomear (Titular e Banco) as contas que já existem, na ordem em que foram criadas, e adicionar as que ainda não existem. Nenhum lançamento é apagado — as contas mantêm o mesmo ID por baixo.
+    </div>
+    <div style="font-weight:700;margin-bottom:6px;color:var(--blu)">👤 Pessoa Física (${contasPF.length} existente(s) → ${NOMES_CONTAS_PF.length})</div>
+    ${linhaPreview(NOMES_CONTAS_PF, contasPF, 'PF')}
+    <div style="font-weight:700;margin:14px 0 6px;color:var(--pur)">🏢 Pessoa Jurídica (${contasPJ.length} existente(s) → ${NOMES_CONTAS_PJ.length})</div>
+    ${linhaPreview(NOMES_CONTAS_PJ, contasPJ, 'PJ')}
+    <div style="display:flex;gap:8px;margin-top:16px">
+      ${B('✅ Aplicar','confirmarIdentificarContas()','var(--grn)','#fff')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function confirmarIdentificarContas(){
+  const contasPF = (DB.contas||[]).filter(c=>c.tipo==='PF');
+  const contasPJ = (DB.contas||[]).filter(c=>c.tipo==='PJ');
+  let novasContas = [...(DB.contas||[])];
+
+  function aplicar(nomes, contasAtuais, tipo){
+    nomes.forEach((nome,i)=>{
+      const atual = contasAtuais[i];
+      if(atual){
+        novasContas = novasContas.map(c=>c.id===atual.id?{...c, titular:nome, banco:nome}:c);
+      } else {
+        novasContas.push({
+          id:uid(), tipo, titular:nome, banco:nome, agencia:'', conta:'',
+          saldoInicial:0, dataSaldoInicial:hoje(), ativa:true, obs:''
+        });
+      }
+    });
+  }
+  aplicar(NOMES_CONTAS_PF, contasPF, 'PF');
+  aplicar(NOMES_CONTAS_PJ, contasPJ, 'PJ');
+
+  salvar({...DB, contas:novasContas});
+  FM();
+  setStatus('ok','✅ Contas identificadas! Agora edite cada uma pra completar agência e conta.');
+  setTimeout(()=>{ document.getElementById('status').style.display='none'; },5000);
+}
+
 function editarConta(id){
   const c = contaById(id); if(!c) return;
   AM('✏ Editar Conta',`
@@ -1586,11 +1732,11 @@ function novoLancamento(contaIdPre){
   AM('➕ Novo Lançamento',`
     ${EH('e-lanc')}
     <div class="row">
-      ${C('Conta *',`<select id="lc-conta">${opcoesContas(contaIdPre)}</select>`,'2','200')}
+      ${C('Conta *',`<select id="lc-conta" onchange="atualizarSugestoesConta('lc')">${opcoesContas(contaIdPre)}</select>`,'2','200')}
       ${C('Data *',`<input type="date" id="lc-data" value="${hoje()}">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Tipo *',`<select id="lc-tipo" onchange="atualizarCatsLancamento()"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>`,'1','140')}
+      ${C('Tipo *',`<select id="lc-tipo" onchange="atualizarSugestoesConta('lc')"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>`,'1','140')}
       ${C('Valor (R$) *',`<input id="lc-valor" placeholder="0,00">`,'1','150')}
     </div>
     <div class="row">
@@ -1598,13 +1744,61 @@ function novoLancamento(contaIdPre){
       ${C('Centro de Custo',`<select id="lc-cc"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
     </div>
     ${C('Cliente / Fornecedor (opcional)',`<input id="lc-contraparte" list="dl-contrapartes" placeholder="Quem pagou ou recebeu">
-      <datalist id="dl-contrapartes">${opcoesDatalist([...(DB.clientes||[]),...(DB.fornecedores||[])])}</datalist>`)}
+      <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="lc-desc" placeholder="Ex: recebimento cliente X">`)}
+    <div id="lc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarNovoLancamento()','var(--acc)')}
       ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
     </div>
   `);
+  atualizarSugestoesConta('lc');
+}
+// ══════════════════════════════════════════
+// 🔀 SUGESTÕES SEPARADAS POR PF/PJ — a pedido de Fabio: fornecedor,
+// cliente e categoria sugeridos no lançamento levam em conta o
+// histórico de uso em contas do MESMO tipo (PF ou PJ) da conta
+// selecionada, pra não misturar o histórico dos dois lados. Se nunca
+// foi usado nenhum fornecedor/categoria com esse tipo ainda, mostra
+// todos (não trava o usuário numa lista vazia).
+// ══════════════════════════════════════════
+function tipoDaConta(contaId){
+  const c = contaById(contaId);
+  return c ? c.tipo : null;
+}
+function contrapartesPorTipoConta(tipo){
+  const todos = [...(DB.clientes||[]),...(DB.fornecedores||[])];
+  if(!tipo) return todos;
+  const contasDoTipo = new Set((DB.contas||[]).filter(c=>c.tipo===tipo).map(c=>c.id));
+  const nomesUsados = new Set();
+  (DB.lancamentos||[]).forEach(l=>{ if(l.contraparte && contasDoTipo.has(l.contaId)) nomesUsados.add(l.contraparte); });
+  const filtrados = todos.filter(x=>nomesUsados.has(x.nome));
+  return filtrados.length ? filtrados : todos;
+}
+function categoriasPorTipoConta(tipoReceitaDespesa, tipoConta){
+  const base = (DB.categorias||[]).filter(c=>!tipoReceitaDespesa||c.tipo===tipoReceitaDespesa);
+  if(!tipoConta) return base;
+  const contasDoTipo = new Set((DB.contas||[]).filter(c=>c.tipo===tipoConta).map(c=>c.id));
+  const idsUsados = new Set();
+  (DB.lancamentos||[]).forEach(l=>{ if(l.categoriaId && contasDoTipo.has(l.contaId)) idsUsados.add(l.categoriaId); });
+  const filtradas = base.filter(c=>idsUsados.has(c.id));
+  return filtradas.length ? filtradas : base;
+}
+function atualizarSugestoesConta(prefixo){
+  const contaEl = document.getElementById(prefixo+'-conta');
+  const tipoConta = tipoDaConta(contaEl?.value);
+  const dl = document.getElementById(prefixo==='elc' ? 'dl-contrapartes-ed' : 'dl-contrapartes');
+  if(dl) dl.innerHTML = opcoesDatalist(contrapartesPorTipoConta(tipoConta));
+  const tipoLancEl = document.getElementById(prefixo+'-tipo');
+  const tipoLanc = tipoLancEl ? (tipoLancEl.value==='entrada'?'receita':'despesa') : null;
+  const catSel = document.getElementById(prefixo+'-categoria');
+  if(catSel){
+    const catAtual = catSel.value;
+    const opcoes = categoriasPorTipoConta(tipoLanc, tipoConta);
+    catSel.innerHTML = opcoes.map(c=>`<option value="${c.id}"${c.id===catAtual?' selected':''}>${esc(c.nome)}</option>`).join('');
+  }
+  const info = document.getElementById(prefixo+'-tipo-info');
+  if(info) info.textContent = tipoConta ? `Sugestões filtradas pelo histórico de contas ${tipoConta}.` : '';
 }
 function atualizarCatsLancamento(){
   const tipo = document.getElementById('lc-tipo').value==='entrada'?'receita':'despesa';
@@ -1679,11 +1873,11 @@ function editarLancamento(id){
   AM('✏ Editar Lançamento',`
     ${EH('e-lanc-ed')}
     <div class="row">
-      ${C('Conta *',`<select id="elc-conta">${opcoesContas(l.contaId)}</select>`,'2','200')}
+      ${C('Conta *',`<select id="elc-conta" onchange="atualizarSugestoesConta('elc')">${opcoesContas(l.contaId)}</select>`,'2','200')}
       ${C('Data *',`<input type="date" id="elc-data" value="${l.data}">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Tipo *',`<select id="elc-tipo" onchange="atualizarCatsLancamentoEd('${id}')"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select>`,'1','140')}
+      ${C('Tipo *',`<select id="elc-tipo" onchange="atualizarSugestoesConta('elc')"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select>`,'1','140')}
       ${C('Valor (R$) *',`<input id="elc-valor" value="${fmt(l.valor)}">`,'1','150')}
     </div>
     <div class="row">
@@ -1691,14 +1885,16 @@ function editarLancamento(id){
       ${C('Centro de Custo',`<select id="elc-cc"><option value="">-</option>${opcoesCC(l.centroCustoId)}</select>`,'1','180')}
     </div>
     ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
-      <datalist id="dl-contrapartes-ed">${opcoesDatalist([...(DB.clientes||[]),...(DB.fornecedores||[])])}</datalist>`)}
+      <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="elc-desc" value="${esc(l.descricao||'')}">`)}
+    <div id="elc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarEdicaoLancamento(\''+id+'\')','var(--acc)')}
       ${BPerm('excluir','🗑 Excluir','excluirLancamento(\''+id+'\')','var(--red)','#fff')}
       ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
     </div>
   `);
+  atualizarSugestoesConta('elc');
 }
 function atualizarCatsLancamentoEd(){
   const tipo = document.getElementById('elc-tipo').value==='entrada'?'receita':'despesa';
@@ -2975,8 +3171,12 @@ function confirmarRenovarSeguro(id){
 // ══════════════════════════════════════════
 // RENDER — DASHBOARD
 // ══════════════════════════════════════════
+let _filtroDashPFPJ = 'todos';
+function mudarFiltroDashPFPJ(tipo){ _filtroDashPFPJ = tipo; renderAba(); }
 function htmlDashboard(){
-  const contas = (DB.contas||[]).filter(c=>c.ativa!==false);
+  const filtro = _filtroDashPFPJ;
+  const contasTodasAtivas = (DB.contas||[]).filter(c=>c.ativa!==false);
+  const contas = filtro==='todos' ? contasTodasAtivas : contasTodasAtivas.filter(c=>c.tipo===filtro);
   const saldoPF = saldoTotalPorTipo('PF');
   const saldoPJ = saldoTotalPorTipo('PJ');
   const saldoGeral = saldoPF+saldoPJ;
@@ -2993,7 +3193,7 @@ function htmlDashboard(){
   const patrimonioInvestido = totalPatrimonioInvestido();
   const segurosVenc = segurosVencidos();
   const segurosProx30 = segurosVencendoEm(30);
-  const posicaoLiquida = saldoGeral + patrimonioInvestido + totalReceberPendente - totalPendente - totalChequesPend - totalFaturasCartoesAberto();
+  const posicaoLiquida = saldoGeral + totalSaldoChequeSys() + patrimonioInvestido + totalReceberPendente - totalPendente - totalChequesPend - totalFaturasCartoesAberto();
 
   let alertas = '';
   if(vencidas.length>0) alertas += `<div class="alerta av">⚠ ${vencidas.length} conta(s) a pagar VENCIDA(S) — total R$ ${fmt(vencidas.reduce((s,c)=>s+c.valor,0))}</div>`;
@@ -3003,6 +3203,7 @@ function htmlDashboard(){
   if(segurosVenc.length>0) alertas += `<div class="alerta av">⚠ ${segurosVenc.length} seguro(s) VENCIDO(S) — verifique a renovação</div>`;
   if(segurosProx30.length>0) alertas += `<div class="alerta aa">🔔 ${segurosProx30.length} seguro(s) vencendo nos próximos 30 dias</div>`;
 
+  // Contas do ChequeSys não têm classificação PF/PJ — só aparecem na visão "Todos"
   const linhasContas = contas.map(c=>{
     const saldo = saldoConta(c.id);
     return `<tr>
@@ -3010,24 +3211,39 @@ function htmlDashboard(){
       <td>${esc(c.banco||'-')}</td>
       <td style="text-align:right;font-weight:700;color:${saldo<0?'var(--red)':'var(--txt)'}">R$ ${fmt(saldo)}</td>
     </tr>`;
-  }).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Nenhuma conta cadastrada</td></tr>';
+  }).join('') + (filtro==='todos' ? linhasContasChequeSys() : '') || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Nenhuma conta cadastrada</td></tr>';
+  const saldoGeralComChequeSys = saldoGeral + totalSaldoChequeSys();
+  const tabsPFPJ = `<div class="row" style="margin-bottom:14px;gap:8px">
+    ${B('Ver Tudo','mudarFiltroDashPFPJ(\'todos\')',filtro==='todos'?'var(--acc)':'var(--sur)',filtro==='todos'?'#000':'var(--txt)')}
+    ${B('👤 Somente PF','mudarFiltroDashPFPJ(\'PF\')',filtro==='PF'?'var(--blu)':'var(--sur)',filtro==='PF'?'#fff':'var(--txt)')}
+    ${B('🏢 Somente PJ','mudarFiltroDashPFPJ(\'PJ\')',filtro==='PJ'?'var(--pur)':'var(--sur)',filtro==='PJ'?'#fff':'var(--txt)')}
+  </div>`;
 
   return `
     <div class="titulo acc">📊 Dashboard — TesourariaSys</div>
+    ${tabsPFPJ}
     ${alertas}
     <div class="kpis">
-      <div class="card kpi"><div class="kpi-l">Posição Líquida Consolidada</div><div class="kpi-v" style="color:${posicaoLiquida<0?'var(--red)':'var(--acc)'}">R$ ${fmt(posicaoLiquida)}</div><div class="kpi-s">Contas + Investim. + A Receber − Pendências − Cartões</div></div>
-      <div class="card kpi"><div class="kpi-l">Saldo Total</div><div class="kpi-v" style="color:${saldoGeral<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoGeral)}</div><div class="kpi-s">${contas.length} conta(s) ativa(s)</div></div>
-      <div class="card kpi"><div class="kpi-l">Saldo PF</div><div class="kpi-v" style="color:var(--blu)">R$ ${fmt(saldoPF)}</div><div class="kpi-s">${contas.filter(c=>c.tipo==='PF').length} conta(s)</div></div>
-      <div class="card kpi"><div class="kpi-l">Saldo PJ</div><div class="kpi-v" style="color:var(--pur)">R$ ${fmt(saldoPJ)}</div><div class="kpi-s">${contas.filter(c=>c.tipo==='PJ').length} conta(s)</div></div>
+      ${filtro==='todos'?`<div class="card kpi"><div class="kpi-l">Posição Líquida Consolidada</div><div class="kpi-v" style="color:${posicaoLiquida<0?'var(--red)':'var(--acc)'}">R$ ${fmt(posicaoLiquida)}</div><div class="kpi-s">Contas + Investim. + A Receber − Pendências − Cartões</div></div>`:''}
+      ${filtro==='todos'?`<div class="card kpi"><div class="kpi-l">Saldo Total (todas as contas)</div><div class="kpi-v" style="color:${saldoGeralComChequeSys<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoGeralComChequeSys)}</div><div class="kpi-s">${contasTodasAtivas.length} conta(s) TesourariaSys${_resumoChequeSys?.contas?.length?' + '+_resumoChequeSys.contas.length+' do ChequeSys':''}</div></div>`:''}
+      ${filtro!=='PJ'?`<div class="card kpi"><div class="kpi-l">Saldo PF</div><div class="kpi-v" style="color:var(--blu)">R$ ${fmt(saldoPF)}</div><div class="kpi-s">${contasTodasAtivas.filter(c=>c.tipo==='PF').length} conta(s)</div></div>`:''}
+      ${filtro!=='PF'?`<div class="card kpi"><div class="kpi-l">Saldo PJ</div><div class="kpi-v" style="color:var(--pur)">R$ ${fmt(saldoPJ)}</div><div class="kpi-s">${contasTodasAtivas.filter(c=>c.tipo==='PJ').length} conta(s)</div></div>`:''}
       <div class="card kpi"><div class="kpi-l">Contas a Pagar Pendentes</div><div class="kpi-v" style="color:${vencidas.length>0?'var(--red)':'#f0a500'}">R$ ${fmt(totalPendente)}</div><div class="kpi-s">${pendentes.length} pendente(s) · ${vencidas.length} vencida(s)</div></div>
       <div class="card kpi"><div class="kpi-l">Contas a Receber Pendentes</div><div class="kpi-v" style="color:${receberVencidas.length>0?'var(--red)':'#3fb950'}">R$ ${fmt(totalReceberPendente)}</div><div class="kpi-s">${receberPendentes.length} pendente(s) · ${receberVencidas.length} vencida(s)</div></div>
       <div class="card kpi"><div class="kpi-l">Cheques Emitidos (aguardando)</div><div class="kpi-v" style="color:#f0a500">R$ ${fmt(totalChequesPend)}</div><div class="kpi-s">${chequesPend.length} ainda não compensado(s)</div></div>
-      <div class="card kpi"><div class="kpi-l">Patrimônio Investido</div><div class="kpi-v" style="color:var(--pur)">R$ ${fmt(patrimonioInvestido)}</div><div class="kpi-s">Investimentos + Previdência ativos</div></div>
+      ${filtro==='todos'?`<div class="card kpi"><div class="kpi-l">Patrimônio Investido</div><div class="kpi-v" style="color:var(--pur)">R$ ${fmt(patrimonioInvestido)}</div><div class="kpi-s">Investimentos + Previdência ativos</div></div>`:''}
     </div>
-    ${htmlResumoCartoesCard()}
+    ${htmlResumoCartoesCard(filtro)}
     <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">🏦 Saldo por Conta</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700">🏦 Saldo por Conta ${filtro==='todos'?'(TesourariaSys + ChequeSys)':'('+filtro+')'}</div>
+        <div>
+          ${B('⚙','configurarTokenChequeSys()','var(--sur)','var(--txt)',1,'Configurar integração com ChequeSys')}
+          ${B('🔄','atualizarResumoChequeSys(false)','var(--sur)','var(--txt)',1,'Atualizar agora')}
+        </div>
+      </div>
+      ${filtro==='todos'&&_resumoChequeSys?.erro?`<div style="font-size:11px;color:var(--mut);margin-bottom:8px">ChequeSys: ${esc(_resumoChequeSys.erro)}</div>`:''}
+      ${filtro!=='todos'?`<div style="font-size:11px;color:var(--mut);margin-bottom:8px">Contas do ChequeSys não são classificadas como PF/PJ — aparecem só na visão "Ver Tudo".</div>`:''}
       <table><thead><tr><th>Conta</th><th>Banco</th><th style="text-align:right">Saldo Atual</th></tr></thead><tbody>${linhasContas}</tbody></table>
     </div>
     <div class="row" style="gap:10px">
@@ -3063,7 +3279,10 @@ function htmlContas(){
 
   return `
     <div class="titulo acc">🏦 Contas Bancárias</div>
-    <div class="row" style="margin-bottom:12px">${BPerm('lancamentos','➕ Nova Conta','novaConta()','var(--acc)')}</div>
+    <div class="row" style="margin-bottom:12px">
+      ${BPerm('lancamentos','➕ Nova Conta','novaConta()','var(--acc)')}
+      ${BPerm('editar_dados','🏷 Identificar Contas PF/PJ (Bradesco, Santander...)','abrirIdentificarContas()','var(--pur)','#fff')}
+    </div>
     <div class="card">
       <table><thead><tr><th>Titular</th><th>Tipo</th><th>Banco</th><th style="text-align:right">Saldo</th><th>Status</th><th>Ações</th></tr></thead><tbody>${linhas}</tbody></table>
     </div>
@@ -3520,7 +3739,7 @@ function htmlRelatorios(){
   const cartoesPF = _resumoCartoes?.pf?.totalAberto||0;
   const cartoesPJ = _resumoCartoes?.pj?.totalAberto||0;
   const totalReceberPend = contasReceberPendentes().reduce((s,cr)=>s+cr.valor,0);
-  const posicaoLiquida = saldoTotalGeral() + totalPatrimonioInvestido() + totalReceberPend - contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0) - chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0) - cartoesPF - cartoesPJ;
+  const posicaoLiquida = saldoTotalGeral() + totalSaldoChequeSys() + totalPatrimonioInvestido() + totalReceberPend - contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0) - chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0) - cartoesPF - cartoesPJ;
 
   return `
     <div class="titulo acc">📊 Relatórios</div>
@@ -3528,7 +3747,8 @@ function htmlRelatorios(){
       <div style="font-weight:700;margin-bottom:10px">🧭 Posição Financeira Consolidada</div>
       <table>
         <tbody>
-          <tr><td>Saldo em Contas Bancárias</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(saldoTotalGeral())}</td></tr>
+          <tr><td>Saldo em Contas Bancárias (TesourariaSys)</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(saldoTotalGeral())}</td></tr>
+          <tr><td>Saldo em Contas do ChequeSys${_resumoChequeSys?.erro?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(totalSaldoChequeSys())}</td></tr>
           <tr><td>Patrimônio Investido (Investimentos + Previdência)</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(totalPatrimonioInvestido())}</td></tr>
           <tr><td>Contas a Receber Pendentes</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(totalReceberPend)}</td></tr>
           <tr><td>Contas a Pagar Pendentes</td><td style="text-align:right;color:#f85149">− R$ ${fmt(contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0))}</td></tr>
@@ -3540,8 +3760,8 @@ function htmlRelatorios(){
       </table>
     </div>
     <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">💰 Saldo Consolidado por Conta</div>
-      <table><thead><tr><th>Conta</th><th style="text-align:right">Saldo</th></tr></thead><tbody>${linhasContas}</tbody></table>
+      <div style="font-weight:700;margin-bottom:10px">💰 Saldo Consolidado por Conta (TesourariaSys + ChequeSys)</div>
+      <table><thead><tr><th>Conta</th><th style="text-align:right">Saldo</th></tr></thead><tbody>${linhasContas}${(_resumoChequeSys?.contas||[]).map(c=>`<tr><td>${esc(c.nome)} ${T('ChequeSys','pur')}</td><td style="text-align:right;font-weight:700;color:${c.saldo<0?'var(--red)':'inherit'}">R$ ${fmt(c.saldo)}</td></tr>`).join('')}</tbody></table>
     </div>
     <div class="card" style="margin-bottom:14px">
       <div style="font-weight:700;margin-bottom:10px">📊 Fluxo de Caixa por Categoria (histórico completo)</div>
@@ -3657,6 +3877,7 @@ function htmlCadastros(){
       <div class="card"><table><thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='integracoes'){
     const r = _resumoCartoes;
+    const rq = _resumoChequeSys;
     corpo = `
       <div class="card" style="margin-bottom:12px">
         <div style="font-weight:700;margin-bottom:8px">💳 CartoesPF / CartoesPJ</div>
@@ -3671,6 +3892,22 @@ function htmlCadastros(){
         <div class="row">
           ${B('⚙ Configurar Tokens','configurarTokensCartoes()','var(--acc)')}
           ${B('🔄 Atualizar Agora','atualizarResumoCartoes(false)','var(--sur)','var(--txt)')}
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:8px">🔒 ChequeSys</div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:12px;line-height:1.5">
+          Integração somente-leitura: o TesourariaSys lê o saldo das "Minhas Contas" direto do repositório Fabio9500/chequesys, sem nunca alterar nada por lá.
+        </div>
+        <div style="font-size:13px;line-height:1.8;margin-bottom:12px">
+          <div>Token ChequeSys: ${getTokenChequeSys()?T('Configurado','vd'):T('Não configurado','cz')}</div>
+          ${rq?.erro?`<div style="color:var(--mut);font-size:11px">${esc(rq.erro)}</div>`:''}
+          ${rq?.contas?.length?`<div style="margin-top:4px">${rq.contas.length} conta(s) encontrada(s) — total R$ ${fmt(rq.total)}</div>`:''}
+          ${rq?.atualizadoEm?`<div style="color:var(--mut);font-size:11px;margin-top:6px">Última atualização: ${new Date(rq.atualizadoEm).toLocaleString('pt-BR')}</div>`:''}
+        </div>
+        <div class="row">
+          ${B('⚙ Configurar Token','configurarTokenChequeSys()','var(--acc)')}
+          ${B('🔄 Atualizar Agora','atualizarResumoChequeSys(false)','var(--sur)','var(--txt)')}
         </div>
       </div>`;
   }
@@ -3798,6 +4035,6 @@ function mostrarAtualizacaoSW(){
 }
 registrarSW();
 </script>
-<!-- Gerado em 07/07/2026 00:38 -->
+<!-- Gerado em 16/07/2026 14:00 -->
 </body>
 </html>
