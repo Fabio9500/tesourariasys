@@ -227,7 +227,7 @@
     {
       "id": "mrnty0ghusttx",
       "tipo": "despesa",
-      "nome": "Salários e Encargos"
+      "nome": "SalÃ¡rios e Encargos"
     },
     {
       "id": "mrnty0ghjsvgu",
@@ -237,7 +237,7 @@
     {
       "id": "mrnty0gh0d7u2",
       "tipo": "despesa",
-      "nome": "Tarifas Bancárias"
+      "nome": "Tarifas BancÃ¡rias"
     },
     {
       "id": "mrnty0ghe7l0f",
@@ -247,7 +247,7 @@
     {
       "id": "mrnty0gh5imm3",
       "tipo": "despesa",
-      "nome": "Manutenção"
+      "nome": "ManutenÃ§Ã£o"
     },
     {
       "id": "mrnty0ghhldot",
@@ -262,22 +262,37 @@
     {
       "id": "mrnty0ghw8me0",
       "tipo": "despesa",
-      "nome": "Previdência (Aporte)"
+      "nome": "PrevidÃªncia (Aporte)"
     },
     {
       "id": "mrnty0ghn9yrg",
       "tipo": "despesa",
-      "nome": "Capitalização (Parcela)"
+      "nome": "CapitalizaÃ§Ã£o (Parcela)"
     },
     {
       "id": "mrnty0gh7xffz",
       "tipo": "despesa",
-      "nome": "Seguros (Prêmio)"
+      "nome": "Seguros (PrÃªmio)"
     },
     {
       "id": "mrnty0ghmi40z",
       "tipo": "despesa",
+      "nome": "Fatura CartÃ£o de CrÃ©dito"
+    },
+    {
+      "id": "mro0irlze9ea8",
+      "tipo": "despesa",
       "nome": "Fatura Cartão de Crédito"
+    },
+    {
+      "id": "mro0irlzjwxq0",
+      "tipo": "despesa",
+      "nome": "Operação ChequeSys"
+    },
+    {
+      "id": "mro0irlz2pw8c",
+      "tipo": "receita",
+      "nome": "Operação ChequeSys"
     }
   ],
   "centrosCusto": [
@@ -322,5 +337,22 @@
   "investimentos": [],
   "previdencias": [],
   "capitalizacoes": [],
-  "seguros": []
+  "seguros": [],
+  "integracaoChequeSys": {
+    "mapaContas": {
+      "mr807832gzpd": "mrntzv0bvufp8",
+      "mr12416arrjk": "mrnty0ghn85rn",
+      "mrjd3cb1jcwo": "mrntzv0bzlw1q",
+      "mqvhuuoxqbmw": "mrnty0ghhcv08",
+      "mqk0k4nzkg4i": "mrnty0gh80gr3",
+      "mqk0j3rcr73m": "mrnty0gh9748t",
+      "mqvhtjtp85lf": "mrnty0gh0cojz",
+      "mqzxd2up55hr": "mrnty0ghft9zz",
+      "mrks2so9mt2z": "mrnty0ghvteo1",
+      "mr806pqkn590": "mrntzv0b4cuwm",
+      "mqzxdk97j8a3": "mrnty0ghfjohr"
+    },
+    "contaPadrao": null,
+    "sincronizados": {}
+  }
 }
