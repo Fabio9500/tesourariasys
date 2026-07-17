@@ -183,6 +183,14 @@ const GH_REPO = 'tesourariasys';
 const GH_FILE = 'dados.json';
 const GH_API  = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
 
+// Decodifica base64 -> UTF-8 corretamente (o par exato do encode usado em ghSalvar:
+// btoa(unescape(encodeURIComponent(str))) ). Usar atob() sozinho corrompe acentos
+// a cada ciclo de carregar/salvar (bug corrigido na v1.17 — dados antigos precisam
+// ser limpos manualmente uma vez, ver rotina de correção no dados.json).
+function b64ParaTextoUtf8(b64){
+  return decodeURIComponent(escape(atob(b64)));
+}
+
 function getToken(){ return localStorage.getItem('tsr_gh_token') || ''; }
 function setToken(t){ localStorage.setItem('tsr_gh_token', t); }
 
@@ -219,7 +227,7 @@ async function ghCarregar(){
       if(!r2.ok) throw new Error('Download falhou: '+r2.status);
       dados = await r2.json();
     } else {
-      dados = JSON.parse(atob(j.content.replace(/\n/g,'')));
+      dados = JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
     }
     try{ localStorage.setItem('tsr_bkp', JSON.stringify(dados)); }catch(e){}
     const fila = getFilaPendente();
@@ -332,7 +340,7 @@ window.addEventListener('online', async ()=>{
       const r = await fetch(GH_API, { headers:{ 'Authorization':`token ${getToken()}`, 'Accept':'application/vnd.github.v3+json' } });
       if(r.ok){
         const j = await r.json();
-        const dadosRemotos = JSON.parse(atob(j.content.replace(/\n/g,'')));
+        const dadosRemotos = JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
         await resolverFilaPendente(fila, dadosRemotos, j.sha);
         if(!window._conflitoFilaDb){ renderAba(); }
       }
@@ -773,7 +781,7 @@ async function verificarAtualizacaoRemota(){
         if(!r2.ok) return;
         novosDados = await r2.json();
       } else {
-        novosDados = JSON.parse(atob(j.content.replace(/\n/g,'')));
+        novosDados = JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
       }
       try{ localStorage.setItem('tsr_bkp', JSON.stringify(novosDados)); }catch(e){}
       DB = novosDados;
@@ -947,7 +955,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.16';
+const VERSAO = 'v1.17';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1152,7 +1160,7 @@ async function buscarDadosCartao(arquivo, token){
     if(!r2.ok) throw new Error('download falhou');
     return await r2.json();
   }
-  return JSON.parse(atob(j.content.replace(/\n/g,'')));
+  return JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
 }
 function resumoFaturasDeDados(dados){
   const compras = dados.compras||[];
@@ -1264,7 +1272,7 @@ async function buscarDadosChequeSys(token){
     if(!r2.ok) throw new Error('download falhou');
     return await r2.json();
   }
-  return JSON.parse(atob(j.content.replace(/\n/g,'')));
+  return JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
 }
 // O ChequeSys não guarda "saldo" pronto por conta — cada conta acumula
 // entradas/saídas dentro de DB.caixa. Reconstruímos o saldo aqui do
