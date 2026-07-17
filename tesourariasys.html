@@ -947,7 +947,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.13';
+const VERSAO = 'v1.14';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3781,6 +3781,31 @@ function htmlInvestimentosSeguros(){
 // ══════════════════════════════════════════
 // RENDER — RELATÓRIOS
 // ══════════════════════════════════════════
+let RLT = { cat: null, tipo: null };
+function irRelCategoria(cat, tipo){ RLT.cat=cat; RLT.tipo=tipo; renderAba(); }
+function irRelTipo(tipo){ RLT.tipo=tipo; renderAba(); }
+function voltarRelCategorias(){ RLT.cat=null; RLT.tipo=null; renderAba(); }
+
+function grafBarraH(items, cor){
+  const max = Math.max(...items.map(i=>Math.abs(i.valor)), 1);
+  return items.map(i=>{
+    const pct = Math.min(100, Math.abs(i.valor)/max*100);
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span>${esc(i.label)}</span><span style="font-weight:700">R$ ${fmt(i.valor)}</span></div>
+      <div style="background:var(--bg);border-radius:4px;height:11px;overflow:hidden"><div style="width:${pct}%;height:100%;background:${cor};border-radius:4px"></div></div>
+    </div>`;
+  }).join('') || '<div style="text-align:center;color:var(--mut);font-size:12px">Sem dados ainda</div>';
+}
+function grafDuploMes(items){
+  const max = Math.max(...items.map(i=>Math.max(i.entrada,i.saida)), 1);
+  return items.map(i=>`
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;margin-bottom:4px;text-transform:capitalize">${esc(i.label)}</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="width:52px;font-size:10px;color:var(--mut)">Entrada</span><div style="flex:1;background:var(--bg);border-radius:4px;height:10px;overflow:hidden"><div style="width:${Math.min(100,i.entrada/max*100)}%;height:100%;background:#3fb950"></div></div><span style="width:90px;text-align:right;font-size:10px">R$ ${fmt(i.entrada)}</span></div>
+      <div style="display:flex;align-items:center;gap:6px"><span style="width:52px;font-size:10px;color:var(--mut)">Saída</span><div style="flex:1;background:var(--bg);border-radius:4px;height:10px;overflow:hidden"><div style="width:${Math.min(100,i.saida/max*100)}%;height:100%;background:#f85149"></div></div><span style="width:90px;text-align:right;font-size:10px">R$ ${fmt(i.saida)}</span></div>
+    </div>`).join('') || '<div style="text-align:center;color:var(--mut);font-size:12px">Sem dados ainda</div>';
+}
+
 function htmlRelatorios(){
   const contas = (DB.contas||[]).filter(c=>c.ativa!==false);
   // Fluxo por categoria (todos os lançamentos)
@@ -3897,24 +3922,26 @@ function htmlRelatorios(){
     porMes[mes][l.tipo==='entrada'?'entrada':'saida'] += l.valor;
   });
   const mesesOrdenados = Object.keys(porMes).sort();
+  const nomeMesFmt = mes => { const [ano,mm]=mes.split('-'); return new Date(Number(ano),Number(mm)-1,1).toLocaleDateString('pt-BR',{month:'short',year:'numeric'}); };
   let saldoAcumMes = 0;
   const linhasMes = mesesOrdenados.map(mes=>{
     const v = porMes[mes];
     const resultado = v.entrada - v.saida;
     saldoAcumMes += resultado;
-    const [ano,mm] = mes.split('-');
-    const nomeMes = new Date(Number(ano),Number(mm)-1,1).toLocaleDateString('pt-BR',{month:'short',year:'numeric'});
-    return `<tr><td style="text-transform:capitalize">${esc(nomeMes)}</td><td style="text-align:right;color:#3fb950">R$ ${fmt(v.entrada)}</td><td style="text-align:right;color:#f85149">R$ ${fmt(v.saida)}</td><td style="text-align:right;font-weight:700;color:${resultado<0?'var(--red)':'#3fb950'}">R$ ${fmt(resultado)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoAcumMes)}</td></tr>`;
+    return `<tr><td style="text-transform:capitalize">${esc(nomeMesFmt(mes))}</td><td style="text-align:right;color:#3fb950">R$ ${fmt(v.entrada)}</td><td style="text-align:right;color:#f85149">R$ ${fmt(v.saida)}</td><td style="text-align:right;font-weight:700;color:${resultado<0?'var(--red)':'#3fb950'}">R$ ${fmt(resultado)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoAcumMes)}</td></tr>`;
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Sem lançamentos ainda</td></tr>';
+  const graficoMeses = grafDuploMes(mesesOrdenados.map(mes=>({label:nomeMesFmt(mes),entrada:porMes[mes].entrada,saida:porMes[mes].saida})));
 
   // Concentração de Despesas por Categoria (Pareto 80/20)
   const totalDespesasCat = Object.values(porCategoria).reduce((s,v)=>s+v.saida,0);
   let acumPct = 0;
-  const linhasPareto = Object.entries(porCategoria).filter(([,v])=>v.saida>0).sort((a,b)=>b[1].saida-a[1].saida).map(([nome,v])=>{
+  const catsOrdenadas = Object.entries(porCategoria).filter(([,v])=>v.saida>0).sort((a,b)=>b[1].saida-a[1].saida);
+  const linhasPareto = catsOrdenadas.map(([nome,v])=>{
     const pct = totalDespesasCat? (v.saida/totalDespesasCat*100) : 0;
     acumPct += pct;
     return `<tr><td>${esc(nome)}</td><td style="text-align:right">R$ ${fmt(v.saida)}</td><td style="text-align:right">${pct.toFixed(1)}%</td><td style="text-align:right;font-weight:700;color:${acumPct<=80?'#3fb950':'var(--mut)'}">${acumPct.toFixed(1)}%</td></tr>`;
   }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Sem despesas ainda</td></tr>';
+  const graficoPareto = grafBarraH(catsOrdenadas.slice(0,8).map(([nome,v])=>({label:nome,valor:v.saida})), '#f85149');
 
   // Maiores Lançamentos (Top 15 entradas + Top 15 saidas)
   const topEntradas = (DB.lancamentos||[]).filter(l=>l.tipo==='entrada').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
@@ -3942,114 +3969,162 @@ function htmlRelatorios(){
   const saldoAtualTotal = saldoTotalGeral();
   const mesesReserva = mediaDespesaMensalReal>0 ? (saldoAtualTotal/mediaDespesaMensalReal) : 0;
 
-  // Posição Financeira Consolidada (Sessão 4 — puxa resumo do CartoesPF/PJ)
+  // Cartões — resumo (integração com CartoesPF/PJ) e histórico de faturas pagas
   const cartoesPF = _resumoCartoes?.pf?.totalAberto||0;
   const cartoesPJ = _resumoCartoes?.pj?.totalAberto||0;
-  const totalReceberPend = contasReceberPendentes().reduce((s,cr)=>s+cr.valor,0);
-  const posicaoLiquida = saldoTotalGeral() + totalSaldoChequeSys() + totalPatrimonioInvestido() + totalReceberPend - contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0) - chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0) - cartoesPF - cartoesPJ;
+  const catFatCartao = categoriaPorNome('Fatura Cartão de Crédito','despesa');
+  const lancFatCartao = catFatCartao ? (DB.lancamentos||[]).filter(l=>l.categoriaId===catFatCartao.id) : [];
+  const totalPagoFaturas = lancFatCartao.reduce((s,l)=>s+l.valor,0);
+  const porContaFatura = {};
+  lancFatCartao.forEach(l=>{
+    const cta = contaById(l.contaId);
+    const nome = cta?cta.titular:'(conta removida)';
+    porContaFatura[nome] = (porContaFatura[nome]||0) + l.valor;
+  });
+  const linhasFaturaConta = Object.entries(porContaFatura).sort((a,b)=>b[1]-a[1]).map(([nome,total])=>
+    `<tr><td>${esc(nome)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(total)}</td></tr>`
+  ).join('') || '<tr><td colspan="2" style="text-align:center;color:var(--mut)">Nenhum pagamento de fatura lançado ainda</td></tr>';
+  const linhasFaturaHist = lancFatCartao.slice().sort((a,b)=>b.data.localeCompare(a.data)).map(l=>{
+    const cta = contaById(l.contaId);
+    return `<tr><td>${fmtD(l.data)}</td><td>${esc(cta?cta.titular:'-')}</td><td>${esc(l.descricao||'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(l.valor)}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum pagamento de fatura lançado ainda</td></tr>';
 
-  return `
-    <div class="titulo acc">📊 Relatórios</div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">🧭 Posição Financeira Consolidada</div>
-      <table>
-        <tbody>
+  // Posição Financeira Consolidada (Sessão 4 — puxa resumo do CartoesPF/PJ)
+  const totalReceberPend = contasReceberPendentes().reduce((s,cr)=>s+cr.valor,0);
+  const totalPagarPend = contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0);
+  const posicaoLiquida = saldoTotalGeral() + totalSaldoChequeSys() + totalPatrimonioInvestido() + totalReceberPend - totalPagarPend - chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0) - cartoesPF - cartoesPJ;
+
+  // ── Blocos de cada relatório individual ──
+  const secoes = {
+    resumo_graficos: `
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-weight:700;margin-bottom:10px">🧭 Posição Financeira Consolidada</div>
+        <table><tbody>
           <tr><td>Saldo em Contas Bancárias (TesourariaSys)</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(saldoTotalGeral())}</td></tr>
           <tr><td>Saldo em Contas do ChequeSys${_resumoChequeSys?.erro?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(totalSaldoChequeSys())}</td></tr>
           <tr><td>Patrimônio Investido (Investimentos + Previdência)</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(totalPatrimonioInvestido())}</td></tr>
           <tr><td>Contas a Receber Pendentes</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(totalReceberPend)}</td></tr>
-          <tr><td>Contas a Pagar Pendentes</td><td style="text-align:right;color:#f85149">− R$ ${fmt(contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0))}</td></tr>
+          <tr><td>Contas a Pagar Pendentes</td><td style="text-align:right;color:#f85149">− R$ ${fmt(totalPagarPend)}</td></tr>
           <tr><td>Cheques Emitidos Aguardando Compensação</td><td style="text-align:right;color:#f85149">− R$ ${fmt(chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0))}</td></tr>
           <tr><td>Fatura Cartão PF em Aberto${_resumoCartoes?.erroPf?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#f85149">− R$ ${fmt(cartoesPF)}</td></tr>
           <tr><td>Fatura Cartão PJ em Aberto${_resumoCartoes?.erroPj?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#f85149">− R$ ${fmt(cartoesPJ)}</td></tr>
           <tr class="trow"><td>Posição Líquida</td><td style="text-align:right;font-size:16px;color:${posicaoLiquida<0?'var(--red)':'var(--acc)'}">R$ ${fmt(posicaoLiquida)}</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">📅 Fluxo de Caixa Mensal</div>
-      <table><thead><tr><th>Mês</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Resultado do Mês</th><th style="text-align:right">Saldo Acumulado</th></tr></thead><tbody>${linhasMes}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">🔀 Transferências Entre Contas Próprias vs Fluxo de Caixa Real</div>
-      <table>
-        <tbody>
-          <tr><td>Transferências entre contas próprias (entradas)</td><td style="text-align:right;color:var(--mut)">R$ ${fmt(transfEntrada)}</td></tr>
-          <tr><td>Transferências entre contas próprias (saídas)</td><td style="text-align:right;color:var(--mut)">R$ ${fmt(transfSaida)}</td></tr>
-          <tr><td>Receitas reais (excluindo transferências próprias)</td><td style="text-align:right;color:#3fb950">R$ ${fmt(realEntrada)}</td></tr>
-          <tr><td>Despesas reais (excluindo transferências próprias)</td><td style="text-align:right;color:#f85149">R$ ${fmt(realSaida)}</td></tr>
-          <tr class="trow"><td>Fluxo de Caixa Real Líquido</td><td style="text-align:right;font-size:16px;color:${fluxoRealLiquido<0?'var(--red)':'var(--acc)'}">R$ ${fmt(fluxoRealLiquido)}</td></tr>
-        </tbody>
-      </table>
-      <div style="color:var(--mut);font-size:11px;margin-top:8px">Identificadas automaticamente pelo nome do favorecido/remetente contendo "Fabio Oliveira" — revise se algum lançamento de terceiro homônimo foi incluído por engano.</div>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">💧 Liquidez — Meses de Reserva</div>
-      <table>
-        <tbody>
+        </tbody></table>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-weight:700;margin-bottom:10px">💧 Liquidez — Meses de Reserva</div>
+        <table><tbody>
           <tr><td>Saldo total atual em contas</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoAtualTotal)}</td></tr>
           <tr><td>Despesa real média mensal (${nMesesComDados} ${nMesesComDados===1?'mês':'meses'} com dados)</td><td style="text-align:right">R$ ${fmt(mediaDespesaMensalReal)}</td></tr>
           <tr class="trow"><td>Meses de reserva (cobertura no ritmo atual de gasto)</td><td style="text-align:right;font-size:16px;color:${mesesReserva<1?'var(--red)':(mesesReserva<3?'#f0a500':'#3fb950')}">${mesesReserva.toFixed(1)} meses</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">📉 Concentração de Despesas por Categoria (Curva de Pareto)</div>
+        </tbody></table>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-weight:700;margin-bottom:10px">📊 Gráfico — Entradas x Saídas por Mês</div>
+        ${graficoMeses}
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-weight:700;margin-bottom:10px">📉 Gráfico — Maiores Categorias de Despesa (Top 8)</div>
+        ${graficoPareto}
+      </div>
+      <div class="card">
+        <div style="font-weight:700;margin-bottom:10px">🔀 Transferências Entre Contas Próprias vs Fluxo de Caixa Real</div>
+        <table><tbody>
+          <tr><td>Receitas reais (excluindo transferências próprias)</td><td style="text-align:right;color:#3fb950">R$ ${fmt(realEntrada)}</td></tr>
+          <tr><td>Despesas reais (excluindo transferências próprias)</td><td style="text-align:right;color:#f85149">R$ ${fmt(realSaida)}</td></tr>
+          <tr><td>Movimentado só entre contas próprias (entrada/saída)</td><td style="text-align:right;color:var(--mut)">R$ ${fmt(transfEntrada)} / R$ ${fmt(transfSaida)}</td></tr>
+          <tr class="trow"><td>Fluxo de Caixa Real Líquido</td><td style="text-align:right;font-size:16px;color:${fluxoRealLiquido<0?'var(--red)':'var(--acc)'}">R$ ${fmt(fluxoRealLiquido)}</td></tr>
+        </tbody></table>
+        <div style="color:var(--mut);font-size:11px;margin-top:8px">Transferências identificadas automaticamente pelo nome contendo "Fabio Oliveira" — revise se algum lançamento de terceiro homônimo entrou por engano.</div>
+      </div>`,
+    fluxo_mensal: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📅 Fluxo de Caixa Mensal</div>
+      <table><thead><tr><th>Mês</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Resultado do Mês</th><th style="text-align:right">Saldo Acumulado</th></tr></thead><tbody>${linhasMes}</tbody></table></div>`,
+    pareto_despesas: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📉 Concentração de Despesas por Categoria (Curva de Pareto)</div>
       <table><thead><tr><th>Categoria</th><th style="text-align:right">Total Gasto</th><th style="text-align:right">% do Total</th><th style="text-align:right">% Acumulado</th></tr></thead><tbody>${linhasPareto}</tbody></table>
-      <div style="color:var(--mut);font-size:11px;margin-top:8px">Categorias em verde no acumulado somam até 80% do total — são as prioritárias para controle de custos.</div>
+      <div style="color:var(--mut);font-size:11px;margin-top:8px">Categorias em verde no acumulado somam até 80% do total — prioritárias para controle de custos.</div></div>`,
+    top_entradas: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🔝 Maiores Lançamentos — Top 15 Entradas</div>
+      <table><thead><tr><th>Data</th><th>Conta</th><th>Contraparte/Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasTop(topEntradas,'#3fb950')}</tbody></table></div>`,
+    top_saidas: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🔝 Maiores Lançamentos — Top 15 Saídas</div>
+      <table><thead><tr><th>Data</th><th>Conta</th><th>Contraparte/Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasTop(topSaidas,'#f85149')}</tbody></table></div>`,
+    fluxo_categoria: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📊 Fluxo de Caixa por Categoria (histórico completo)</div>
+      <table><thead><tr><th>Categoria</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Resultado</th></tr></thead><tbody>${linhasCat}</tbody></table></div>`,
+    mov_contraparte: `<div class="card"><div style="font-weight:700;margin-bottom:10px">👥 Movimentação por Cliente/Fornecedor</div>
+      <table><thead><tr><th>Cliente/Fornecedor</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th></tr></thead><tbody>${linhasContraparte}</tbody></table></div>`,
+    investimentos: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📈 Rentabilidade — Investimentos e Previdência</div>
+      <table><thead><tr><th>Instituição</th><th>Tipo</th><th style="text-align:right">Aplicado</th><th style="text-align:right">Posição Atual</th><th style="text-align:right">Ganho</th></tr></thead><tbody>${linhasRent}</tbody></table></div>`,
+    seguros: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🛡️ Seguros — Vigência e Status</div>
+      <table><thead><tr><th>Seguradora</th><th>Tipo</th><th style="text-align:right">Prêmio</th><th>Vigência Fim</th><th>Status</th></tr></thead><tbody>${linhasSeg}</tbody></table></div>`,
+    saldo_conta: `<div class="card"><div style="font-weight:700;margin-bottom:10px">💰 Saldo Consolidado por Conta (TesourariaSys + ChequeSys)</div>
+      <table><thead><tr><th>Conta</th><th style="text-align:right">Saldo</th></tr></thead><tbody>${linhasContas}${(_resumoChequeSys?.contas||[]).map(c=>`<tr><td>${esc(c.nome)} ${T('ChequeSys','pur')}</td><td style="text-align:right;font-weight:700;color:${c.saldo<0?'var(--red)':'inherit'}">R$ ${fmt(c.saldo)}</td></tr>`).join('')}</tbody></table></div>`,
+    tarifas_conta: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏦 Tarifas Bancárias por Conta</div>
+      <table><thead><tr><th>Conta</th><th style="text-align:right">Total em Tarifas</th></tr></thead><tbody>${linhasTarifa}</tbody></table></div>`,
+    pagar_cc: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📤 Contas a Pagar Pendentes por Centro de Custo</div>
+      <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Total Pendente</th></tr></thead><tbody>${linhasCC}</tbody></table></div>`,
+    pagar_fornecedor: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏭 Total Pago por Fornecedor</div>
+      <table><thead><tr><th>Fornecedor</th><th style="text-align:right">Total Pago</th></tr></thead><tbody>${linhasForn}</tbody></table></div>`,
+    cheques_emitidos: `<div class="card"><div style="font-weight:700;margin-bottom:10px">✍️ Cheques Emitidos Aguardando Compensação</div>
+      <table><thead><tr><th>Conta Emissora</th><th>Favorecido</th><th>Previsão</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasChq}</tbody></table></div>`,
+    receber_cc: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📥 Contas a Receber Pendentes por Centro de Custo</div>
+      <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Total Pendente</th></tr></thead><tbody>${linhasCCReceber}</tbody></table></div>`,
+    receber_cliente: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🤝 Total Recebido por Cliente</div>
+      <table><thead><tr><th>Cliente</th><th style="text-align:right">Total Recebido</th></tr></thead><tbody>${linhasCliente}</tbody></table></div>`,
+    cartoes_resumo: `<div class="card" style="margin-bottom:14px"><div style="font-weight:700;margin-bottom:10px">💳 Faturas de Cartão em Aberto (integração com CartoesPF/PJ)</div>
+      <table><tbody>
+        <tr><td>Fatura Cartão PF em Aberto${_resumoCartoes?.erroPf?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#f85149;font-weight:700">R$ ${fmt(cartoesPF)}</td></tr>
+        <tr><td>Fatura Cartão PJ em Aberto${_resumoCartoes?.erroPj?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#f85149;font-weight:700">R$ ${fmt(cartoesPJ)}</td></tr>
+        <tr class="trow"><td>Total pago em faturas de cartão (histórico, via TesourariaSys)</td><td style="text-align:right;font-size:16px">R$ ${fmt(totalPagoFaturas)}</td></tr>
+      </tbody></table></div>
+      <div class="card"><div style="font-weight:700;margin-bottom:10px">💳 Total Pago em Faturas por Conta</div>
+      <table><thead><tr><th>Conta</th><th style="text-align:right">Total Pago</th></tr></thead><tbody>${linhasFaturaConta}</tbody></table></div>`,
+    cartoes_historico: `<div class="card"><div style="font-weight:700;margin-bottom:10px">💳 Histórico de Pagamentos de Fatura de Cartão</div>
+      <table><thead><tr><th>Data</th><th>Conta</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasFaturaHist}</tbody></table></div>`,
+  };
+
+  const CATS_TR = {
+    geral:      { label:'🌐 Geral',            cor:'var(--acc)', tipos:['resumo_graficos','fluxo_mensal','pareto_despesas','top_entradas','top_saidas','fluxo_categoria','mov_contraparte','investimentos','seguros'] },
+    bancarias:  { label:'🏦 Contas Bancárias',  cor:'var(--blu)', tipos:['saldo_conta','tarifas_conta'] },
+    pagar:      { label:'📤 Contas a Pagar',    cor:'var(--red)', tipos:['pagar_cc','pagar_fornecedor','cheques_emitidos'] },
+    receber:    { label:'📥 Contas a Receber',  cor:'#3fb950',    tipos:['receber_cc','receber_cliente'] },
+    cartoes:    { label:'💳 Cartões',           cor:'var(--pur)', tipos:['cartoes_resumo','cartoes_historico'] },
+  };
+  const rotulos = {
+    resumo_graficos:'🧭 Resumo e Gráficos', fluxo_mensal:'📅 Fluxo Mensal', pareto_despesas:'📉 Pareto de Despesas',
+    top_entradas:'🔝 Top Entradas', top_saidas:'🔝 Top Saídas', fluxo_categoria:'📊 Por Categoria',
+    mov_contraparte:'👥 Por Cliente/Fornecedor', investimentos:'📈 Investimentos', seguros:'🛡️ Seguros',
+    saldo_conta:'💰 Saldo por Conta', tarifas_conta:'🏦 Tarifas Bancárias',
+    pagar_cc:'📤 Por Centro de Custo', pagar_fornecedor:'🏭 Por Fornecedor', cheques_emitidos:'✍️ Cheques Emitidos',
+    receber_cc:'📥 Por Centro de Custo', receber_cliente:'🤝 Por Cliente',
+    cartoes_resumo:'💳 Resumo', cartoes_historico:'💳 Histórico de Faturas',
+  };
+
+  if(!RLT.cat){
+    const cards = Object.entries(CATS_TR).map(([k,v])=>`
+      <div onclick="irRelCategoria('${k}','${v.tipos[0]}')"
+        style="cursor:pointer;background:var(--card);border:2px solid ${v.cor};border-radius:12px;padding:32px 24px;text-align:center;transition:transform .15s;display:flex;flex-direction:column;align-items:center;gap:10px;min-width:150px;flex:1"
+        onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
+        <div style="font-size:36px">${v.label.split(' ')[0]}</div>
+        <div style="font-size:16px;font-weight:800;color:${v.cor}">${v.label.split(' ').slice(1).join(' ')}</div>
+        <div style="font-size:11px;color:var(--mut)">${v.tipos.length} relatório${v.tipos.length>1?'s':''}</div>
+      </div>`).join('');
+    return `<div class="titulo acc">📊 Relatórios</div>
+      <p style="color:var(--mut);font-size:13px;margin-bottom:18px">Selecione a categoria:</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">${cards}</div>`;
+  }
+
+  const catAtual = CATS_TR[RLT.cat];
+  if(!RLT.tipo || !catAtual.tipos.includes(RLT.tipo)) RLT.tipo = catAtual.tipos[0];
+  const btnVoltar = `<button type="button" onclick="voltarRelCategorias()" style="background:var(--sur);color:var(--mut);border:1px solid var(--bor);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">← Categorias</button>`;
+  const tabsBtns = catAtual.tipos.map(t=>
+    `<button type="button" onclick="irRelTipo('${t}')" style="background:${RLT.tipo===t?catAtual.cor:'var(--sur)'};color:${RLT.tipo===t?'#fff':'var(--mut)'};border:1px solid var(--bor);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin:2px">${rotulos[t]||t}</button>`
+  ).join('');
+
+  return `<div class="titulo acc">📊 Relatórios</div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      ${btnVoltar}
+      <span style="font-size:14px;font-weight:800;color:${catAtual.cor}">${catAtual.label}</span>
     </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">🔝 Maiores Lançamentos — Top 15 Entradas</div>
-      <table><thead><tr><th>Data</th><th>Conta</th><th>Contraparte/Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasTop(topEntradas,'#3fb950')}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">🔝 Maiores Lançamentos — Top 15 Saídas</div>
-      <table><thead><tr><th>Data</th><th>Conta</th><th>Contraparte/Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasTop(topSaidas,'#f85149')}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">💰 Saldo Consolidado por Conta (TesourariaSys + ChequeSys)</div>
-      <table><thead><tr><th>Conta</th><th style="text-align:right">Saldo</th></tr></thead><tbody>${linhasContas}${(_resumoChequeSys?.contas||[]).map(c=>`<tr><td>${esc(c.nome)} ${T('ChequeSys','pur')}</td><td style="text-align:right;font-weight:700;color:${c.saldo<0?'var(--red)':'inherit'}">R$ ${fmt(c.saldo)}</td></tr>`).join('')}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">📊 Fluxo de Caixa por Categoria (histórico completo)</div>
-      <table><thead><tr><th>Categoria</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Resultado</th></tr></thead><tbody>${linhasCat}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">📤 Contas a Pagar Pendentes por Centro de Custo</div>
-      <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Total Pendente</th></tr></thead><tbody>${linhasCC}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">📥 Contas a Receber Pendentes por Centro de Custo</div>
-      <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Total Pendente</th></tr></thead><tbody>${linhasCCReceber}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">🏭 Total Pago por Fornecedor</div>
-      <table><thead><tr><th>Fornecedor</th><th style="text-align:right">Total Pago</th></tr></thead><tbody>${linhasForn}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">🤝 Total Recebido por Cliente</div>
-      <table><thead><tr><th>Cliente</th><th style="text-align:right">Total Recebido</th></tr></thead><tbody>${linhasCliente}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">👥 Movimentação por Cliente/Fornecedor</div>
-      <table><thead><tr><th>Cliente/Fornecedor</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th></tr></thead><tbody>${linhasContraparte}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">✍️ Cheques Emitidos Aguardando Compensação</div>
-      <table><thead><tr><th>Conta Emissora</th><th>Favorecido</th><th>Previsão</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasChq}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">🏦 Tarifas Bancárias por Conta</div>
-      <table><thead><tr><th>Conta</th><th style="text-align:right">Total em Tarifas</th></tr></thead><tbody>${linhasTarifa}</tbody></table>
-    </div>
-    <div class="card" style="margin-bottom:14px">
-      <div style="font-weight:700;margin-bottom:10px">📈 Rentabilidade — Investimentos e Previdência</div>
-      <table><thead><tr><th>Instituição</th><th>Tipo</th><th style="text-align:right">Aplicado</th><th style="text-align:right">Posição Atual</th><th style="text-align:right">Ganho</th></tr></thead><tbody>${linhasRent}</tbody></table>
-    </div>
-    <div class="card">
-      <div style="font-weight:700;margin-bottom:10px">🛡️ Seguros — Vigência e Status</div>
-      <table><thead><tr><th>Seguradora</th><th>Tipo</th><th style="text-align:right">Prêmio</th><th>Vigência Fim</th><th>Status</th></tr></thead><tbody>${linhasSeg}</tbody></table>
-    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px">${tabsBtns}</div>
+    ${secoes[RLT.tipo]}
   `;
 }
 
