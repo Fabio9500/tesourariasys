@@ -947,7 +947,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.14';
+const VERSAO = 'v1.15';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -986,6 +986,25 @@ function clienteById(id){ return (DB.clientes||[]).find(c=>c.id===id); }
 function chequeById(id){ return (DB.chequesEmitidos||[]).find(c=>c.id===id); }
 function categoriaPorNome(nome,tipo){ return (DB.categorias||[]).find(c=>c.nome===nome&&c.tipo===tipo); }
 function nomeConta(c){ if(!c) return '-'; return `${c.titular} (${c.tipo})`; }
+// ── Filtro global PF/PJ (definido no Dashboard, afeta as demais abas) ──
+function contasFiltradasPFPJ(){
+  return (DB.contas||[]).filter(c=>c.ativa!==false && (_filtroDashPFPJ==='todos'||c.tipo===_filtroDashPFPJ));
+}
+function contaTipoOk(contaId){
+  if(_filtroDashPFPJ==='todos') return true;
+  if(!contaId) return true; // sem conta definida ainda: aparece nas duas visões
+  const c = contaById(contaId);
+  return c ? c.tipo===_filtroDashPFPJ : true;
+}
+function barraFiltroPFPJGlobal(){
+  if(_filtroDashPFPJ==='todos') return '';
+  const cor = _filtroDashPFPJ==='PF' ? 'var(--blu)' : 'var(--pur)';
+  const label = _filtroDashPFPJ==='PF' ? '👤 Somente PF' : '🏢 Somente PJ';
+  return `<div style="background:${cor}22;border:1px solid ${cor};border-radius:8px;padding:8px 12px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;font-size:12px">
+    <span style="color:${cor};font-weight:700">${label} — filtro ativo em todo o sistema</span>
+    <button type="button" onclick="mudarFiltroDashPFPJ('todos')" style="background:transparent;color:${cor};border:1px solid ${cor};border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">Ver Tudo</button>
+  </div>`;
+}
 
 // Validação de CPF/CNPJ por dígito verificador (algoritmo módulo 11) — mesmo rigor do ChequeSys
 function validarCpfCnpj(doc){
@@ -1144,6 +1163,13 @@ function resumoFaturasDeDados(dados){
     if(!grupos[key]) grupos[key] = {cartao:c.cartao, venc:c.venc, total:0};
     grupos[key].total += Number(c.valorParcela||0);
   });
+  const porDirecionamento = {};
+  compras.forEach(c=>{
+    const nome = c.direcionamento || '(sem direcionamento)';
+    if(!porDirecionamento[nome]) porDirecionamento[nome] = {qtd:0, total:0};
+    porDirecionamento[nome].qtd++;
+    porDirecionamento[nome].total += Number(c.valorParcela||0);
+  });
   let totalAberto = 0, proxima = null;
   Object.values(grupos).forEach(g=>{
     const key = g.cartao+'|'+g.venc;
@@ -1151,7 +1177,7 @@ function resumoFaturasDeDados(dados){
     totalAberto += g.total;
     if(!proxima || g.venc<proxima.venc) proxima = g;
   });
-  return { totalAberto, proximaVenc: proxima?proxima.venc:null, proximoValor: proxima?proxima.total:0 };
+  return { totalAberto, proximaVenc: proxima?proxima.venc:null, proximoValor: proxima?proxima.total:0, porDirecionamento };
 }
 async function atualizarResumoCartoes(silencioso){
   const tokenPF = getTokenCartoesPF(), tokenPJ = getTokenCartoesPJ();
@@ -1254,14 +1280,39 @@ function resumoContasDeChequeSys(dados){
   const total = porConta.reduce((s,c)=>s+c.saldo,0);
   return { contas: porConta, total };
 }
+// Carteira ativa por Emitente (cheques) e por Sacado (boletos) — mesma regra de "carteira atual" usada no próprio ChequeSys
+function resumoPorPessoaChequeSys(dados){
+  const emitentes = dados.emitentes||[];
+  const sacados = dados.sacados||[];
+  const cheques = (dados.cheques||[]).filter(c=>(c.status==='em_maos'||c.status==='devolvido'||c.status==='reapresentado')&&!c.caucao);
+  const boletos = (dados.boletos||[]).filter(b=>(b.status==='em_carteira'||b.status==='enviado'||b.status==='devolvido'||b.status==='reapresentado')&&!b.caucao);
+  const porEmitente = {};
+  cheques.forEach(c=>{
+    const em = emitentes.find(e=>e.id===c.emitenteId);
+    const nome = em?em.nome:'(sem emitente)';
+    if(!porEmitente[nome]) porEmitente[nome] = {qtd:0, total:0};
+    porEmitente[nome].qtd++;
+    porEmitente[nome].total += Number(c.bruto||0);
+  });
+  const porSacado = {};
+  boletos.forEach(b=>{
+    const nome = b.sacado || (sacados.find(s=>s.id===b.sacadoId)||{}).nome || '(sem sacado)';
+    if(!porSacado[nome]) porSacado[nome] = {qtd:0, total:0};
+    porSacado[nome].qtd++;
+    porSacado[nome].total += Number(b.bruto||0);
+  });
+  return { porEmitente, porSacado };
+}
 async function atualizarResumoChequeSys(silencioso){
   const token = getTokenChequeSys();
-  const resultado = { contas:[], total:0, erro:null, atualizadoEm:new Date().toISOString() };
+  const resultado = { contas:[], total:0, porEmitente:{}, porSacado:{}, erro:null, atualizadoEm:new Date().toISOString() };
   if(token){
     try{
       const dados = await buscarDadosChequeSys(token);
       const r = resumoContasDeChequeSys(dados);
       resultado.contas = r.contas; resultado.total = r.total;
+      const p = resumoPorPessoaChequeSys(dados);
+      resultado.porEmitente = p.porEmitente; resultado.porSacado = p.porSacado;
     }catch(e){ resultado.erro = 'Não foi possível conectar (verifique o token).'; }
   } else { resultado.erro = 'Token não configurado.'; }
   _resumoChequeSys = resultado;
@@ -1851,6 +1902,9 @@ function salvar(novo){ DB=novo; ghSalvar(DB); renderAba(); }
 
 function opcoesContas(selId){
   return (DB.contas||[]).filter(c=>c.ativa!==false).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
+}
+function opcoesContasFiltradas(selId){
+  return contasFiltradasPFPJ().map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
 }
 function opcoesCategorias(tipo,selId){
   return (DB.categorias||[]).filter(c=>!tipo||c.tipo===tipo).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
@@ -3413,7 +3467,7 @@ function htmlDashboard(){
 // RENDER — CONTAS
 // ══════════════════════════════════════════
 function htmlContas(){
-  const contas = (DB.contas||[]).slice().sort((a,b)=>a.tipo.localeCompare(b.tipo)||a.titular.localeCompare(b.titular));
+  const contas = (DB.contas||[]).filter(c=>_filtroDashPFPJ==='todos'||c.tipo===_filtroDashPFPJ).slice().sort((a,b)=>a.tipo.localeCompare(b.tipo)||a.titular.localeCompare(b.titular));
   const linhas = contas.map(c=>{
     const saldo = saldoConta(c.id);
     return `<tr style="${c.ativa===false?'opacity:.5':''}">
@@ -3432,6 +3486,7 @@ function htmlContas(){
 
   return `
     <div class="titulo acc">🏦 Contas Bancárias</div>
+    ${barraFiltroPFPJGlobal()}
     <div class="row" style="margin-bottom:12px">
       ${BPerm('lancamentos','➕ Nova Conta','novaConta()','var(--acc)')}
       ${BPerm('editar_dados','🏷 Identificar Contas PF/PJ (Bradesco, Santander...)','abrirIdentificarContas()','var(--pur)','#fff')}
@@ -3466,6 +3521,7 @@ function limparFiltroLanc(){
 }
 function htmlLancamentos(){
   let lista = (DB.lancamentos||[]).slice();
+  lista = lista.filter(l=>contaTipoOk(l.contaId));
   if(_filtroLancConta) lista = lista.filter(l=>l.contaId===_filtroLancConta);
   if(_filtroLancIni) lista = lista.filter(l=>l.data>=_filtroLancIni);
   if(_filtroLancFim) lista = lista.filter(l=>l.data<=_filtroLancFim);
@@ -3493,9 +3549,10 @@ function htmlLancamentos(){
 
   return `
     <div class="titulo acc">📋 Lançamentos</div>
+    ${barraFiltroPFPJGlobal()}
     <div class="card" style="margin-bottom:12px">
       <div class="row">
-        ${C('Conta',`<select id="flc-conta" onchange="aplicarFiltroLanc()"><option value="">Todas</option>${opcoesContas(_filtroLancConta)}</select>`,'1','200')}
+        ${C('Conta',`<select id="flc-conta" onchange="aplicarFiltroLanc()"><option value="">Todas</option>${opcoesContasFiltradas(_filtroLancConta)}</select>`,'1','200')}
         ${C('De',`<input type="date" id="flc-ini" value="${_filtroLancIni}" onchange="aplicarFiltroLanc()">`,'1','150')}
         ${C('Até',`<input type="date" id="flc-fim" value="${_filtroLancFim}" onchange="aplicarFiltroLanc()">`,'1','150')}
       </div>
@@ -3519,6 +3576,7 @@ let _filtroCPStatus = 'pendente';
 function filtrarCP(st){ _filtroCPStatus = st; renderAba(); }
 function htmlContasPagar(){
   let lista = (DB.contasPagar||[]).slice();
+  lista = lista.filter(cp=>contaTipoOk(cp.contaId));
   if(_filtroCPStatus==='pendente') lista = lista.filter(cp=>cp.status==='pendente');
   else if(_filtroCPStatus==='pago') lista = lista.filter(cp=>cp.status==='pago');
   else if(_filtroCPStatus==='vencido') lista = lista.filter(cp=>cp.status==='pendente'&&diffDias(cp.vencimento)<0);
@@ -3555,6 +3613,7 @@ function htmlContasPagar(){
 
   return `
     <div class="titulo acc">📤 Contas a Pagar</div>
+    ${barraFiltroPFPJGlobal()}
     <div class="row" style="margin-bottom:12px">
       ${BPerm('lancamentos','➕ Nova Conta a Pagar','novaContaPagar()','var(--acc)')}
       ${filtros.map(f=>`<button type="button" class="tab${_filtroCPStatus===f.id?' ativo':''}" style="background:${_filtroCPStatus===f.id?'var(--acc)':'var(--sur)'};color:${_filtroCPStatus===f.id?'#000':'var(--txt)'};padding:6px 14px" onclick="filtrarCP('${f.id}')">${f.label}</button>`).join('')}
@@ -3576,6 +3635,7 @@ let _filtroCRStatus = 'pendente';
 function filtrarCR(st){ _filtroCRStatus = st; renderAba(); }
 function htmlContasReceber(){
   let lista = (DB.contasReceber||[]).slice();
+  lista = lista.filter(cr=>contaTipoOk(cr.contaId));
   if(_filtroCRStatus==='pendente') lista = lista.filter(cr=>cr.status==='pendente');
   else if(_filtroCRStatus==='recebido') lista = lista.filter(cr=>cr.status==='recebido');
   else if(_filtroCRStatus==='vencido') lista = lista.filter(cr=>cr.status==='pendente'&&diffDias(cr.vencimento)<0);
@@ -3612,6 +3672,7 @@ function htmlContasReceber(){
 
   return `
     <div class="titulo acc">📥 Contas a Receber</div>
+    ${barraFiltroPFPJGlobal()}
     <div class="row" style="margin-bottom:12px">
       ${BPerm('lancamentos','➕ Nova Conta a Receber','novaContaReceber()','var(--acc)')}
       ${filtrosCR.map(f=>`<button type="button" class="tab${_filtroCRStatus===f.id?' ativo':''}" style="background:${_filtroCRStatus===f.id?'var(--acc)':'var(--sur)'};color:${_filtroCRStatus===f.id?'#000':'var(--txt)'};padding:6px 14px" onclick="filtrarCR('${f.id}')">${f.label}</button>`).join('')}
@@ -3633,6 +3694,7 @@ let _filtroChqStatus = 'emitido';
 function filtrarChq(st){ _filtroChqStatus = st; renderAba(); }
 function htmlChequesEmitidos(){
   let lista = (DB.chequesEmitidos||[]).slice();
+  lista = lista.filter(c=>contaTipoOk(c.contaId));
   if(_filtroChqStatus!=='todos') lista = lista.filter(c=>c.status===_filtroChqStatus);
   lista.sort((a,b)=>a.dataPrevista.localeCompare(b.dataPrevista));
 
@@ -3781,8 +3843,42 @@ function htmlInvestimentosSeguros(){
 // ══════════════════════════════════════════
 // RENDER — RELATÓRIOS
 // ══════════════════════════════════════════
+let RelExtrato = { contaId:'', de:'', ate:'', fornecedor:'' };
+function aplicarFiltroRelExtrato(){
+  RelExtrato.contaId = document.getElementById('re-conta')?.value||'';
+  RelExtrato.de = document.getElementById('re-de')?.value||'';
+  RelExtrato.ate = document.getElementById('re-ate')?.value||'';
+  RelExtrato.fornecedor = document.getElementById('re-forn')?.value||'';
+  renderAba();
+}
+function limparFiltroRelExtrato(){ RelExtrato = {contaId:'',de:'',ate:'',fornecedor:''}; renderAba(); }
+
+let RelPagarF = { de:'', ate:'', centroCustoId:'', texto:'' };
+function aplicarFiltroRelPagar(){
+  RelPagarF.de = document.getElementById('rp-de')?.value||'';
+  RelPagarF.ate = document.getElementById('rp-ate')?.value||'';
+  RelPagarF.centroCustoId = document.getElementById('rp-cc')?.value||'';
+  RelPagarF.texto = document.getElementById('rp-txt')?.value||'';
+  renderAba();
+}
+function limparFiltroRelPagar(){ RelPagarF = {de:'',ate:'',centroCustoId:'',texto:''}; renderAba(); }
+
+let RelReceberF = { de:'', ate:'', centroCustoId:'', texto:'' };
+function aplicarFiltroRelReceber(){
+  RelReceberF.de = document.getElementById('rr-de')?.value||'';
+  RelReceberF.ate = document.getElementById('rr-ate')?.value||'';
+  RelReceberF.centroCustoId = document.getElementById('rr-cc')?.value||'';
+  RelReceberF.texto = document.getElementById('rr-txt')?.value||'';
+  renderAba();
+}
+function limparFiltroRelReceber(){ RelReceberF = {de:'',ate:'',centroCustoId:'',texto:''}; renderAba(); }
+
 let RLT = { cat: null, tipo: null };
-function irRelCategoria(cat, tipo){ RLT.cat=cat; RLT.tipo=tipo; renderAba(); }
+function irRelCategoria(cat, tipo){
+  RLT.cat=cat; RLT.tipo=tipo; renderAba();
+  if(cat==='cartoes') atualizarResumoCartoes(true);
+  if(cat==='chequesys') atualizarResumoChequeSys(true);
+}
 function irRelTipo(tipo){ RLT.tipo=tipo; renderAba(); }
 function voltarRelCategorias(){ RLT.cat=null; RLT.tipo=null; renderAba(); }
 
@@ -3994,6 +4090,90 @@ function htmlRelatorios(){
   const totalPagarPend = contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0);
   const posicaoLiquida = saldoTotalGeral() + totalSaldoChequeSys() + totalPatrimonioInvestido() + totalReceberPend - totalPagarPend - chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0) - cartoesPF - cartoesPJ;
 
+  // ── Extrato por Conta / Período / Fornecedor (Contas Bancárias) ──
+  let extratoLista = (DB.lancamentos||[]).filter(l=>contaTipoOk(l.contaId));
+  if(RelExtrato.contaId) extratoLista = extratoLista.filter(l=>l.contaId===RelExtrato.contaId);
+  if(RelExtrato.de) extratoLista = extratoLista.filter(l=>l.data>=RelExtrato.de);
+  if(RelExtrato.ate) extratoLista = extratoLista.filter(l=>l.data<=RelExtrato.ate);
+  if(RelExtrato.fornecedor) extratoLista = extratoLista.filter(l=>(l.contraparte||'').toLowerCase().includes(RelExtrato.fornecedor.toLowerCase()));
+  extratoLista = extratoLista.slice().sort((a,b)=>a.data.localeCompare(b.data)||a.criadoEm.localeCompare(b.criadoEm));
+  const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
+  const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
+  const linhasExtrato = extratoLista.map(l=>{
+    const cta = contaById(l.contaId);
+    return `<tr><td>${fmtD(l.data)}</td><td>${esc(cta?cta.titular:'-')}</td><td>${esc(l.contraparte||l.descricao||'-')}</td><td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td><td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>';
+  const filtroExtratoHtml = `
+    <div class="row" style="margin-bottom:10px">
+      ${C('Conta',`<select id="re-conta" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesContasFiltradas(RelExtrato.contaId)}</select>`,'1','200')}
+      ${C('De',`<input type="date" id="re-de" value="${RelExtrato.de}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
+      ${C('Até',`<input type="date" id="re-ate" value="${RelExtrato.ate}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
+      ${C('Fornecedor/Contraparte',`<input type="text" id="re-forn" value="${esc(RelExtrato.fornecedor)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelExtrato()">`,'1','200')}
+    </div>
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}</div>`;
+
+  // ── Contas a Pagar — Pagas em Período (com filtro CC / texto) ──
+  let pagarLista = (DB.contasPagar||[]).filter(cp=>cp.status==='pago' && contaTipoOk(cp.contaId));
+  if(RelPagarF.de) pagarLista = pagarLista.filter(cp=>(cp.dataPagamento||cp.vencimento)>=RelPagarF.de);
+  if(RelPagarF.ate) pagarLista = pagarLista.filter(cp=>(cp.dataPagamento||cp.vencimento)<=RelPagarF.ate);
+  if(RelPagarF.centroCustoId) pagarLista = pagarLista.filter(cp=>cp.centroCustoId===RelPagarF.centroCustoId);
+  if(RelPagarF.texto) pagarLista = pagarLista.filter(cp=>(cp.favorecido||'').toLowerCase().includes(RelPagarF.texto.toLowerCase()));
+  pagarLista = pagarLista.slice().sort((a,b)=>(b.dataPagamento||b.vencimento).localeCompare(a.dataPagamento||a.vencimento));
+  const pagarTotFiltro = pagarLista.reduce((s,cp)=>s+Number(cp.valorPago||0),0);
+  const linhasPagarPeriodo = pagarLista.map(cp=>{
+    const cc = centroCustoById(cp.centroCustoId);
+    const cta = contaById(cp.contaId);
+    return `<tr><td>${fmtD(cp.dataPagamento||cp.vencimento)}</td><td>${esc(cp.favorecido)}</td><td>${esc(cc?cc.nome:'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cp.valorPago)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum pagamento com esses filtros</td></tr>';
+  const filtroPagarHtml = `
+    <div class="row" style="margin-bottom:10px">
+      ${C('De',`<input type="date" id="rp-de" value="${RelPagarF.de}" onchange="aplicarFiltroRelPagar()">`,'1','150')}
+      ${C('Até',`<input type="date" id="rp-ate" value="${RelPagarF.ate}" onchange="aplicarFiltroRelPagar()">`,'1','150')}
+      ${C('Centro de Custo',`<select id="rp-cc" onchange="aplicarFiltroRelPagar()"><option value="">Todos</option>${opcoesCC(RelPagarF.centroCustoId)}</select>`,'1','180')}
+      ${C('Fornecedor',`<input type="text" id="rp-txt" value="${esc(RelPagarF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelPagar()">`,'1','200')}
+    </div>
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelPagar()','var(--sur)','var(--txt)')}</div>`;
+
+  // ── Contas a Receber — Recebidas em Período (com filtro CC / texto) ──
+  let receberLista = (DB.contasReceber||[]).filter(cr=>cr.status==='recebido' && contaTipoOk(cr.contaId));
+  if(RelReceberF.de) receberLista = receberLista.filter(cr=>(cr.dataRecebimento||cr.vencimento)>=RelReceberF.de);
+  if(RelReceberF.ate) receberLista = receberLista.filter(cr=>(cr.dataRecebimento||cr.vencimento)<=RelReceberF.ate);
+  if(RelReceberF.centroCustoId) receberLista = receberLista.filter(cr=>cr.centroCustoId===RelReceberF.centroCustoId);
+  if(RelReceberF.texto) receberLista = receberLista.filter(cr=>(cr.cliente||'').toLowerCase().includes(RelReceberF.texto.toLowerCase()));
+  receberLista = receberLista.slice().sort((a,b)=>(b.dataRecebimento||b.vencimento).localeCompare(a.dataRecebimento||a.vencimento));
+  const receberTotFiltro = receberLista.reduce((s,cr)=>s+Number(cr.valorRecebido||0),0);
+  const linhasReceberPeriodo = receberLista.map(cr=>{
+    const cc = centroCustoById(cr.centroCustoId);
+    const cta = contaById(cr.contaId);
+    return `<tr><td>${fmtD(cr.dataRecebimento||cr.vencimento)}</td><td>${esc(cr.cliente)}</td><td>${esc(cc?cc.nome:'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cr.valorRecebido)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum recebimento com esses filtros</td></tr>';
+  const filtroReceberHtml = `
+    <div class="row" style="margin-bottom:10px">
+      ${C('De',`<input type="date" id="rr-de" value="${RelReceberF.de}" onchange="aplicarFiltroRelReceber()">`,'1','150')}
+      ${C('Até',`<input type="date" id="rr-ate" value="${RelReceberF.ate}" onchange="aplicarFiltroRelReceber()">`,'1','150')}
+      ${C('Centro de Custo',`<select id="rr-cc" onchange="aplicarFiltroRelReceber()"><option value="">Todos</option>${opcoesCC(RelReceberF.centroCustoId)}</select>`,'1','180')}
+      ${C('Cliente',`<input type="text" id="rr-txt" value="${esc(RelReceberF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelReceber()">`,'1','200')}
+    </div>
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelReceber()','var(--sur)','var(--txt)')}</div>`;
+
+  // ── Cartões por Direcionamento (PF + PJ) ──
+  const direcPF = _resumoCartoes?.pf?.porDirecionamento || {};
+  const direcPJ = _resumoCartoes?.pj?.porDirecionamento || {};
+  const linhasDirecionamento = (tag,obj)=>Object.entries(obj).sort((a,b)=>b[1].total-a[1].total).map(([nome,v])=>
+    `<tr><td>${esc(nome)} ${T(tag,tag==='PF'?'az':'pur')}</td><td style="text-align:right">${v.qtd}</td><td style="text-align:right;font-weight:700">R$ ${fmt(v.total)}</td></tr>`
+  ).join('');
+  const linhasDirecTotal = (linhasDirecionamento('PF',direcPF)+linhasDirecionamento('PJ',direcPJ)) || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Sem dados ainda — abra a aba Cartões para carregar</td></tr>';
+
+  // ── ChequeSys por Emitente (cheques) e por Sacado (boletos) — carteira ativa ──
+  const porEmitenteChq = _resumoChequeSys?.porEmitente || {};
+  const porSacadoChq = _resumoChequeSys?.porSacado || {};
+  const linhasEmitenteChq = Object.entries(porEmitenteChq).sort((a,b)=>b[1].total-a[1].total).map(([nome,v])=>
+    `<tr><td>${esc(nome)}</td><td style="text-align:right">${v.qtd}</td><td style="text-align:right;font-weight:700">R$ ${fmt(v.total)}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Sem dados ainda — abra a aba ChequeSys para carregar</td></tr>';
+  const linhasSacadoChq = Object.entries(porSacadoChq).sort((a,b)=>b[1].total-a[1].total).map(([nome,v])=>
+    `<tr><td>${esc(nome)}</td><td style="text-align:right">${v.qtd}</td><td style="text-align:right;font-weight:700">R$ ${fmt(v.total)}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Sem dados ainda — abra a aba ChequeSys para carregar</td></tr>';
+
   // ── Blocos de cada relatório individual ──
   const secoes = {
     resumo_graficos: `
@@ -4056,18 +4236,40 @@ function htmlRelatorios(){
       <table><thead><tr><th>Seguradora</th><th>Tipo</th><th style="text-align:right">Prêmio</th><th>Vigência Fim</th><th>Status</th></tr></thead><tbody>${linhasSeg}</tbody></table></div>`,
     saldo_conta: `<div class="card"><div style="font-weight:700;margin-bottom:10px">💰 Saldo Consolidado por Conta (TesourariaSys + ChequeSys)</div>
       <table><thead><tr><th>Conta</th><th style="text-align:right">Saldo</th></tr></thead><tbody>${linhasContas}${(_resumoChequeSys?.contas||[]).map(c=>`<tr><td>${esc(c.nome)} ${T('ChequeSys','pur')}</td><td style="text-align:right;font-weight:700;color:${c.saldo<0?'var(--red)':'inherit'}">R$ ${fmt(c.saldo)}</td></tr>`).join('')}</tbody></table></div>`,
+    extrato_conta: `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">📄 Extrato — por Conta / Período / Fornecedor</div>
+      ${filtroExtratoHtml}
+      <div class="kpis" style="margin-bottom:10px">
+        <div class="card kpi"><div class="kpi-l">Entradas no filtro</div><div class="kpi-v" style="color:#3fb950">R$ ${fmt(extratoTotEnt)}</div></div>
+        <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" style="color:#f85149">R$ ${fmt(extratoTotSai)}</div></div>
+        <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:${(extratoTotEnt-extratoTotSai)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(extratoTotEnt-extratoTotSai)}</div></div>
+      </div>
+      <table><thead><tr><th>Data</th><th>Conta</th><th>Contraparte/Descrição</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr></thead><tbody>${linhasExtrato}</tbody></table>
+    </div>`,
     tarifas_conta: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏦 Tarifas Bancárias por Conta</div>
       <table><thead><tr><th>Conta</th><th style="text-align:right">Total em Tarifas</th></tr></thead><tbody>${linhasTarifa}</tbody></table></div>`,
     pagar_cc: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📤 Contas a Pagar Pendentes por Centro de Custo</div>
       <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Total Pendente</th></tr></thead><tbody>${linhasCC}</tbody></table></div>`,
     pagar_fornecedor: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏭 Total Pago por Fornecedor</div>
       <table><thead><tr><th>Fornecedor</th><th style="text-align:right">Total Pago</th></tr></thead><tbody>${linhasForn}</tbody></table></div>`,
+    pagar_periodo: `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">📅 Pagamentos por Período / Centro de Custo / Fornecedor</div>
+      ${filtroPagarHtml}
+      <div class="card kpi" style="margin-bottom:10px"><div class="kpi-l">Total pago no filtro</div><div class="kpi-v" style="color:var(--acc)">R$ ${fmt(pagarTotFiltro)}</div></div>
+      <table><thead><tr><th>Data Pagamento</th><th>Favorecido</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Pago</th></tr></thead><tbody>${linhasPagarPeriodo}</tbody></table>
+    </div>`,
     cheques_emitidos: `<div class="card"><div style="font-weight:700;margin-bottom:10px">✍️ Cheques Emitidos Aguardando Compensação</div>
       <table><thead><tr><th>Conta Emissora</th><th>Favorecido</th><th>Previsão</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasChq}</tbody></table></div>`,
     receber_cc: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📥 Contas a Receber Pendentes por Centro de Custo</div>
       <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Total Pendente</th></tr></thead><tbody>${linhasCCReceber}</tbody></table></div>`,
     receber_cliente: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🤝 Total Recebido por Cliente</div>
       <table><thead><tr><th>Cliente</th><th style="text-align:right">Total Recebido</th></tr></thead><tbody>${linhasCliente}</tbody></table></div>`,
+    receber_periodo: `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">📅 Recebimentos por Período / Centro de Custo / Cliente</div>
+      ${filtroReceberHtml}
+      <div class="card kpi" style="margin-bottom:10px"><div class="kpi-l">Total recebido no filtro</div><div class="kpi-v" style="color:var(--acc)">R$ ${fmt(receberTotFiltro)}</div></div>
+      <table><thead><tr><th>Data Recebimento</th><th>Cliente</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Recebido</th></tr></thead><tbody>${linhasReceberPeriodo}</tbody></table>
+    </div>`,
     cartoes_resumo: `<div class="card" style="margin-bottom:14px"><div style="font-weight:700;margin-bottom:10px">💳 Faturas de Cartão em Aberto (integração com CartoesPF/PJ)</div>
       <table><tbody>
         <tr><td>Fatura Cartão PF em Aberto${_resumoCartoes?.erroPf?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#f85149;font-weight:700">R$ ${fmt(cartoesPF)}</td></tr>
@@ -4078,23 +4280,43 @@ function htmlRelatorios(){
       <table><thead><tr><th>Conta</th><th style="text-align:right">Total Pago</th></tr></thead><tbody>${linhasFaturaConta}</tbody></table></div>`,
     cartoes_historico: `<div class="card"><div style="font-weight:700;margin-bottom:10px">💳 Histórico de Pagamentos de Fatura de Cartão</div>
       <table><thead><tr><th>Data</th><th>Conta</th><th>Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasFaturaHist}</tbody></table></div>`,
+    cartoes_direcionamento: `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">🧭 Compras por Direcionamento (integração com CartoesPF/PJ)</div>
+      <div style="margin-bottom:10px">${B('🔄 Atualizar agora','atualizarResumoCartoes(false)','var(--sur)','var(--txt)')}</div>
+      <table><thead><tr><th>Direcionamento</th><th style="text-align:right">Qtd. Compras</th><th style="text-align:right">Total</th></tr></thead><tbody>${linhasDirecTotal}</tbody></table>
+      <div style="color:var(--mut);font-size:11px;margin-top:8px">Histórico completo de compras (não só o mês em aberto). Dados carregados automaticamente ao abrir esta categoria.</div>
+    </div>`,
+    chq_emitentes: `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">🧾 Carteira Ativa por Emitente (Cheques — ChequeSys)</div>
+      <div style="margin-bottom:10px">${B('🔄 Atualizar agora','atualizarResumoChequeSys(false)','var(--sur)','var(--txt)')}</div>
+      <table><thead><tr><th>Emitente</th><th style="text-align:right">Qtd. Cheques</th><th style="text-align:right">Total (bruto)</th></tr></thead><tbody>${linhasEmitenteChq}</tbody></table>
+      <div style="color:var(--mut);font-size:11px;margin-top:8px">Considera cheques em mãos, devolvidos ou reapresentados (carteira ativa), exceto cheques em caução.</div>
+    </div>`,
+    chq_sacados: `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">🧾 Carteira Ativa por Sacado (Boletos — ChequeSys)</div>
+      <div style="margin-bottom:10px">${B('🔄 Atualizar agora','atualizarResumoChequeSys(false)','var(--sur)','var(--txt)')}</div>
+      <table><thead><tr><th>Sacado</th><th style="text-align:right">Qtd. Boletos</th><th style="text-align:right">Total (bruto)</th></tr></thead><tbody>${linhasSacadoChq}</tbody></table>
+      <div style="color:var(--mut);font-size:11px;margin-top:8px">Considera boletos em carteira, enviados, devolvidos ou reapresentados (carteira ativa), exceto boletos em caução.</div>
+    </div>`,
   };
 
   const CATS_TR = {
     geral:      { label:'🌐 Geral',            cor:'var(--acc)', tipos:['resumo_graficos','fluxo_mensal','pareto_despesas','top_entradas','top_saidas','fluxo_categoria','mov_contraparte','investimentos','seguros'] },
-    bancarias:  { label:'🏦 Contas Bancárias',  cor:'var(--blu)', tipos:['saldo_conta','tarifas_conta'] },
-    pagar:      { label:'📤 Contas a Pagar',    cor:'var(--red)', tipos:['pagar_cc','pagar_fornecedor','cheques_emitidos'] },
-    receber:    { label:'📥 Contas a Receber',  cor:'#3fb950',    tipos:['receber_cc','receber_cliente'] },
-    cartoes:    { label:'💳 Cartões',           cor:'var(--pur)', tipos:['cartoes_resumo','cartoes_historico'] },
+    bancarias:  { label:'🏦 Contas Bancárias',  cor:'var(--blu)', tipos:['saldo_conta','extrato_conta','tarifas_conta'] },
+    pagar:      { label:'📤 Contas a Pagar',    cor:'var(--red)', tipos:['pagar_periodo','pagar_cc','pagar_fornecedor','cheques_emitidos'] },
+    receber:    { label:'📥 Contas a Receber',  cor:'#3fb950',    tipos:['receber_periodo','receber_cc','receber_cliente'] },
+    cartoes:    { label:'💳 Cartões',           cor:'var(--pur)', tipos:['cartoes_resumo','cartoes_direcionamento','cartoes_historico'] },
+    chequesys:  { label:'🧾 ChequeSys',         cor:'#f0a500',    tipos:['chq_emitentes','chq_sacados'] },
   };
   const rotulos = {
     resumo_graficos:'🧭 Resumo e Gráficos', fluxo_mensal:'📅 Fluxo Mensal', pareto_despesas:'📉 Pareto de Despesas',
     top_entradas:'🔝 Top Entradas', top_saidas:'🔝 Top Saídas', fluxo_categoria:'📊 Por Categoria',
     mov_contraparte:'👥 Por Cliente/Fornecedor', investimentos:'📈 Investimentos', seguros:'🛡️ Seguros',
-    saldo_conta:'💰 Saldo por Conta', tarifas_conta:'🏦 Tarifas Bancárias',
-    pagar_cc:'📤 Por Centro de Custo', pagar_fornecedor:'🏭 Por Fornecedor', cheques_emitidos:'✍️ Cheques Emitidos',
-    receber_cc:'📥 Por Centro de Custo', receber_cliente:'🤝 Por Cliente',
-    cartoes_resumo:'💳 Resumo', cartoes_historico:'💳 Histórico de Faturas',
+    saldo_conta:'💰 Saldo por Conta', extrato_conta:'📄 Extrato (Conta/Período/Fornecedor)', tarifas_conta:'🏦 Tarifas Bancárias',
+    pagar_periodo:'📅 Por Período', pagar_cc:'📤 Por Centro de Custo', pagar_fornecedor:'🏭 Por Fornecedor', cheques_emitidos:'✍️ Cheques Emitidos',
+    receber_periodo:'📅 Por Período', receber_cc:'📥 Por Centro de Custo', receber_cliente:'🤝 Por Cliente',
+    cartoes_resumo:'💳 Resumo', cartoes_direcionamento:'🧭 Por Direcionamento', cartoes_historico:'💳 Histórico de Faturas',
+    chq_emitentes:'🧾 Por Emitente (Cheques)', chq_sacados:'🧾 Por Sacado (Boletos)',
   };
 
   if(!RLT.cat){
