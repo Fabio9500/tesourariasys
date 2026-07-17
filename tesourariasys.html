@@ -947,7 +947,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.15';
+const VERSAO = 'v1.16';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3420,11 +3420,16 @@ function htmlDashboard(){
     </tr>`;
   }).join('') + (filtro==='todos' ? linhasContasChequeSys() : '') || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Nenhuma conta cadastrada</td></tr>';
   const saldoGeralComChequeSys = saldoGeral + totalSaldoChequeSys();
-  const tabsPFPJ = `<div class="row" style="margin-bottom:14px;gap:8px">
+  const tabsPFPJ = `<div class="row" style="margin-bottom:6px;gap:8px">
     ${B('Ver Tudo','mudarFiltroDashPFPJ(\'todos\')',filtro==='todos'?'var(--acc)':'var(--sur)',filtro==='todos'?'#000':'var(--txt)')}
     ${B('👤 Somente PF','mudarFiltroDashPFPJ(\'PF\')',filtro==='PF'?'var(--blu)':'var(--sur)',filtro==='PF'?'#fff':'var(--txt)')}
     ${B('🏢 Somente PJ','mudarFiltroDashPFPJ(\'PJ\')',filtro==='PJ'?'var(--pur)':'var(--sur)',filtro==='PJ'?'#fff':'var(--txt)')}
-  </div>`;
+    <span style="width:1px;background:var(--bor);margin:2px 4px"></span>
+    ${B('💳 Cartões PF ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPF.html\',\'_blank\')','var(--sur)','var(--blu)',0,'Abrir o sistema CartõesPF em nova aba')}
+    ${B('💳 Cartões PJ ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPJ.html\',\'_blank\')','var(--sur)','var(--pur)',0,'Abrir o sistema CartõesPJ em nova aba')}
+    ${B('🧾 ChequeSys ↗','window.open(\'https://fabio9500.github.io/chequesys/chequesys.html\',\'_blank\')','var(--sur)','#f0a500',0,'Abrir o ChequeSys em nova aba')}
+  </div>
+  <div style="font-size:11px;color:var(--mut);margin-bottom:14px">Os botões com ↗ abrem o sistema original em outra aba — nenhuma funcionalidade deles muda aqui.</div>`;
 
   return `
     <div class="titulo acc">📊 Dashboard — TesourariaSys</div>
