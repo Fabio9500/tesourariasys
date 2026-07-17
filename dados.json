@@ -145,7 +145,7 @@
     {
       "id": "mrntzv0bzlw1q",
       "tipo": "PF",
-      "titular": "Santander 2",
+      "titular": "Santander Construsul",
       "banco": "Santander 2",
       "agencia": "",
       "conta": "",
@@ -227,7 +227,7 @@
     {
       "id": "mrnty0ghusttx",
       "tipo": "despesa",
-      "nome": "SalÃ¡rios e Encargos"
+      "nome": "SalÃÂ¡rios e Encargos"
     },
     {
       "id": "mrnty0ghjsvgu",
@@ -237,7 +237,7 @@
     {
       "id": "mrnty0gh0d7u2",
       "tipo": "despesa",
-      "nome": "Tarifas BancÃ¡rias"
+      "nome": "Tarifas BancÃÂ¡rias"
     },
     {
       "id": "mrnty0ghe7l0f",
@@ -247,7 +247,7 @@
     {
       "id": "mrnty0gh5imm3",
       "tipo": "despesa",
-      "nome": "ManutenÃ§Ã£o"
+      "nome": "ManutenÃÂ§ÃÂ£o"
     },
     {
       "id": "mrnty0ghhldot",
@@ -262,37 +262,37 @@
     {
       "id": "mrnty0ghw8me0",
       "tipo": "despesa",
-      "nome": "PrevidÃªncia (Aporte)"
+      "nome": "PrevidÃÂªncia (Aporte)"
     },
     {
       "id": "mrnty0ghn9yrg",
       "tipo": "despesa",
-      "nome": "CapitalizaÃ§Ã£o (Parcela)"
+      "nome": "CapitalizaÃÂ§ÃÂ£o (Parcela)"
     },
     {
       "id": "mrnty0gh7xffz",
       "tipo": "despesa",
-      "nome": "Seguros (PrÃªmio)"
+      "nome": "Seguros (PrÃÂªmio)"
     },
     {
       "id": "mrnty0ghmi40z",
       "tipo": "despesa",
-      "nome": "Fatura CartÃ£o de CrÃ©dito"
+      "nome": "Fatura CartÃÂ£o de CrÃÂ©dito"
     },
     {
       "id": "mro0irlze9ea8",
       "tipo": "despesa",
-      "nome": "Fatura Cartão de Crédito"
+      "nome": "Fatura CartÃ£o de CrÃ©dito"
     },
     {
       "id": "mro0irlzjwxq0",
       "tipo": "despesa",
-      "nome": "Operação ChequeSys"
+      "nome": "OperaÃ§Ã£o ChequeSys"
     },
     {
       "id": "mro0irlz2pw8c",
       "tipo": "receita",
-      "nome": "Operação ChequeSys"
+      "nome": "OperaÃ§Ã£o ChequeSys"
     }
   ],
   "centrosCusto": [
