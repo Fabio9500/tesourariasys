@@ -205,8 +205,8 @@
     {
       "id": "mr7dnk1g3zvd5",
       "tipo": "PF",
-      "titular": "ItaÃº",
-      "banco": "ItaÃº",
+      "titular": "ItaÃÂº",
+      "banco": "ItaÃÂº",
       "agencia": "9690",
       "conta": "004718-9",
       "saldoInicial": 0,
@@ -239,7 +239,7 @@
     {
       "id": "mrnty0ghusttx",
       "tipo": "despesa",
-      "nome": "SalÃÂÃÂÃÂÃÂ¡rios e Encargos"
+      "nome": "SalÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡rios e Encargos"
     },
     {
       "id": "mrnty0ghjsvgu",
@@ -249,7 +249,7 @@
     {
       "id": "mrnty0gh0d7u2",
       "tipo": "despesa",
-      "nome": "Tarifas BancÃÂÃÂÃÂÃÂ¡rias"
+      "nome": "Tarifas BancÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¡rias"
     },
     {
       "id": "mrnty0ghe7l0f",
@@ -259,7 +259,7 @@
     {
       "id": "mrnty0gh5imm3",
       "tipo": "despesa",
-      "nome": "ManutenÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o"
+      "nome": "ManutenÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ£o"
     },
     {
       "id": "mrnty0ghhldot",
@@ -274,37 +274,52 @@
     {
       "id": "mrnty0ghw8me0",
       "tipo": "despesa",
-      "nome": "PrevidÃÂÃÂÃÂÃÂªncia (Aporte)"
+      "nome": "PrevidÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂªncia (Aporte)"
     },
     {
       "id": "mrnty0ghn9yrg",
       "tipo": "despesa",
-      "nome": "CapitalizaÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o (Parcela)"
+      "nome": "CapitalizaÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ£o (Parcela)"
     },
     {
       "id": "mrnty0gh7xffz",
       "tipo": "despesa",
-      "nome": "Seguros (PrÃÂÃÂÃÂÃÂªmio)"
+      "nome": "Seguros (PrÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂªmio)"
     },
     {
       "id": "mrnty0ghmi40z",
       "tipo": "despesa",
-      "nome": "Fatura CartÃÂÃÂÃÂÃÂ£o de CrÃÂÃÂÃÂÃÂ©dito"
+      "nome": "Fatura CartÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ£o de CrÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ©dito"
     },
     {
       "id": "mro0irlze9ea8",
       "tipo": "despesa",
-      "nome": "Fatura CartÃÂÃÂ£o de CrÃÂÃÂ©dito"
+      "nome": "Fatura CartÃÂÃÂÃÂÃÂ£o de CrÃÂÃÂÃÂÃÂ©dito"
     },
     {
       "id": "mro0irlzjwxq0",
       "tipo": "despesa",
-      "nome": "OperaÃÂÃÂ§ÃÂÃÂ£o ChequeSys"
+      "nome": "OperaÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o ChequeSys"
     },
     {
       "id": "mro0irlz2pw8c",
       "tipo": "receita",
-      "nome": "OperaÃÂÃÂ§ÃÂÃÂ£o ChequeSys"
+      "nome": "OperaÃÂÃÂÃÂÃÂ§ÃÂÃÂÃÂÃÂ£o ChequeSys"
+    },
+    {
+      "id": "mroc2e3k09zcq",
+      "tipo": "despesa",
+      "nome": "Fatura Cartão de Crédito"
+    },
+    {
+      "id": "mroc2e3kkybiv",
+      "tipo": "despesa",
+      "nome": "Operação ChequeSys"
+    },
+    {
+      "id": "mroc2e3kfi98c",
+      "tipo": "receita",
+      "nome": "Operação ChequeSys"
     }
   ],
   "centrosCusto": [
@@ -4637,6 +4652,246 @@
       "origem": "manual",
       "contaPagarId": null,
       "criadoEm": "2026-07-16T23:00:00.000Z"
+    },
+    {
+      "id": "mroc2ed158k9c",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-07-06",
+      "tipo": "entrada",
+      "valor": 140,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Juros renovação cheque 00850110 — Ednaldo Carvalho de Andrade",
+      "origem": "chequesys",
+      "origemId": "mr8iqr7z0zio",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1hhxnk",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-07-06",
+      "tipo": "entrada",
+      "valor": 184,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Juros renovação cheque 00850001 — Ednaldo Carvalho de Andrade",
+      "origem": "chequesys",
+      "origemId": "mr8is67lna7r",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1p77t4",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-07-06",
+      "tipo": "entrada",
+      "valor": 184,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Juros renovação cheque 00850002 — Ednaldo Carvalho de Andrade",
+      "origem": "chequesys",
+      "origemId": "mr8iskwrtqdi",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1ueooa",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-07-06",
+      "tipo": "entrada",
+      "valor": 182,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Juros renovação cheque 00850003 — Ednaldo Carvalho de Andrade",
+      "origem": "chequesys",
+      "origemId": "mr8iswxr8rbl",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1al2tj",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-07-08",
+      "tipo": "saida",
+      "valor": 690,
+      "categoriaId": "mroc2e3kkybiv",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Juros Renovação Ednaldo (Proprio)",
+      "origem": "chequesys",
+      "origemId": "mrcq7n85rr6x",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed16ns7s",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-06-26",
+      "tipo": "entrada",
+      "valor": 90,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Juros Renovação Ednaldo (Proprio)",
+      "origem": "chequesys",
+      "origemId": "mrcq9z4ydjan",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1grdht",
+      "contaId": "mrnty0ghhcv08",
+      "data": "2026-07-09",
+      "tipo": "entrada",
+      "valor": 3000,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Juros E0002 — Batista Aguiar Combustivel Ltda",
+      "origem": "chequesys",
+      "origemId": "mre4n2h3l23z",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1r9pit",
+      "contaId": "mrnty0ghhcv08",
+      "data": "2026-07-09",
+      "tipo": "saida",
+      "valor": 3000,
+      "categoriaId": "mroc2e3kkybiv",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] DEpt. Bc. c6",
+      "origem": "chequesys",
+      "origemId": "mre68al1zirz",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1jtvjb",
+      "contaId": "mrnty0ghvteo1",
+      "data": "2026-07-13",
+      "tipo": "entrada",
+      "valor": 1800,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Resgate cheque 00000693 — Joao Pezzo",
+      "origem": "chequesys",
+      "origemId": "mrks3g65uts3",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1xer7g",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-07-15",
+      "tipo": "entrada",
+      "valor": 4950,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Liquidação cheque 00000059 — J V Santana (Colégio Divina)",
+      "origem": "chequesys",
+      "origemId": "mrmdz1lg3jkn",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed184jp7",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-07-15",
+      "tipo": "entrada",
+      "valor": 5000,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Liquidação cheque 00000048 — J V Santana (Colégio Divina)",
+      "origem": "chequesys",
+      "origemId": "mrmdz8fc2hcc",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1z1jiz",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-07-15",
+      "tipo": "entrada",
+      "valor": 8200,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Liquidação cheque 00000037 — J V Santana (Colégio Divina)",
+      "origem": "chequesys",
+      "origemId": "mrmdzhplv2nl",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1slhnf",
+      "contaId": "mrntzv0bzlw1q",
+      "data": "2026-07-16",
+      "tipo": "entrada",
+      "valor": 900,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Compensação cheque 3 — Marcus Vinicius Oliveira dos Santos",
+      "origem": "chequesys",
+      "origemId": "mrmtymjh083j",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1lxxqt",
+      "contaId": "mrnty0gh9748t",
+      "data": "2026-07-15",
+      "tipo": "entrada",
+      "valor": 3000,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Compensação cheque 00000906 — Philison",
+      "origem": "chequesys",
+      "origemId": "mrneojp5md4r",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed14of9v",
+      "contaId": "mrnty0gh9748t",
+      "data": "2026-07-16",
+      "tipo": "entrada",
+      "valor": 2950,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Compensação cheque 164 — Philison",
+      "origem": "chequesys",
+      "origemId": "mrnepbtdqsuk",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
+    },
+    {
+      "id": "mroc2ed1qfdpb",
+      "contaId": "mrnty0ghvteo1",
+      "data": "2026-07-14",
+      "tipo": "entrada",
+      "valor": 2300,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Compensação cheque 00000035 — Philison",
+      "origem": "chequesys",
+      "origemId": "mrnesszrdwk8",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-17T02:43:08.725Z"
     }
   ],
   "contasPagar": [],
@@ -4663,6 +4918,71 @@
       "mqzxdk97j8a3": "mrnty0ghfjohr"
     },
     "contaPadrao": null,
-    "sincronizados": {}
+    "sincronizados": {
+      "mr8iqr7z0zio": {
+        "lancId": "mroc2ed158k9c",
+        "fingerprint": "entrada|140|2026-07-06|Juros renovação cheque 00850110 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz"
+      },
+      "mr8is67lna7r": {
+        "lancId": "mroc2ed1hhxnk",
+        "fingerprint": "entrada|184|2026-07-06|Juros renovação cheque 00850001 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz"
+      },
+      "mr8iskwrtqdi": {
+        "lancId": "mroc2ed1p77t4",
+        "fingerprint": "entrada|184|2026-07-06|Juros renovação cheque 00850002 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz"
+      },
+      "mr8iswxr8rbl": {
+        "lancId": "mroc2ed1ueooa",
+        "fingerprint": "entrada|182|2026-07-06|Juros renovação cheque 00850003 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz"
+      },
+      "mrcq7n85rr6x": {
+        "lancId": "mroc2ed1al2tj",
+        "fingerprint": "saida|690|2026-07-08|Juros Renovação Ednaldo (Proprio)|mrnty0gh0cojz"
+      },
+      "mrcq9z4ydjan": {
+        "lancId": "mroc2ed16ns7s",
+        "fingerprint": "entrada|90|2026-06-26|Juros Renovação Ednaldo (Proprio)|mrnty0gh0cojz"
+      },
+      "mre4n2h3l23z": {
+        "lancId": "mroc2ed1grdht",
+        "fingerprint": "entrada|3000|2026-07-09|Juros E0002 — Batista Aguiar Combustivel Ltda|mrnty0ghhcv08"
+      },
+      "mre68al1zirz": {
+        "lancId": "mroc2ed1r9pit",
+        "fingerprint": "saida|3000|2026-07-09|DEpt. Bc. c6|mrnty0ghhcv08"
+      },
+      "mrks3g65uts3": {
+        "lancId": "mroc2ed1jtvjb",
+        "fingerprint": "entrada|1800|2026-07-13|Resgate cheque 00000693 — Joao Pezzo|mrnty0ghvteo1"
+      },
+      "mrmdz1lg3jkn": {
+        "lancId": "mroc2ed1xer7g",
+        "fingerprint": "entrada|4950|2026-07-15|Liquidação cheque 00000059 — J V Santana (Colégio Divina)|mrnty0gh0cojz"
+      },
+      "mrmdz8fc2hcc": {
+        "lancId": "mroc2ed184jp7",
+        "fingerprint": "entrada|5000|2026-07-15|Liquidação cheque 00000048 — J V Santana (Colégio Divina)|mrnty0gh0cojz"
+      },
+      "mrmdzhplv2nl": {
+        "lancId": "mroc2ed1z1jiz",
+        "fingerprint": "entrada|8200|2026-07-15|Liquidação cheque 00000037 — J V Santana (Colégio Divina)|mrnty0gh0cojz"
+      },
+      "mrmtymjh083j": {
+        "lancId": "mroc2ed1slhnf",
+        "fingerprint": "entrada|900|2026-07-16|Compensação cheque 3 — Marcus Vinicius Oliveira dos Santos|mrntzv0bzlw1q"
+      },
+      "mrneojp5md4r": {
+        "lancId": "mroc2ed1lxxqt",
+        "fingerprint": "entrada|3000|2026-07-15|Compensação cheque 00000906 — Philison|mrnty0gh9748t"
+      },
+      "mrnepbtdqsuk": {
+        "lancId": "mroc2ed14of9v",
+        "fingerprint": "entrada|2950|2026-07-16|Compensação cheque 164 — Philison|mrnty0gh9748t"
+      },
+      "mrnesszrdwk8": {
+        "lancId": "mroc2ed1qfdpb",
+        "fingerprint": "entrada|2300|2026-07-14|Compensação cheque 00000035 — Philison|mrnty0ghvteo1"
+      }
+    }
   }
 }
