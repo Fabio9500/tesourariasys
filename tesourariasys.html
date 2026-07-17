@@ -974,7 +974,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.20';
+const VERSAO = 'v1.21';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3432,6 +3432,30 @@ function confirmarRenovarSeguro(id){
 // ══════════════════════════════════════════
 let _filtroDashPFPJ = 'todos';
 function mudarFiltroDashPFPJ(tipo){ _filtroDashPFPJ = tipo; renderAba(); }
+let _dashSoTitulos = false;
+let _kpiAberto = null;
+function alternarDashSoTitulos(){ _dashSoTitulos = !_dashSoTitulos; _kpiAberto=null; renderAba(); }
+function toggleKpi(chave){ _kpiAberto = (_kpiAberto===chave ? null : chave); renderAba(); }
+function abrirContaEmLancamentos(contaId){ _filtroLancConta = contaId; irPara('lancamentos'); }
+function kpiCard(chave, label, valorHtml, subtitulo, composicaoHtml){
+  const aberto = _kpiAberto===chave;
+  if(_dashSoTitulos){
+    return `<div class="card kpi" onclick="alternarDashSoTitulos()" style="cursor:pointer">
+      <div class="kpi-l">${label}</div>
+    </div>`;
+  }
+  return `<div class="card kpi" onclick="toggleKpi('${chave}')" style="cursor:pointer">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div style="flex:1">
+        <div class="kpi-l">${label}</div>
+        <div class="kpi-v">${valorHtml}</div>
+        <div class="kpi-s">${subtitulo}</div>
+      </div>
+      <span style="font-size:11px;color:var(--mut);margin-left:6px">${aberto?'▲':'▼'}</span>
+    </div>
+    ${aberto&&composicaoHtml ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bor)" onclick="event.stopPropagation()">${composicaoHtml}</div>` : ''}
+  </div>`;
+}
 function htmlDashboard(){
   const filtro = _filtroDashPFPJ;
   const contasTodasAtivas = (DB.contas||[]).filter(c=>c.ativa!==false);
@@ -3465,7 +3489,7 @@ function htmlDashboard(){
   // Contas do ChequeSys não têm classificação PF/PJ — só aparecem na visão "Todos"
   const linhasContas = contas.map(c=>{
     const saldo = saldoConta(c.id);
-    return `<tr>
+    return `<tr onclick="abrirContaEmLancamentos('${c.id}')" style="cursor:pointer">
       <td>${esc(c.titular)} ${T(c.tipo,c.tipo==='PF'?'az':'pur')}</td>
       <td>${esc(c.banco||'-')}</td>
       <td style="text-align:right;font-weight:700;color:${saldo<0?'var(--red)':'var(--txt)'}">R$ ${fmt(saldo)}</td>
@@ -3481,23 +3505,53 @@ function htmlDashboard(){
     ${B('💳 Cartões PJ ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPJ.html\',\'_blank\')','var(--sur)','var(--pur)',0,'Abrir o sistema CartõesPJ em nova aba')}
     ${B('🧾 ChequeSys ↗','window.open(\'https://fabio9500.github.io/chequesys/chequesys.html\',\'_blank\')','var(--sur)','#f0a500',0,'Abrir o ChequeSys em nova aba')}
   </div>
-  <div style="font-size:11px;color:var(--mut);margin-bottom:14px">Os botões com ↗ abrem o sistema original em outra aba — nenhuma funcionalidade deles muda aqui.</div>`;
+  <div style="font-size:11px;color:var(--mut);margin-bottom:14px">Os botões com ↗ abrem o sistema original em outra aba — nenhuma funcionalidade deles muda aqui. Toque em qualquer conta da tabela abaixo para ver a movimentação dela.</div>`;
+
+  // ── Composição (detalhe) de cada KPI, mostrado ao tocar no card ──
+  const compPosicao = `<table><tbody>
+    <tr><td>Saldo em Contas (Tesouraria+ChequeSys)</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(saldoGeralComChequeSys)}</td></tr>
+    <tr><td>Patrimônio Investido</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(patrimonioInvestido)}</td></tr>
+    <tr><td>Contas a Receber Pendentes</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(totalReceberPendente)}</td></tr>
+    <tr><td>Contas a Pagar Pendentes</td><td style="text-align:right;color:#f85149">− R$ ${fmt(totalPendente)}</td></tr>
+    <tr><td>Cheques Emitidos Aguardando</td><td style="text-align:right;color:#f85149">− R$ ${fmt(totalChequesPend)}</td></tr>
+    <tr><td>Faturas de Cartão em Aberto</td><td style="text-align:right;color:#f85149">− R$ ${fmt(totalFaturasCartoesAberto())}</td></tr>
+  </tbody></table>`;
+  const compSaldoTotal = `<table><tbody>
+    ${contasTodasAtivas.map(c=>`<tr><td>${esc(c.titular)} ${T(c.tipo,c.tipo==='PF'?'az':'pur')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}
+    ${(_resumoChequeSys?.contas||[]).map(c=>`<tr><td>${esc(c.nome)} ${T('ChequeSys','pur')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(c.saldo)}</td></tr>`).join('')}
+  </tbody></table>
+  <div style="font-size:11px;color:var(--mut);margin-top:6px">Toque em uma conta na tabela "Saldo por Conta" abaixo para ver a movimentação dela.</div>`;
+  const compSaldoPF = `<table><tbody>${contasTodasAtivas.filter(c=>c.tipo==='PF').map(c=>`<tr><td>${esc(c.titular)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}</tbody></table>`;
+  const compSaldoPJ = `<table><tbody>${contasTodasAtivas.filter(c=>c.tipo==='PJ').map(c=>`<tr><td>${esc(c.titular)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}</tbody></table>`;
+  const compPagar = pendentes.length ? `<table><tbody>${pendentes.slice(0,10).map(cp=>`<tr><td>${esc(cp.favorecido)}</td><td>${fmtD(cp.vencimento)}</td><td style="text-align:right;color:${diffDias(cp.vencimento)<0?'var(--red)':'inherit'}">R$ ${fmt(cp.valor)}</td></tr>`).join('')}</tbody></table>${pendentes.length>10?`<div style="font-size:11px;color:var(--mut);margin-top:6px">+ ${pendentes.length-10} outra(s) — veja a aba Contas a Pagar</div>`:''}` : '';
+  const compReceber = receberPendentes.length ? `<table><tbody>${receberPendentes.slice(0,10).map(cr=>`<tr><td>${esc(cr.cliente)}</td><td>${fmtD(cr.vencimento)}</td><td style="text-align:right;color:${diffDias(cr.vencimento)<0?'var(--red)':'inherit'}">R$ ${fmt(cr.valor)}</td></tr>`).join('')}</tbody></table>${receberPendentes.length>10?`<div style="font-size:11px;color:var(--mut);margin-top:6px">+ ${receberPendentes.length-10} outra(s) — veja a aba Contas a Receber</div>`:''}` : '';
+  const compCheques = chequesPend.length ? `<table><tbody>${chequesPend.slice(0,10).map(c=>`<tr><td>${esc(c.favorecido)}</td><td>${fmtD(c.dataPrevista)}</td><td style="text-align:right">R$ ${fmt(c.valor)}</td></tr>`).join('')}</tbody></table>` : '';
+  const compPatrimonio = `<table><tbody>
+    ${(DB.investimentos||[]).map(i=>`<tr><td>${esc(i.instituicao)} (${esc(i.tipo)})</td><td style="text-align:right">R$ ${fmt(i.valorAtual)}</td></tr>`).join('')}
+    ${(DB.previdencias||[]).map(p=>`<tr><td>${esc(p.instituicao)} (${esc(p.tipo)})</td><td style="text-align:right">R$ ${fmt(p.valorAtual)}</td></tr>`).join('')}
+  </tbody></table>`;
+
+  const kpisHtml = [
+    filtro==='todos' ? kpiCard('posicao','Posição Líquida Consolidada',`<span style="color:${posicaoLiquida<0?'var(--red)':'var(--acc)'}">R$ ${fmt(posicaoLiquida)}</span>`,'Contas + Investim. + A Receber − Pendências − Cartões',compPosicao) : '',
+    filtro==='todos' ? kpiCard('saldototal','Saldo Total (todas as contas)',`<span style="color:${saldoGeralComChequeSys<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoGeralComChequeSys)}</span>`,`${contasTodasAtivas.length} conta(s) TesourariaSys${_resumoChequeSys?.contas?.length?' + '+_resumoChequeSys.contas.length+' do ChequeSys':''}`,compSaldoTotal) : '',
+    filtro!=='PJ' ? kpiCard('saldopf','Saldo PF',`<span style="color:var(--blu)">R$ ${fmt(saldoPF)}</span>`,`${contasTodasAtivas.filter(c=>c.tipo==='PF').length} conta(s)`,compSaldoPF) : '',
+    filtro!=='PF' ? kpiCard('saldopj','Saldo PJ',`<span style="color:var(--pur)">R$ ${fmt(saldoPJ)}</span>`,`${contasTodasAtivas.filter(c=>c.tipo==='PJ').length} conta(s)`,compSaldoPJ) : '',
+    kpiCard('pagar','Contas a Pagar Pendentes',`<span style="color:${vencidas.length>0?'var(--red)':'#f0a500'}">R$ ${fmt(totalPendente)}</span>`,`${pendentes.length} pendente(s) · ${vencidas.length} vencida(s)`,compPagar),
+    kpiCard('receber','Contas a Receber Pendentes',`<span style="color:${receberVencidas.length>0?'var(--red)':'#3fb950'}">R$ ${fmt(totalReceberPendente)}</span>`,`${receberPendentes.length} pendente(s) · ${receberVencidas.length} vencida(s)`,compReceber),
+    kpiCard('cheques','Cheques Emitidos (aguardando)',`<span style="color:#f0a500">R$ ${fmt(totalChequesPend)}</span>`,`${chequesPend.length} ainda não compensado(s)`,compCheques),
+    filtro==='todos' ? kpiCard('patrimonio','Patrimônio Investido',`<span style="color:var(--pur)">R$ ${fmt(patrimonioInvestido)}</span>`,'Investimentos + Previdência ativos',compPatrimonio) : '',
+  ].join('');
 
   return `
-    <div class="titulo acc">📊 Dashboard — TesourariaSys</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div class="titulo acc" style="margin-bottom:0">📊 Dashboard — TesourariaSys</div>
+      ${B(_dashSoTitulos?'▶ Expandir':'▼ Recolher','alternarDashSoTitulos()','var(--sur)','var(--txt)',1,'Alterna entre ver só os títulos ou todas as informações dos cards')}
+    </div>
+    <div style="height:8px"></div>
     ${tabsPFPJ}
     ${alertas}
-    <div class="kpis">
-      ${filtro==='todos'?`<div class="card kpi"><div class="kpi-l">Posição Líquida Consolidada</div><div class="kpi-v" style="color:${posicaoLiquida<0?'var(--red)':'var(--acc)'}">R$ ${fmt(posicaoLiquida)}</div><div class="kpi-s">Contas + Investim. + A Receber − Pendências − Cartões</div></div>`:''}
-      ${filtro==='todos'?`<div class="card kpi"><div class="kpi-l">Saldo Total (todas as contas)</div><div class="kpi-v" style="color:${saldoGeralComChequeSys<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoGeralComChequeSys)}</div><div class="kpi-s">${contasTodasAtivas.length} conta(s) TesourariaSys${_resumoChequeSys?.contas?.length?' + '+_resumoChequeSys.contas.length+' do ChequeSys':''}</div></div>`:''}
-      ${filtro!=='PJ'?`<div class="card kpi"><div class="kpi-l">Saldo PF</div><div class="kpi-v" style="color:var(--blu)">R$ ${fmt(saldoPF)}</div><div class="kpi-s">${contasTodasAtivas.filter(c=>c.tipo==='PF').length} conta(s)</div></div>`:''}
-      ${filtro!=='PF'?`<div class="card kpi"><div class="kpi-l">Saldo PJ</div><div class="kpi-v" style="color:var(--pur)">R$ ${fmt(saldoPJ)}</div><div class="kpi-s">${contasTodasAtivas.filter(c=>c.tipo==='PJ').length} conta(s)</div></div>`:''}
-      <div class="card kpi"><div class="kpi-l">Contas a Pagar Pendentes</div><div class="kpi-v" style="color:${vencidas.length>0?'var(--red)':'#f0a500'}">R$ ${fmt(totalPendente)}</div><div class="kpi-s">${pendentes.length} pendente(s) · ${vencidas.length} vencida(s)</div></div>
-      <div class="card kpi"><div class="kpi-l">Contas a Receber Pendentes</div><div class="kpi-v" style="color:${receberVencidas.length>0?'var(--red)':'#3fb950'}">R$ ${fmt(totalReceberPendente)}</div><div class="kpi-s">${receberPendentes.length} pendente(s) · ${receberVencidas.length} vencida(s)</div></div>
-      <div class="card kpi"><div class="kpi-l">Cheques Emitidos (aguardando)</div><div class="kpi-v" style="color:#f0a500">R$ ${fmt(totalChequesPend)}</div><div class="kpi-s">${chequesPend.length} ainda não compensado(s)</div></div>
-      ${filtro==='todos'?`<div class="card kpi"><div class="kpi-l">Patrimônio Investido</div><div class="kpi-v" style="color:var(--pur)">R$ ${fmt(patrimonioInvestido)}</div><div class="kpi-s">Investimentos + Previdência ativos</div></div>`:''}
-    </div>
-    ${htmlResumoCartoesCard(filtro)}
+    <div class="kpis">${kpisHtml}</div>
+    ${_dashSoTitulos ? '' : htmlResumoCartoesCard(filtro)}
     <div class="card" style="margin-bottom:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-weight:700">🏦 Saldo por Conta ${filtro==='todos'?'(TesourariaSys + ChequeSys)':'('+filtro+')'}</div>
