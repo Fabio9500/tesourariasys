@@ -293,7 +293,7 @@ async function aplicarResolucaoConflito(opcao){
   setTimeout(()=>{ document.getElementById('status').style.display='none'; },4000);
 }
 
-async function ghSalvar(db){
+async function ghSalvar(db, pularMesclagem){
   try{ localStorage.setItem('tsr_bkp', JSON.stringify(db)); }catch(e){}
   if(!isOnline()){
     setFilaPendente(db);
@@ -311,7 +311,7 @@ async function ghSalvar(db){
       // Alguém (ex: CartõesPF/PJ pagando fatura) pode ter gravado dados.json entre o
       // carregamento local e este salvamento. Em vez de sobrescrever cegamente, mescla
       // os lançamentos que só existem na versão remota, pra não perdê-los.
-      if(shaAntesDoSave && jGet.sha !== shaAntesDoSave && jGet.content){
+      if(shaAntesDoSave && jGet.sha !== shaAntesDoSave && jGet.content && !pularMesclagem){
         try{
           const remoto = JSON.parse(b64ParaTextoUtf8(jGet.content.replace(/\n/g,'')));
           const idsLocais = new Set((db.lancamentos||[]).map(l=>l.id));
@@ -755,9 +755,120 @@ function abrirModalBackup(){
       ${B('☁️ + 💾  Backup Completo (GitHub + Download Local)','FM();fazerBackupCompleto()','var(--grn)','#fff')}
       ${B('☁️  Backup só no GitHub','FM();backupGitHub(false)','var(--blu)','#fff')}
       ${B('💾  Backup só Local (download)','FM();backupLocal()','var(--acc)','#000')}
+    </div>
+    <div style="border-top:1px solid var(--bor);margin:14px 0 10px;padding-top:12px">
+      ${BPerm('excluir','📥  Importar Backup (substitui os dados atuais)','abrirImportarBackup()','#c0312b','#fff')}
+      <div style="font-size:10px;color:var(--mut);margin-top:4px">Restrito ao usuário Master — é uma ação que substitui todos os dados do sistema.</div>
+    </div>
+    <div style="display:flex;margin-top:10px">${B('Cancelar','FM()','var(--sur)','var(--txt)')}</div>
+  `);
+}
+
+// ══════════════════════════════════════════
+// 📥 IMPORTAR BACKUP — restaura um arquivo .json exportado anteriormente
+// ══════════════════════════════════════════
+function abrirImportarBackup(){
+  if(!temPerm('excluir')){ alert('Apenas o usuário Master pode importar um backup.'); return; }
+  AM('📥 Importar Backup', `
+    ${EH('e-imp')}
+    <div style="background:#da363322;border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--red);font-weight:700;line-height:1.5">
+      ⚠️ Isso vai SUBSTITUIR todos os dados atuais do sistema pelos dados do arquivo escolhido. Use apenas se tiver certeza — por exemplo, para recuperar um backup depois de um problema.
+    </div>
+    <div class="campo">
+      <label>Arquivo de backup (.json)</label>
+      <input type="file" id="imp-arquivo" accept=".json,application/json" style="padding:8px">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      ${B('📂 Ler Arquivo e Conferir','lerArquivoImportacao()','var(--acc)','#000')}
       ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
     </div>
   `);
+}
+
+function lerArquivoImportacao(){
+  const input = document.getElementById('imp-arquivo');
+  const arquivo = input?.files?.[0];
+  if(!arquivo){ ME('e-imp','Escolha um arquivo .json primeiro.'); return; }
+  const leitor = new FileReader();
+  leitor.onload = (e) => {
+    let dadosImportados;
+    try{
+      dadosImportados = JSON.parse(e.target.result);
+    }catch(err){
+      ME('e-imp','Este arquivo não é um JSON válido. Confira se escolheu o arquivo certo.');
+      return;
+    }
+    // Validação simples: confere se parece mesmo com um backup do TesourariaSys
+    const camposEsperados = ['contas','categorias','lancamentos','contasPagar','contasReceber'];
+    const pareceValido = camposEsperados.some(c => Array.isArray(dadosImportados[c]));
+    if(!pareceValido){
+      ME('e-imp','Este arquivo não parece ser um backup do TesourariaSys (não tem os campos esperados).');
+      return;
+    }
+    mostrarComparacaoImportacao(dadosImportados);
+  };
+  leitor.onerror = () => ME('e-imp','Não foi possível ler o arquivo. Tente novamente.');
+  leitor.readAsText(arquivo, 'UTF-8');
+}
+
+function _contarColecoesTsr(d){
+  return {
+    'Contas Bancárias': (d.contas||[]).length,
+    'Categorias': (d.categorias||[]).length,
+    'Centros de Custo': (d.centrosCusto||[]).length,
+    'Lançamentos': (d.lancamentos||[]).length,
+    'Contas a Pagar': (d.contasPagar||[]).length,
+    'Contas a Receber': (d.contasReceber||[]).length,
+    'Fornecedores': (d.fornecedores||[]).length,
+    'Clientes': (d.clientes||[]).length,
+    'Cheques Emitidos': (d.chequesEmitidos||[]).length,
+    'Investimentos': (d.investimentos||[]).length,
+    'Previdências': (d.previdencias||[]).length,
+    'Capitalizações': (d.capitalizacoes||[]).length,
+    'Seguros': (d.seguros||[]).length,
+    'Usuários': (d.usuarios||[]).length,
+  };
+}
+
+function mostrarComparacaoImportacao(dadosImportados){
+  const atual = _contarColecoesTsr(DB);
+  const novo = _contarColecoesTsr(dadosImportados);
+  const linhas = Object.keys(atual).map(k=>{
+    const mudou = atual[k]!==novo[k];
+    return `<tr>
+      <td>${k}</td>
+      <td style="text-align:center">${atual[k]}</td>
+      <td style="text-align:center;font-weight:${mudou?'800':'400'};color:${mudou?'var(--acc)':'var(--txt)'}">${novo[k]}</td>
+    </tr>`;
+  }).join('');
+
+  window._backupParaImportar = dadosImportados;
+
+  AM('🔍 Conferir Antes de Importar', `
+    <div style="font-size:12px;color:var(--mut);margin-bottom:10px">Compare o que existe agora com o que está no arquivo escolhido:</div>
+    <table><thead><tr><th>Coleção</th><th style="text-align:center">Atual no Sistema</th><th style="text-align:center">No Arquivo</th></tr></thead>
+    <tbody>${linhas}</tbody></table>
+    <div style="background:#da363322;border:1px solid var(--red);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:12px;color:var(--red);font-weight:700">
+      ⚠️ Ao confirmar, os dados atuais serão substituídos pelos do arquivo e isso será salvo no GitHub imediatamente.
+    </div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      ${B('✅ Confirmar Importação','confirmarImportacaoBackup()','#c0312b','#fff')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+
+function confirmarImportacaoBackup(){
+  const dados = window._backupParaImportar;
+  if(!dados){ FM(); return; }
+  CF('Tem certeza? Essa ação não pode ser desfeita pelo sistema (só restaurando outro backup depois).', async ()=>{
+    delete window._backupParaImportar;
+    FM();
+    await ghSalvar(dados, true);
+    setStatus('ok','✅ Backup importado e salvo no GitHub!');
+    setTimeout(()=>{document.getElementById('status').style.display='none';},4000);
+    renderAba();
+  });
 }
 
 window.addEventListener('beforeunload', ev => {
@@ -974,7 +1085,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.21';
+const VERSAO = 'v1.22';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
