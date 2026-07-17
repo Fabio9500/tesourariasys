@@ -974,7 +974,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.19';
+const VERSAO = 'v1.20';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1013,6 +1013,31 @@ function clienteById(id){ return (DB.clientes||[]).find(c=>c.id===id); }
 function chequeById(id){ return (DB.chequesEmitidos||[]).find(c=>c.id===id); }
 function categoriaPorNome(nome,tipo){ return (DB.categorias||[]).find(c=>c.nome===nome&&c.tipo===tipo); }
 function nomeConta(c){ if(!c) return '-'; return `${c.titular} (${c.tipo})`; }
+function diasEntreDatas(a,b){
+  return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00'))/86400000);
+}
+// Detecta transferências entre as próprias contas de Fabio por PAREAMENTO real
+// (mesmo valor, contas diferentes, até 2 dias de diferença) — muito mais confiável
+// do que adivinhar pelo nome do favorecido, que pode coincidir com um cliente real.
+function identificarTransferenciasInternas(lancamentos){
+  const contaIds = new Set((DB.contas||[]).map(c=>c.id));
+  const saidas = lancamentos.filter(l=>l.tipo==='saida' && contaIds.has(l.contaId));
+  const entradas = lancamentos.filter(l=>l.tipo==='entrada' && contaIds.has(l.contaId));
+  const usadas = new Set();
+  const idsPareados = new Set();
+  saidas.forEach(s=>{
+    const cand = entradas.find(e=>
+      !usadas.has(e.id) && e.contaId!==s.contaId &&
+      Math.abs(e.valor-s.valor)<0.02 &&
+      Math.abs(diasEntreDatas(s.data,e.data))<=2
+    );
+    if(cand){ usadas.add(cand.id); idsPareados.add(s.id); idsPareados.add(cand.id); }
+  });
+  // Sinal auxiliar: bate o nome com "fabio oliveira" mas não achou o par correspondente —
+  // fica sinalizado à parte para revisão manual, não é contado automaticamente como transferência.
+  const suspeitasSemPar = lancamentos.filter(l=>!idsPareados.has(l.id) && contaIds.has(l.contaId) && /fabio\s+oliveira/i.test(l.contraparte||''));
+  return { idsPareados, suspeitasSemPar };
+}
 // ── Filtro global PF/PJ (definido no Dashboard, afeta as demais abas) ──
 function contasFiltradasPFPJ(){
   return (DB.contas||[]).filter(c=>c.ativa!==false && (_filtroDashPFPJ==='todos'||c.tipo===_filtroDashPFPJ));
@@ -4079,17 +4104,21 @@ function htmlRelatorios(){
     return `<tr><td>${fmtD(l.data)}</td><td>${esc(cta?cta.titular:'-')}</td><td>${esc(l.contraparte||l.descricao||'-')}</td><td style="text-align:right;font-weight:700;color:${cor}">R$ ${fmt(l.valor)}</td></tr>`;
   }).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--mut)">Sem lançamentos</td></tr>`;
 
-  // Transferências Entre Contas Próprias vs Fluxo de Caixa Real
-  const ehTransfProp = l => /fabio\s+oliveira/i.test(l.contraparte||'');
+  // Transferências Entre Contas Próprias (por pareamento real) vs Fluxo de Caixa Real
+  const { idsPareados: idsTransfInternas, suspeitasSemPar } = identificarTransferenciasInternas(DB.lancamentos||[]);
   let transfEntrada=0, transfSaida=0, realEntrada=0, realSaida=0;
   (DB.lancamentos||[]).forEach(l=>{
-    if(ehTransfProp(l)){
+    if(idsTransfInternas.has(l.id)){
       if(l.tipo==='entrada') transfEntrada+=l.valor; else transfSaida+=l.valor;
     } else {
       if(l.tipo==='entrada') realEntrada+=l.valor; else realSaida+=l.valor;
     }
   });
   const fluxoRealLiquido = realEntrada - realSaida;
+  const linhasSuspeitas = suspeitasSemPar.slice().sort((a,b)=>b.valor-a.valor).map(l=>{
+    const cta = contaById(l.contaId);
+    return `<tr><td>${fmtD(l.data)}</td><td>${esc(cta?cta.titular:'-')}</td><td>${esc(l.contraparte||'-')}</td><td style="text-align:right">R$ ${fmt(l.valor)}</td><td>${l.tipo==='entrada'?'Entrada':'Saída'}</td></tr>`;
+  }).join('');
 
   // Indicador de Liquidez / Meses de Reserva (baseado no fluxo real, exclui transferencias entre contas proprias)
   const nMesesComDados = mesesOrdenados.length||1;
@@ -4240,14 +4269,20 @@ function htmlRelatorios(){
         ${graficoPareto}
       </div>
       <div class="card">
-        <div style="font-weight:700;margin-bottom:10px">🔀 Transferências Entre Contas Próprias vs Fluxo de Caixa Real</div>
+        <div style="font-weight:700;margin-bottom:10px">🔀 Transferências Entre Contas Próprias (por pareamento) vs Fluxo de Caixa Real</div>
         <table><tbody>
           <tr><td>Receitas reais (excluindo transferências próprias)</td><td style="text-align:right;color:#3fb950">R$ ${fmt(realEntrada)}</td></tr>
           <tr><td>Despesas reais (excluindo transferências próprias)</td><td style="text-align:right;color:#f85149">R$ ${fmt(realSaida)}</td></tr>
-          <tr><td>Movimentado só entre contas próprias (entrada/saída)</td><td style="text-align:right;color:var(--mut)">R$ ${fmt(transfEntrada)} / R$ ${fmt(transfSaida)}</td></tr>
+          <tr><td>Movimentado só entre contas próprias (entrada/saída, pareado por valor+data)</td><td style="text-align:right;color:var(--mut)">R$ ${fmt(transfEntrada)} / R$ ${fmt(transfSaida)}</td></tr>
           <tr class="trow"><td>Fluxo de Caixa Real Líquido</td><td style="text-align:right;font-size:16px;color:${fluxoRealLiquido<0?'var(--red)':'var(--acc)'}">R$ ${fmt(fluxoRealLiquido)}</td></tr>
         </tbody></table>
-        <div style="color:var(--mut);font-size:11px;margin-top:8px">Transferências identificadas automaticamente pelo nome contendo "Fabio Oliveira" — revise se algum lançamento de terceiro homônimo entrou por engano.</div>
+        <div style="color:var(--mut);font-size:11px;margin-top:8px">Identificadas por pareamento real (mesma quantia, contas diferentes, até 2 dias de diferença) — não só pelo nome, então um cliente real chamado "Fabio Oliveira" não seria classificado como transferência interna por engano.</div>
+        ${suspeitasSemPar.length ? `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--bor)">
+          <div style="font-weight:700;margin-bottom:8px;color:#f0a500">⚠️ ${suspeitasSemPar.length} lançamento(s) com nome "Fabio Oliveira" sem par encontrado — revisar manualmente</div>
+          <table><thead><tr><th>Data</th><th>Conta</th><th>Contraparte</th><th style="text-align:right">Valor</th><th>Tipo</th></tr></thead><tbody>${linhasSuspeitas}</tbody></table>
+          <div style="color:var(--mut);font-size:11px;margin-top:8px">Estão contados como receita/despesa real acima (não como transferência), porque não foi possível confirmar a outra ponta — pode ser um extrato que ainda falta importar, ou pode ser mesmo um lançamento de terceiro.</div>
+        </div>` : ''}
       </div>`,
     fluxo_mensal: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📅 Fluxo de Caixa Mensal</div>
       <table><thead><tr><th>Mês</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Resultado do Mês</th><th style="text-align:right">Saldo Acumulado</th></tr></thead><tbody>${linhasMes}</tbody></table></div>`,
