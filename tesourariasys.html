@@ -303,8 +303,26 @@ async function ghSalvar(db){
   }
   setStatus('saving','⏳ Salvando...');
   try{
+    const shaAntesDoSave = _shaAtual;
     const rGet = await fetch(GH_API, { headers:{ 'Authorization':`token ${getToken()}`, 'Accept':'application/vnd.github.v3+json' } });
-    if(rGet.ok){ const jGet = await rGet.json(); _sha = jGet.sha; _shaAtual = jGet.sha; }
+    if(rGet.ok){
+      const jGet = await rGet.json();
+      _sha = jGet.sha; _shaAtual = jGet.sha;
+      // Alguém (ex: CartõesPF/PJ pagando fatura) pode ter gravado dados.json entre o
+      // carregamento local e este salvamento. Em vez de sobrescrever cegamente, mescla
+      // os lançamentos que só existem na versão remota, pra não perdê-los.
+      if(shaAntesDoSave && jGet.sha !== shaAntesDoSave && jGet.content){
+        try{
+          const remoto = JSON.parse(b64ParaTextoUtf8(jGet.content.replace(/\n/g,'')));
+          const idsLocais = new Set((db.lancamentos||[]).map(l=>l.id));
+          const novosDoRemoto = (remoto.lancamentos||[]).filter(l=>!idsLocais.has(l.id));
+          if(novosDoRemoto.length){
+            db = { ...db, lancamentos: [...(db.lancamentos||[]), ...novosDoRemoto] };
+            setStatus('warn', `🔄 ${novosDoRemoto.length} lançamento(s) de outro sistema mesclado(s) antes de salvar`);
+          }
+        }catch(eMerge){ /* se a mesclagem falhar, segue salvando o que já tínhamos, melhor que travar */ }
+      }
+    }
     const conteudo = btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2))));
     const body = { message:'TesourariaSys update', content: conteudo, sha: _sha };
     const r = await fetch(GH_API, {
@@ -317,6 +335,7 @@ async function ghSalvar(db){
       _sha = res.content.sha; _shaAtual = res.content.sha;
       setUltimoSha(res.content.sha);
       limparFilaPendente();
+      DB = db;
       setStatus('ok','✅ Salvo na nuvem');
     } else {
       setFilaPendente(db);
@@ -955,7 +974,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.18';
+const VERSAO = 'v1.19';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
