@@ -539,7 +539,7 @@ async function entrarComBioTsr(){
       timeout:60000
     }});
     USUARIO_ATUAL = {id:u.id,nome:u.nome,perfil:u.perfil};
-    sessionStorage.setItem('tsr_usu',JSON.stringify(USUARIO_ATUAL));
+    localStorage.setItem('tsr_usu',JSON.stringify(USUARIO_ATUAL));
     document.getElementById('tela-usuario').style.display='none';
     atualizarNavUsuario();
     iniciarApp();
@@ -649,7 +649,7 @@ async function loginUsuario(){
     return;
   }
   USUARIO_ATUAL = {id:u.id, nome:u.nome, perfil:u.perfil};
-  sessionStorage.setItem('tsr_usu', JSON.stringify(USUARIO_ATUAL));
+  localStorage.setItem('tsr_usu', JSON.stringify(USUARIO_ATUAL));
   document.getElementById('tela-usuario').style.display = 'none';
   atualizarNavUsuario();
   iniciarApp();
@@ -658,7 +658,7 @@ async function loginUsuario(){
 
 function sairUsuario(){
   USUARIO_ATUAL = null;
-  sessionStorage.removeItem('tsr_usu');
+  localStorage.removeItem('tsr_usu');
   document.getElementById('nav-usu-badge').style.display = 'none';
   document.getElementById('navbar').style.display = 'none';
   document.getElementById('main').style.display = 'none';
@@ -812,14 +812,14 @@ async function entrar(){
   }
   DB = dados;
   await seedInicial();
-  const _sessao = sessionStorage.getItem('tsr_usu');
+  const _sessao = localStorage.getItem('tsr_usu');
   if(_sessao){
     try{
       const s = JSON.parse(_sessao);
       const uAtivo = (DB.usuarios||[]).find(u=>u.id===s.id&&u.ativo!==false);
       if(uAtivo){ USUARIO_ATUAL=s; atualizarNavUsuario(); iniciarApp(); return; }
     }catch(e){}
-    sessionStorage.removeItem('tsr_usu');
+    localStorage.removeItem('tsr_usu');
   }
   document.getElementById('tela-loading').style.display='none';
   mostrarTelaUsuario();
@@ -861,7 +861,7 @@ function iniciarApp(){
         if(dados){
           DB = dados;
           await seedInicial();
-          const _sessaoOff = sessionStorage.getItem('tsr_usu');
+          const _sessaoOff = localStorage.getItem('tsr_usu');
           if(_sessaoOff){
             try{
               const s = JSON.parse(_sessaoOff);
@@ -894,14 +894,14 @@ function iniciarApp(){
   }
   DB = dados;
   await seedInicial();
-  const _sessaoInit = sessionStorage.getItem('tsr_usu');
+  const _sessaoInit = localStorage.getItem('tsr_usu');
   if(_sessaoInit){
     try{
       const s = JSON.parse(_sessaoInit);
       const uAtivo = (DB.usuarios||[]).find(u=>u.id===s.id&&u.ativo!==false);
       if(uAtivo){ USUARIO_ATUAL=s; atualizarNavUsuario(); iniciarApp(); return; }
     }catch(e){}
-    sessionStorage.removeItem('tsr_usu');
+    localStorage.removeItem('tsr_usu');
   }
   document.getElementById('tela-loading').style.display='none';
   mostrarTelaUsuario();
@@ -939,7 +939,7 @@ function initNav(){
 function desconectar(){
   if(!confirm('Trocar token de acesso?')) return;
   USUARIO_ATUAL = null;
-  sessionStorage.removeItem('tsr_usu');
+  localStorage.removeItem('tsr_usu');
   localStorage.removeItem('tsr_gh_token');
   document.getElementById('navbar').style.display='none';
   document.getElementById('main').style.display='none';
@@ -4536,7 +4536,7 @@ function salvarEdicaoUsuario(id){
   if(!nome){ ME('e-usu-ed','Informe o nome.'); return; }
   const novoUsuarios = (DB.usuarios||[]).map(u=>u.id===id?{...u,nome,login,perfil}:u);
   salvar({...DB, usuarios:novoUsuarios});
-  if(USUARIO_ATUAL?.id===id){ USUARIO_ATUAL={...USUARIO_ATUAL,nome,perfil}; sessionStorage.setItem('tsr_usu',JSON.stringify(USUARIO_ATUAL)); atualizarNavUsuario(); }
+  if(USUARIO_ATUAL?.id===id){ USUARIO_ATUAL={...USUARIO_ATUAL,nome,perfil}; localStorage.setItem('tsr_usu',JSON.stringify(USUARIO_ATUAL)); atualizarNavUsuario(); }
   FM();
 }
 function alterarSenhaUsuario(id){
