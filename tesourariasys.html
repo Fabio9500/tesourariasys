@@ -1089,7 +1089,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.31';
+const VERSAO = 'v1.32';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -4546,7 +4546,8 @@ function limparFiltroRelReceber(){ RelReceberF = {de:'',ate:'',centroCustoId:'',
 let RLT = { cat: null, tipo: null };
 // ── Impressão de relatórios: gera uma janela separada, com layout claro/legível
 // (fundo branco, tabela com bordas), em vez de imprimir a tela escura do app. ──
-function imprimirRelatorio(titulo, subtitulo, corpoHtml){
+function imprimirRelatorio(titulo, subtitulo, corpoHtml, orientacao){
+  orientacao = orientacao || 'landscape';
   const win = window.open('', 'tsr_impressao');
   if(!win){ alert('Seu navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente de novo.'); return; }
   const agora = new Date().toLocaleString('pt-BR');
@@ -4564,7 +4565,7 @@ function imprimirRelatorio(titulo, subtitulo, corpoHtml){
       .kpi-print div{border:1px solid #ccc;border-radius:6px;padding:8px 14px}
       .kpi-print b{display:block;font-size:14px}
       .footer{margin-top:24px;font-size:9px;color:#999;border-top:1px solid #ddd;padding-top:8px}
-      @media print{ @page{size:landscape;margin:10mm} a{color:inherit;text-decoration:none} }
+      @media print{ @page{size:${orientacao};margin:10mm} a{color:inherit;text-decoration:none} }
     </style>
   </head><body>
     <h1>${esc(titulo)}</h1>
@@ -4595,6 +4596,41 @@ function imprimirReceberPeriodo(){
   imprimirRelatorio('Contas a Receber — Recebimentos por Período', partes.join(' · ')||'Todos os recebimentos', kpis+`<table><thead><tr><th>Data Recebimento</th><th>Cliente</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Recebido</th></tr></thead><tbody>${_impReceberLinhas}</tbody></table>`);
 }
 let _impExtratoEnt = 0, _impExtratoSai = 0, _impExtratoCabecalho = '', _impExtratoLinhas = '';
+let _impExtratoRows = [], _impExtratoMostraConta = false;
+let PrefsImpressaoExtrato = { conta:true, fornecedor:true, descricao:true, categoria:true, direcionamento:true, orientacao:'landscape' };
+function abrirOpcoesImpressaoExtrato(){
+  const p = PrefsImpressaoExtrato;
+  const chk = (chave,rotulo) => `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px"><input type="checkbox" id="opimp-${chave}" ${p[chave]?'checked':''}> ${rotulo}</label>`;
+  AM('🖨 Opções de Impressão', `
+    <div style="font-size:12px;color:var(--mut);margin-bottom:10px">Marque as colunas que quer no relatório. Se não marcar nenhuma, sai completo.</div>
+    ${_impExtratoMostraConta?chk('conta','Conta'):''}
+    ${chk('fornecedor','Fornecedor/Cliente')}
+    ${chk('descricao','Descrição')}
+    ${chk('categoria','Categoria')}
+    ${chk('direcionamento','Direcionamento')}
+    <div style="margin-top:14px">
+      <label style="font-size:13px;font-weight:700;display:block;margin-bottom:6px">Orientação da página</label>
+      <div style="display:flex;gap:14px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="radio" name="opimp-orient" value="landscape" ${p.orientacao==='landscape'?'checked':''}> Paisagem</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px"><input type="radio" name="opimp-orient" value="portrait" ${p.orientacao==='portrait'?'checked':''}> Retrato</label>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      ${B('🖨 Imprimir','confirmarImpressaoExtrato()','var(--acc)','#000')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function confirmarImpressaoExtrato(){
+  ['conta','fornecedor','descricao','categoria','direcionamento'].forEach(chave=>{
+    const el = document.getElementById('opimp-'+chave);
+    if(el) PrefsImpressaoExtrato[chave] = el.checked;
+  });
+  const orientEl = document.querySelector('input[name="opimp-orient"]:checked');
+  if(orientEl) PrefsImpressaoExtrato.orientacao = orientEl.value;
+  FM();
+  imprimirExtrato();
+}
 function imprimirExtrato(){
   const contaExt = RelExtrato.contaId ? contaById(RelExtrato.contaId) : null;
   const partes = [];
@@ -4609,7 +4645,32 @@ function imprimirExtrato(){
     <div>Saídas<b style="color:#b3261e">R$ ${fmt(_impExtratoSai)}</b></div>
     <div>Resultado<b>R$ ${fmt(_impExtratoEnt-_impExtratoSai)}</b></div>
   </div>`;
-  imprimirRelatorio('Extrato de Conta', subtitulo, kpis+`<table><thead>${_impExtratoCabecalho}</thead><tbody>${_impExtratoLinhas}</tbody></table>`);
+  // Se nenhuma coluna opcional estiver marcada, sai completo (todas)
+  const p = PrefsImpressaoExtrato;
+  const nenhumaMarcada = !p.conta && !p.fornecedor && !p.descricao && !p.categoria && !p.direcionamento;
+  const mostraConta = _impExtratoMostraConta && (nenhumaMarcada || p.conta);
+  const mostraForn = nenhumaMarcada || p.fornecedor;
+  const mostraDesc = nenhumaMarcada || p.descricao;
+  const mostraCat = nenhumaMarcada || p.categoria;
+  const mostraDirec = nenhumaMarcada || p.direcionamento;
+  const cab = `<tr><th>Data</th>${mostraConta?'<th>Conta</th>':''}${mostraForn?'<th>Fornecedor/Cliente</th>':''}${mostraDesc?'<th>Descrição</th>':''}${mostraCat?'<th>Categoria</th>':''}${mostraDirec?'<th>Direcionamento</th>':''}<th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
+  const nColsImp = 3 + mostraConta + mostraForn + mostraDesc + mostraCat + mostraDirec;
+  const linhas = _impExtratoRows.map(r=>{
+    if(r.tipo==='saldo'){
+      return `<tr class="trow"><td colspan="${nColsImp-1}">${esc(r.label)}</td><td style="text-align:right">R$ ${fmt(r.valor)}</td></tr>`;
+    }
+    return `<tr>
+      <td>${fmtD(r.data)}</td>
+      ${mostraConta?`<td>${esc(r.conta)}</td>`:''}
+      ${mostraForn?`<td>${esc(r.contraparte)}</td>`:''}
+      ${mostraDesc?`<td>${esc(r.descricao)}</td>`:''}
+      ${mostraCat?`<td>${esc(r.categoria)}</td>`:''}
+      ${mostraDirec?`<td>${esc(r.direcionamento)}</td>`:''}
+      <td style="text-align:right">${r.valorEntrada?'R$ '+fmt(r.valorEntrada):''}</td>
+      <td style="text-align:right">${r.valorSaida?'R$ '+fmt(r.valorSaida):''}</td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="${nColsImp}" style="text-align:center">Nenhum lançamento com esses filtros</td></tr>`;
+  imprimirRelatorio('Extrato de Conta', subtitulo, kpis+`<table><thead>${cab}</thead><tbody>${linhas}</tbody></table>`, PrefsImpressaoExtrato.orientacao);
 }
 function irRelCategoria(cat, tipo){
   RLT.cat=cat; RLT.tipo=tipo; renderAba();
@@ -4888,8 +4949,23 @@ function htmlRelatorios(){
       ? `<tr class="trow" style="border-top:2px solid var(--acc)"><td colspan="${nCols-1}" style="font-weight:800">Saldo Atual</td><td style="text-align:right;font-weight:900;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
       : '') || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
   const cabecalhoExtrato = `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
+  // Dados brutos (não HTML) para a impressão poder escolher colunas dinamicamente
+  const impRows = [];
+  if(saldoAnteriorExtrato!==null) impRows.push({tipo:'saldo', label:'Saldo Anterior'+(RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''), valor:saldoAnteriorExtrato});
+  let _saldoImp = saldoAnteriorExtrato;
+  ordemDias.forEach(dia=>{
+    gruposPorDia[dia].forEach(l=>{
+      const cta = contaById(l.contaId);
+      const cat = categoriaById(l.categoriaId);
+      if(_saldoImp!==null) _saldoImp += (l.tipo==='entrada'?l.valor:-l.valor);
+      impRows.push({tipo:'lancamento', data:l.data, conta:cta?cta.titular:'-', contraparte:l.contraparte||'-', descricao:l.descricao||'-', categoria:cat?cat.nome:'-', direcionamento:l.direcionamento||'-', valorEntrada:l.tipo==='entrada'?l.valor:null, valorSaida:l.tipo==='saida'?l.valor:null});
+    });
+    if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo do dia — '+fmtD(dia), valor:_saldoImp});
+  });
+  if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo Atual', valor:_saldoImp});
   _impExtratoEnt = extratoTotEnt; _impExtratoSai = extratoTotSai;
   _impExtratoCabecalho = cabecalhoExtrato; _impExtratoLinhas = linhasExtrato;
+  _impExtratoRows = impRows; _impExtratoMostraConta = !RelExtrato.contaId;
   const filtroExtratoHtml = `
     <div class="row" style="margin-bottom:10px">
       ${C('Conta',`<select id="re-conta" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesContasFiltradas(RelExtrato.contaId)}</select>`,'1','200')}
@@ -4899,7 +4975,7 @@ function htmlRelatorios(){
       ${C('Categoria',`<select id="re-categoria" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesCategorias('',RelExtrato.categoriaId)}</select>`,'1','180')}
       ${C('Direcionamento',`<select id="re-direc" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${direcionamentosExistentes().map(d=>`<option value="${esc(d)}"${d===RelExtrato.direcionamento?' selected':''}>${esc(d)}</option>`).join('')}</select>`,'1','180')}
     </div>
-    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirExtrato()','var(--sur)','var(--txt)')}</div>
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','abrirOpcoesImpressaoExtrato()','var(--sur)','var(--txt)')}</div>
     ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}
     ${extratoEhRecorteItem ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">🔎 Filtrando por um item específico (fornecedor/categoria/direcionamento) — o saldo do dia fica oculto porque essa visão mostra só uma parte da conta, não o extrato completo.</div>' : ''}
     <div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Toque em um Fornecedor, Categoria ou Direcionamento na tabela abaixo para ver só os lançamentos daquele item, mantendo o período filtrado.</div>`;
