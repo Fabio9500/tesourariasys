@@ -17,7 +17,7 @@
       "banco": "Bradesco",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 0.09,
+      "saldoInicial": 1,
       "dataSaldoInicial": "2025-12-31",
       "ativa": true,
       "obs": ""
