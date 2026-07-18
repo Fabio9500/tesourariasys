@@ -1089,7 +1089,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.30';
+const VERSAO = 'v1.31';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2518,6 +2518,11 @@ function contrapartesPorTipoConta(tipo){
 function direcionamentosExistentes(){
   const vistos = new Set();
   (DB.lancamentos||[]).forEach(l=>{ if(l.direcionamento) vistos.add(l.direcionamento); });
+  return [...vistos].sort();
+}
+function contrapartesExistentes(){
+  const vistos = new Set();
+  (DB.lancamentos||[]).forEach(l=>{ if(l.contraparte) vistos.add(l.contraparte); });
   return [...vistos].sort();
 }
 function categoriasPorTipoConta(tipoReceitaDespesa, tipoConta){
@@ -4548,18 +4553,18 @@ function imprimirRelatorio(titulo, subtitulo, corpoHtml){
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(titulo)}</title>
     <style>
       *{box-sizing:border-box}
-      body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;padding:22px;font-size:12px;margin:0}
-      h1{font-size:19px;margin:0 0 2px;color:#0b3d24}
-      .sub{color:#555;font-size:11px;margin-bottom:16px}
-      table{width:100%;border-collapse:collapse;margin-bottom:14px}
-      th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;font-size:11px;vertical-align:top}
+      body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;padding:16px;font-size:11px;margin:0}
+      h1{font-size:17px;margin:0 0 2px;color:#0b3d24}
+      .sub{color:#555;font-size:10px;margin-bottom:12px}
+      table{width:100%;border-collapse:collapse;margin-bottom:14px;table-layout:auto}
+      th,td{border:1px solid #ccc;padding:3px 6px;text-align:left;font-size:9.5px;vertical-align:middle;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
       th{background:#eef1f0;font-weight:700}
-      tr.trow td{background:#eaf3ff;font-weight:700}
+      tr.trow td{background:#eaf3ff;font-weight:700;white-space:normal}
       .kpi-print{display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap}
       .kpi-print div{border:1px solid #ccc;border-radius:6px;padding:8px 14px}
       .kpi-print b{display:block;font-size:14px}
       .footer{margin-top:24px;font-size:9px;color:#999;border-top:1px solid #ddd;padding-top:8px}
-      @media print{ @page{margin:14mm} a{color:inherit;text-decoration:none} }
+      @media print{ @page{size:landscape;margin:10mm} a{color:inherit;text-decoration:none} }
     </style>
   </head><body>
     <h1>${esc(titulo)}</h1>
@@ -4831,7 +4836,7 @@ function htmlRelatorios(){
   if(RelExtrato.contaId) extratoLista = extratoLista.filter(l=>l.contaId===RelExtrato.contaId);
   if(RelExtrato.de) extratoLista = extratoLista.filter(l=>l.data>=RelExtrato.de);
   if(RelExtrato.ate) extratoLista = extratoLista.filter(l=>l.data<=RelExtrato.ate);
-  if(RelExtrato.fornecedor) extratoLista = extratoLista.filter(l=>(l.contraparte||'').toLowerCase().includes(RelExtrato.fornecedor.toLowerCase()));
+  if(RelExtrato.fornecedor) extratoLista = extratoLista.filter(l=>(l.contraparte||'')===RelExtrato.fornecedor);
   if(RelExtrato.categoriaId) extratoLista = extratoLista.filter(l=>l.categoriaId===RelExtrato.categoriaId);
   if(RelExtrato.direcionamento) extratoLista = extratoLista.filter(l=>(l.direcionamento||'')===RelExtrato.direcionamento);
   extratoLista = extratoLista.slice().sort((a,b)=>a.data.localeCompare(b.data)||a.criadoEm.localeCompare(b.criadoEm));
@@ -4849,13 +4854,17 @@ function htmlRelatorios(){
     saldoAcumuladoExtrato = (contaExt?Number(contaExt.saldoInicial||0):0) + anteriores.reduce((s,l)=>s+(l.tipo==='entrada'?l.valor:-l.valor),0);
   }
   const nCols = 6 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
+  const saldoAnteriorExtrato = saldoAcumuladoExtrato;
+  const linhaAnterior = saldoAcumuladoExtrato!==null
+    ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo Anterior${RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''}</td><td style="text-align:right;font-weight:800;color:${saldoAnteriorExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAnteriorExtrato)}</td></tr>`
+    : '';
   const gruposPorDia = {};
   const ordemDias = [];
   extratoLista.forEach(l=>{
     if(!gruposPorDia[l.data]){ gruposPorDia[l.data]=[]; ordemDias.push(l.data); }
     gruposPorDia[l.data].push(l);
   });
-  const linhasExtrato = ordemDias.map(dia=>{
+  const linhasExtrato = linhaAnterior + ordemDias.map(dia=>{
     const linhasDia = gruposPorDia[dia].map(l=>{
       const cta = contaById(l.contaId);
       const cat = categoriaById(l.categoriaId);
@@ -4875,7 +4884,9 @@ function htmlRelatorios(){
       ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo do dia — ${fmtD(dia)}</td><td style="text-align:right;font-weight:800;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
       : '';
     return linhasDia + linhaSaldoDia;
-  }).join('') || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
+  }).join('') + (saldoAcumuladoExtrato!==null
+      ? `<tr class="trow" style="border-top:2px solid var(--acc)"><td colspan="${nCols-1}" style="font-weight:800">Saldo Atual</td><td style="text-align:right;font-weight:900;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
+      : '') || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
   const cabecalhoExtrato = `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
   _impExtratoEnt = extratoTotEnt; _impExtratoSai = extratoTotSai;
   _impExtratoCabecalho = cabecalhoExtrato; _impExtratoLinhas = linhasExtrato;
@@ -4884,9 +4895,9 @@ function htmlRelatorios(){
       ${C('Conta',`<select id="re-conta" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesContasFiltradas(RelExtrato.contaId)}</select>`,'1','200')}
       ${C('De',`<input type="date" id="re-de" value="${RelExtrato.de}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
       ${C('Até',`<input type="date" id="re-ate" value="${RelExtrato.ate}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
-      ${C('Fornecedor/Cliente',`<input type="text" id="re-forn" value="${esc(RelExtrato.fornecedor)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelExtrato()">`,'1','200')}
+      ${C('Fornecedor/Cliente',`<select id="re-forn" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${contrapartesExistentes().map(n=>`<option value="${esc(n)}"${n===RelExtrato.fornecedor?' selected':''}>${esc(n)}</option>`).join('')}</select>`,'1','200')}
       ${C('Categoria',`<select id="re-categoria" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesCategorias('',RelExtrato.categoriaId)}</select>`,'1','180')}
-      ${C('Direcionamento',`<input type="text" id="re-direc" list="dl-direcionamentos-rel" value="${esc(RelExtrato.direcionamento)}" placeholder="Buscar..." onchange="aplicarFiltroRelExtrato()"><datalist id="dl-direcionamentos-rel">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`,'1','180')}
+      ${C('Direcionamento',`<select id="re-direc" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${direcionamentosExistentes().map(d=>`<option value="${esc(d)}"${d===RelExtrato.direcionamento?' selected':''}>${esc(d)}</option>`).join('')}</select>`,'1','180')}
     </div>
     <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirExtrato()','var(--sur)','var(--txt)')}</div>
     ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}
