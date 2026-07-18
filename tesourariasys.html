@@ -1089,7 +1089,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.29';
+const VERSAO = 'v1.30';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2294,6 +2294,164 @@ function salvar(novo){ DB=novo; ghSalvar(DB); renderAba(); }
 
 function opcoesContas(selId){
   return (DB.contas||[]).filter(c=>c.ativa!==false).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
+}
+// ══════════════════════════════════════════
+// 📥 IMPORTAR EXTRATO (OFX) — lê o arquivo baixado do internet banking e já
+// lança tudo, tentando reconhecer cada lançamento pelo HISTÓRICO de uso
+// (mesma contraparte já apareceu antes → reaproveita categoria/direcionamento/
+// centro de custo/nome limpo que você já usou), em vez de deixar a descrição
+// crua do banco, que muitas vezes não diz nada.
+// ══════════════════════════════════════════
+function parseOFX(texto){
+  const inicio = texto.search(/<OFX>|<STMTTRN>/i);
+  const corpo = inicio>=0 ? texto.slice(inicio) : texto;
+  const blocos = corpo.match(/<STMTTRN>[\s\S]*?<\/STMTTRN>/gi) || [];
+  function tag(bloco, nome){
+    const m = bloco.match(new RegExp('<'+nome+'>([^<\r\n]*)','i'));
+    return m ? m[1].trim() : '';
+  }
+  return blocos.map(bloco=>{
+    const dt = tag(bloco,'DTPOSTED').replace(/[^0-9]/g,'');
+    const data = dt.length>=8 ? `${dt.slice(0,4)}-${dt.slice(4,6)}-${dt.slice(6,8)}` : '';
+    const valorRaw = tag(bloco,'TRNAMT').replace(',','.');
+    const valor = parseFloat(valorRaw)||0;
+    const memo = tag(bloco,'MEMO') || tag(bloco,'NAME') || '';
+    return {
+      data, valor: Math.abs(valor), tipo: valor>=0?'entrada':'saida',
+      fitid: tag(bloco,'FITID'), memoOriginal: memo,
+    };
+  }).filter(t=>t.data && t.valor>0);
+}
+function normalizarTextoOFX(s){
+  return (s||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // remove acentos
+    .toUpperCase()
+    .replace(/\b(PIX|RECEBIDO|RECEBIMENTO|ENVIADO|PAGAMENTO|TRANSFERENCIA|TED|DOC|DES|REM|COMPRA|DEBITO|CREDITO|CARTAO|AUTOMATICO|DE|DA|DO|LTDA|ME|EIRELI|S\/A|SA)\b/g,'')
+    .replace(/\b\d{6,}\b/g,'') // CPF/CNPJ/numeros de transacao
+    .replace(/[^A-Z0-9 ]/g,'')
+    .replace(/\s+/g,' ').trim();
+}
+function construirDicionarioAprendizado(contaId){
+  const dic = {};
+  (DB.lancamentos||[]).filter(l=>l.contraparte && (!contaId || l.contaId===contaId)).forEach(l=>{
+    const chave = normalizarTextoOFX(l.contraparte);
+    if(!chave) return;
+    if(!dic[chave] || l.criadoEm > dic[chave].ultimaData){
+      dic[chave] = {
+        contraparte: l.contraparte, categoriaId: l.categoriaId||'', direcionamento: l.direcionamento||'',
+        centroCustoId: l.centroCustoId||'', ultimaData: l.criadoEm||l.data,
+      };
+    }
+  });
+  return dic;
+}
+function casarComHistorico(memoOriginal, dicionario){
+  const chaveOfx = normalizarTextoOFX(memoOriginal);
+  if(!chaveOfx) return null;
+  if(dicionario[chaveOfx]) return dicionario[chaveOfx];
+  // sem igual exato: tenta achar uma chave conhecida contida no texto do OFX (ou vice-versa)
+  let melhor = null, melhorTam = 0;
+  Object.keys(dicionario).forEach(chave=>{
+    if(chave.length<4) return;
+    if(chaveOfx.includes(chave) || chave.includes(chaveOfx)){
+      if(chave.length>melhorTam){ melhorTam = chave.length; melhor = dicionario[chave]; }
+    }
+  });
+  return melhor;
+}
+let _ofxPendente = [];
+let _ofxContaId = '';
+function abrirImportarOFX(contaIdPre){
+  AM('📥 Importar Extrato (OFX)', `
+    ${EH('e-ofx')}
+    <div style="font-size:12px;color:var(--mut);margin-bottom:12px;line-height:1.5">
+      Baixe o arquivo <strong>.ofx</strong> no site/app do banco (geralmente em "Extrato" → "Exportar" ou "Outros formatos") e escolha ele aqui. O sistema tenta reconhecer cada lançamento pelo que você já categorizou antes.
+    </div>
+    <div class="campo">
+      <label>Conta *</label>
+      <select id="ofx-conta">${opcoesContasFiltradas(contaIdPre)}</select>
+    </div>
+    <div class="campo">
+      <label>Arquivo (.ofx)</label>
+      <input type="file" id="ofx-arquivo" accept=".ofx,.qfx,text/plain" style="padding:8px">
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      ${B('📂 Ler e Conferir','processarArquivoOFX()','var(--acc)','#000')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function processarArquivoOFX(){
+  const contaId = document.getElementById('ofx-conta').value;
+  const input = document.getElementById('ofx-arquivo');
+  const arquivo = input?.files?.[0];
+  if(!contaId){ ME('e-ofx','Selecione a conta.'); return; }
+  if(!arquivo){ ME('e-ofx','Escolha um arquivo .ofx primeiro.'); return; }
+  const leitor = new FileReader();
+  leitor.onload = (e) => {
+    let transacoes;
+    try{ transacoes = parseOFX(e.target.result); }
+    catch(err){ ME('e-ofx','Não consegui ler este arquivo. Confira se é um .ofx válido exportado do banco.'); return; }
+    if(!transacoes.length){ ME('e-ofx','Nenhum lançamento encontrado neste arquivo.'); return; }
+    const idsExistentes = new Set((DB.lancamentos||[]).filter(l=>l.contaId===contaId && l.fitid).map(l=>l.fitid));
+    const dicionario = construirDicionarioAprendizado(contaId);
+    _ofxContaId = contaId;
+    _ofxPendente = transacoes.map(t=>{
+      const jaExiste = t.fitid && idsExistentes.has(t.fitid);
+      const match = casarComHistorico(t.memoOriginal, dicionario);
+      return {
+        ...t, incluir: !jaExiste, jaExiste,
+        contraparte: match?match.contraparte:t.memoOriginal,
+        categoriaId: match?match.categoriaId:'', direcionamento: match?match.direcionamento:'',
+        centroCustoId: match?match.centroCustoId:'', reconhecido: !!match,
+      };
+    });
+    mostrarRevisaoOFX();
+  };
+  leitor.onerror = () => ME('e-ofx','Não foi possível ler o arquivo. Tente novamente.');
+  leitor.readAsText(arquivo, 'UTF-8');
+}
+function mostrarRevisaoOFX(){
+  const conta = contaById(_ofxContaId);
+  const reconhecidos = _ofxPendente.filter(t=>t.reconhecido).length;
+  const duplicados = _ofxPendente.filter(t=>t.jaExiste).length;
+  const linhas = _ofxPendente.map((t,i)=>`<tr style="${t.jaExiste?'opacity:.5':''}">
+    <td><input type="checkbox" ${t.incluir?'checked':''} onchange="_ofxPendente[${i}].incluir=this.checked">${t.jaExiste?' <span style=\"font-size:10px;color:var(--mut)\">(já importado)</span>':''}</td>
+    <td>${fmtD(t.data)}</td>
+    <td><input type="text" value="${esc(t.contraparte)}" style="width:100%;font-size:11px" onchange="_ofxPendente[${i}].contraparte=this.value">${t.reconhecido?' <span title="Reconhecido pelo histórico">✓</span>':''}</td>
+    <td><select style="font-size:11px" onchange="_ofxPendente[${i}].categoriaId=this.value">${opcoesCategorias(t.tipo==='entrada'?'receita':'despesa',t.categoriaId)}</select></td>
+    <td><input type="text" value="${esc(t.direcionamento)}" style="width:100%;font-size:11px" list="dl-direcionamentos-ofx" onchange="_ofxPendente[${i}].direcionamento=this.value"></td>
+    <td style="text-align:right;color:${t.tipo==='entrada'?'#3fb950':'#f85149'};font-weight:700">${t.tipo==='entrada'?'+':'-'} R$ ${fmt(t.valor)}</td>
+  </tr>`).join('');
+  AM('🔍 Conferir Antes de Importar', `
+    <datalist id="dl-direcionamentos-ofx">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
+    <div style="font-size:12px;color:var(--mut);margin-bottom:10px">
+      Conta: <strong>${esc(conta?conta.titular:'-')}</strong> · ${_ofxPendente.length} lançamento(s) encontrado(s) ·
+      <span style="color:#3fb950">${reconhecidos} reconhecido(s) pelo histórico</span>
+      ${duplicados?` · <span style="color:#f0a500">${duplicados} já importado(s) antes (desmarcados)</span>`:''}
+    </div>
+    <div style="overflow-x:auto"><table><thead><tr><th></th><th>Data</th><th>Fornecedor/Cliente</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table></div>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      ${B('✅ Confirmar Importação','confirmarImportacaoOFX()','var(--grn)','#fff')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function confirmarImportacaoOFX(){
+  const selecionados = _ofxPendente.filter(t=>t.incluir);
+  if(!selecionados.length){ FM(); return; }
+  const novos = selecionados.map(t=>({
+    id: uid(), contaId: _ofxContaId, data: t.data, tipo: t.tipo, valor: t.valor,
+    categoriaId: t.categoriaId||'', centroCustoId: t.centroCustoId||'',
+    contraparte: t.contraparte, direcionamento: t.direcionamento||'',
+    descricao: t.memoOriginal, origem: 'ofx', fitid: t.fitid||null, contaPagarId: null,
+    criadoEm: new Date().toISOString(),
+  }));
+  salvar({...DB, lancamentos:[...(DB.lancamentos||[]), ...novos]});
+  _ofxPendente = []; _ofxContaId = '';
+  FM();
+  setStatus('ok', `✅ ${novos.length} lançamento(s) importado(s)`);
+  setTimeout(()=>{document.getElementById('status').style.display='none';},4000);
 }
 function opcoesContasFiltradas(selId){
   return contasFiltradasPFPJ().map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
@@ -3939,6 +4097,7 @@ function htmlDashboard(){
     </div>`}
     <div class="row" style="gap:10px">
       ${BPerm('lancamentos','➕ Novo Lançamento','novoLancamento()','var(--acc)')}
+      ${BPerm('lancamentos','📥 Importar Extrato (OFX)','abrirImportarOFX()','var(--blu)','#fff')}
       ${BPerm('lancamentos','➕ Nova Conta a Pagar','novaContaPagar()','var(--blu)','#fff')}
       ${BPerm('lancamentos','➕ Nova Conta a Receber','novaContaReceber()','#3fb950','#fff')}
       ${BPerm('lancamentos','✍️ Novo Cheque Emitido','novoChequeEmitido()','var(--pur)','#fff')}
@@ -4055,7 +4214,7 @@ function htmlLancamentos(){
         ${C('Categoria',`<select id="flc-categoria" onchange="aplicarFiltroLanc()"><option value="">Todas</option>${opcoesCategorias('',_filtroLancCategoria)}</select>`,'1','180')}
         ${C('Centro de Custo',`<select id="flc-cc" onchange="aplicarFiltroLanc()"><option value="">Todos</option>${opcoesCC(_filtroLancCC)}</select>`,'1','180')}
       </div>
-      <div class="row">${BPerm('lancamentos','➕ Novo Lançamento','novoLancamento(\''+_filtroLancConta+'\')','var(--acc)')}${BPerm('lancamentos','🏦 Nova Tarifa Bancária','novaTarifaBancaria(\''+_filtroLancConta+'\')','var(--sur)','var(--txt)')}${B('✕ Limpar Filtros','limparFiltroLanc()','var(--sur)','var(--txt)')}</div>
+      <div class="row">${BPerm('lancamentos','➕ Novo Lançamento','novoLancamento(\''+_filtroLancConta+'\')','var(--acc)')}${BPerm('lancamentos','📥 Importar Extrato (OFX)','abrirImportarOFX(\''+_filtroLancConta+'\')','var(--blu)','#fff')}${BPerm('lancamentos','🏦 Nova Tarifa Bancária','novaTarifaBancaria(\''+_filtroLancConta+'\')','var(--sur)','var(--txt)')}${B('✕ Limpar Filtros','limparFiltroLanc()','var(--sur)','var(--txt)')}</div>
     </div>
     <div class="kpis">
       <div class="card kpi"><div class="kpi-l">Entradas no filtro</div><div class="kpi-v" style="color:#3fb950">R$ ${fmt(totalEntradas)}</div></div>
