@@ -924,20 +924,6 @@
       "criadoEm": "2026-07-16T23:00:00.000Z"
     },
     {
-      "id": "mrs4h2rw2oa8w",
-      "contaId": "mrnty0gh9748t",
-      "data": "2026-05-18",
-      "tipo": "entrada",
-      "valor": 15180,
-      "categoriaId": "mrnty0ghwuaoz",
-      "centroCustoId": "",
-      "contraparte": "Deposito Mobile",
-      "descricao": "Deposito cheque Bradcel",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-16T23:00:00.000Z"
-    },
-    {
       "id": "mr6cj1mgbq5mz",
       "contaId": "mrnty0gh9748t",
       "data": "2026-05-18",
