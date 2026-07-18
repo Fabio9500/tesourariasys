@@ -760,6 +760,10 @@ function abrirModalBackup(){
       ${BPerm('excluir','📥  Importar Backup (substitui os dados atuais)','abrirImportarBackup()','#c0312b','#fff')}
       <div style="font-size:10px;color:var(--mut);margin-top:4px">Restrito ao usuário Master — é uma ação que substitui todos os dados do sistema.</div>
     </div>
+    <div style="border-top:1px solid var(--bor);margin:14px 0 10px;padding-top:12px">
+      ${B('🔍  Verificar Lançamentos Duplicados','FM();verificarLancamentosDuplicados()','var(--sur)','var(--txt)')}
+      ${B('🔔  Ver Alertas e Regras Ativas','FM();mostrarPainelAlertas(false)','var(--sur)','var(--txt)')}
+    </div>
     <div style="display:flex;margin-top:10px">${B('Cancelar','FM()','var(--sur)','var(--txt)')}</div>
   `);
 }
@@ -1085,7 +1089,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.28';
+const VERSAO = 'v1.29';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1516,6 +1520,7 @@ function detectarAlertasChequeSys(dados){
   try{ snapshot = JSON.parse(localStorage.getItem('tsr_snapshot_chequesys_status')||'{}'); }catch(e){}
   const novosAlertas = [];
   const emitentes = dados.emitentes||[], sacados = dados.sacados||[];
+  const cicloTotal = x => (x.historicoDepositos?.length||0)+(x.historicoDevolucoes?.length||0)+(x.historicoReapresentacoes?.length||0)+(x.historicoEnvios?.length||0);
   (dados.cheques||[]).forEach(c=>{
     const statusAnterior = snapshot['chq_'+c.id];
     if(c.status==='devolvido' && statusAnterior && statusAnterior!=='devolvido'){
@@ -1527,6 +1532,17 @@ function detectarAlertasChequeSys(dados){
       });
     }
     snapshot['chq_'+c.id] = c.status;
+    const cicloAnterior = snapshot['chq_ciclo_'+c.id]||0;
+    const cicloAtual = cicloTotal(c);
+    if(cicloAtual>=3 && cicloAnterior<3){
+      const em = emitentes.find(e=>e.id===c.emitenteId);
+      novosAlertas.push({
+        id: uid(), tipo:'chequesys_renovacao_recorrente', entidadeTipo:'cheque', entidadeId:c.id,
+        numero: c.numero, pessoa: em?em.nome:'(emitente não identificado)', valor: Number(c.bruto||0), ciclos: cicloAtual,
+        detectadoEm: new Date().toISOString(), status:'pendente', decisao:null,
+      });
+    }
+    snapshot['chq_ciclo_'+c.id] = cicloAtual;
   });
   (dados.boletos||[]).forEach(b=>{
     const statusAnterior = snapshot['bol_'+b.id];
@@ -1539,6 +1555,17 @@ function detectarAlertasChequeSys(dados){
       });
     }
     snapshot['bol_'+b.id] = b.status;
+    const cicloAnteriorB = snapshot['bol_ciclo_'+b.id]||0;
+    const cicloAtualB = cicloTotal(b);
+    if(cicloAtualB>=3 && cicloAnteriorB<3){
+      const sac = b.sacado || (sacados.find(s=>s.id===b.sacadoId)||{}).nome;
+      novosAlertas.push({
+        id: uid(), tipo:'chequesys_renovacao_recorrente', entidadeTipo:'boleto', entidadeId:b.id,
+        numero: b.numero||b.id, pessoa: sac||'(sacado não identificado)', valor: Number(b.bruto||0), ciclos: cicloAtualB,
+        detectadoEm: new Date().toISOString(), status:'pendente', decisao:null,
+      });
+    }
+    snapshot['bol_ciclo_'+b.id] = cicloAtualB;
   });
   try{ localStorage.setItem('tsr_snapshot_chequesys_status', JSON.stringify(snapshot)); }catch(e){}
   return novosAlertas;
@@ -1550,13 +1577,57 @@ async function processarNovosAlertas(novosAlertas){
   mostrarPainelAlertas(true);
 }
 function alertasPendentes(){ return (DB.alertas||[]).filter(a=>a.status==='pendente'); }
+// ── Regra 3: lançamentos duplicados (mesma conta+data+valor+tipo+contraparte) —
+// verificação manual, útil depois de importar extratos, pra pegar erro de
+// importação em dobro antes que vire um problema no saldo. ──
+function verificarLancamentosDuplicados(){
+  const grupos = {};
+  (DB.lancamentos||[]).forEach(l=>{
+    const chave = [l.contaId, l.data, l.valor, l.tipo, (l.contraparte||'').toLowerCase()].join('|');
+    if(!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(l);
+  });
+  const duplicados = Object.values(grupos).filter(g=>g.length>1);
+  if(!duplicados.length){
+    AM('🔍 Verificar Lançamentos Duplicados', `<div style="font-size:13px;color:var(--mut)">Nenhum lançamento duplicado encontrado (mesma conta, data, valor, tipo e fornecedor/cliente).</div><div style="margin-top:14px">${B('Fechar','FM()','var(--sur)','var(--txt)')}</div>`);
+    return;
+  }
+  const linhas = duplicados.map(g=>{
+    const cta = contaById(g[0].contaId);
+    return `<div class="card" style="margin-bottom:10px;border:1px solid #f0a500">
+      <div style="font-weight:700;margin-bottom:6px">${g.length}x igual — ${esc(cta?cta.titular:'-')} · ${fmtD(g[0].data)} · R$ ${fmt(g[0].valor)} · ${esc(g[0].contraparte||'(sem contraparte)')}</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${g.map((l,i)=>`<div style="font-size:11px;color:var(--mut);display:flex;justify-content:space-between;align-items:center">
+          <span>${esc(l.descricao||'(sem descrição)')}</span>
+          ${BPerm('excluir','🗑 Excluir esta','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1)}
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+  AM('🔍 Lançamentos Duplicados Encontrados', `
+    <div style="font-size:12px;color:var(--mut);margin-bottom:12px">Encontrei ${duplicados.length} grupo(s) com lançamentos idênticos (mesma conta, data, valor, tipo e fornecedor/cliente). Confira se são erro de importação em dobro ou se são coincidências legítimas (ex: dois PIX iguais no mesmo dia) antes de excluir.</div>
+    ${linhas}
+    <div style="margin-top:14px">${B('Fechar','FM()','var(--sur)','var(--txt)')}</div>
+  `);
+}
 function mostrarPainelAlertas(somenteSeHouverPendente){
   const pend = alertasPendentes();
   if(somenteSeHouverPendente && !pend.length) return;
   const resolvidos = (DB.alertas||[]).filter(a=>a.status==='resolvido').sort((a,b)=>b.detectadoEm.localeCompare(a.detectadoEm)).slice(0,15);
-  const rotuloOpcao = {criar_receber:'Conta a Receber criada', so_marcar:'Marcado como resolvido', ignorar:'Ignorado'};
+  const rotuloOpcao = {criar_receber:'Conta a Receber criada', so_marcar:'Marcado como resolvido', ignorar:'Ignorado', ver_chequesys:'Foi ver no ChequeSys'};
   const linhaAlerta = a => {
     const rotulo = a.entidadeTipo==='cheque' ? 'Cheque' : 'Boleto';
+    if(a.tipo==='chequesys_renovacao_recorrente'){
+      return `<div class="card" style="margin-bottom:10px;border:1px solid #f0a500">
+        <div style="font-weight:700;margin-bottom:6px">🔄 ${rotulo} renovado ${a.ciclos}x — ${esc(a.pessoa)}</div>
+        <div style="font-size:12px;color:var(--mut);margin-bottom:10px">Nº ${esc(a.numero)} · R$ ${fmt(a.valor)} · pode indicar inadimplência recorrente deste ${a.entidadeTipo==='cheque'?'emitente':'sacado'} — vale revisar o limite de risco.</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${B('👁 Ver no ChequeSys','resolverAlerta(\''+a.id+'\',\'ver_chequesys\')','var(--sur)','var(--txt)')}
+          ${B('✅ Já estou de olho, só marcar como visto','resolverAlerta(\''+a.id+'\',\'so_marcar\')','var(--sur)','var(--txt)')}
+          ${B('⏭ Ignorar por enquanto','resolverAlerta(\''+a.id+'\',\'ignorar\')','var(--sur)','var(--mut)')}
+        </div>
+      </div>`;
+    }
     return `<div class="card" style="margin-bottom:10px;border:1px solid var(--red)">
       <div style="font-weight:700;margin-bottom:6px">⚠️ ${rotulo} devolvido — ${esc(a.pessoa)}</div>
       <div style="font-size:12px;color:var(--mut);margin-bottom:10px">Nº ${esc(a.numero)} · R$ ${fmt(a.valor)} · detectado ${new Date(a.detectadoEm).toLocaleString('pt-BR')}</div>
@@ -1569,18 +1640,19 @@ function mostrarPainelAlertas(somenteSeHouverPendente){
   };
   const linhaHistorico = a => {
     const rotulo = a.entidadeTipo==='cheque' ? 'Cheque' : 'Boleto';
-    return `<tr><td>${new Date(a.detectadoEm).toLocaleDateString('pt-BR')}</td><td>${rotulo} nº ${esc(a.numero)} — ${esc(a.pessoa)}</td><td style="text-align:right">R$ ${fmt(a.valor)}</td><td>${rotuloOpcao[a.decisao?.opcao]||'-'}</td></tr>`;
+    const desc = a.tipo==='chequesys_renovacao_recorrente' ? `${rotulo} nº ${esc(a.numero)} — ${esc(a.pessoa)} (renovado ${a.ciclos}x)` : `${rotulo} nº ${esc(a.numero)} — ${esc(a.pessoa)} (devolvido)`;
+    return `<tr><td>${new Date(a.detectadoEm).toLocaleDateString('pt-BR')}</td><td>${desc}</td><td style="text-align:right">R$ ${fmt(a.valor)}</td><td>${rotuloOpcao[a.decisao?.opcao]||'-'}</td></tr>`;
   };
   AM('🔔 Alertas do ChequeSys', `
     ${pend.length
-      ? `<div style="font-size:12px;color:var(--mut);margin-bottom:12px">O ChequeSys sinalizou ${pend.length} título(s) devolvido(s) desde a última sincronização. O que você quer fazer com cada um?</div>${pend.map(linhaAlerta).join('')}`
+      ? `<div style="font-size:12px;color:var(--mut);margin-bottom:12px">${pend.length} item(ns) precisam da sua decisão:</div>${pend.map(linhaAlerta).join('')}`
       : `<div style="font-size:13px;color:var(--mut);margin-bottom:14px">Nenhum alerta pendente no momento.</div>`}
     ${resolvidos.length ? `
     <div style="margin-top:${pend.length?'18px':'0'};padding-top:14px;border-top:1px solid var(--bor)">
       <div style="font-weight:700;margin-bottom:8px">Histórico de decisões recentes</div>
       <table><thead><tr><th>Data</th><th>Título</th><th style="text-align:right">Valor</th><th>Decisão</th></tr></thead><tbody>${resolvidos.map(linhaHistorico).join('')}</tbody></table>
     </div>` : ''}
-    <div style="margin-top:14px">${B('Fechar','FM()','var(--sur)','var(--txt)')}</div>
+    <div style="margin-top:14px">${B('📋 Ver Regras Ativas','FM();mostrarRegrasAtivas()','var(--sur)','var(--txt)')}${B('Fechar','FM()','var(--sur)','var(--txt)')}</div>
   `);
 }
 function resolverAlerta(id, opcao){
@@ -1594,9 +1666,30 @@ function resolverAlerta(id, opcao){
       const obsEl = document.getElementById('cr-obs'); if(obsEl) obsEl.value = `Cobrança referente a ${a.entidadeTipo} devolvido nº ${a.numero} (ChequeSys)`;
     }, 100);
   }
+  if(opcao==='ver_chequesys'){
+    window.open('https://fabio9500.github.io/chequesys/chequesys.html','tsr_janela_chequesys');
+  }
   const patch = { status:'resolvido', decisao:{ opcao, data:new Date().toISOString() } };
   salvar({...DB, alertas:(DB.alertas||[]).map(x=>x.id===id?{...x,...patch}:x)});
   if(opcao!=='criar_receber'){ mostrarPainelAlertas(true); if(!alertasPendentes().length) FM(); }
+}
+// ── Painel informativo com as regras ativas, em linguagem simples — serve de
+// referência rápida quando formos revisar/criar regras novas juntos. ──
+function mostrarRegrasAtivas(){
+  AM('📋 Regras Ativas de Alerta', `
+    <div style="font-size:13px;line-height:1.7">
+      <div style="font-weight:700;margin-bottom:4px">1. Título devolvido</div>
+      <div style="color:var(--mut);margin-bottom:12px">Quando um cheque ou boleto do ChequeSys muda de status para "devolvido", pergunta se quer criar uma Conta a Receber de cobrança.</div>
+      <div style="font-weight:700;margin-bottom:4px">2. Renovação recorrente</div>
+      <div style="color:var(--mut);margin-bottom:12px">Quando um título já foi depositado/devolvido/reapresentado 3 vezes ou mais, avisa que pode ser um padrão de inadimplência daquele emitente/sacado.</div>
+      <div style="font-weight:700;margin-bottom:4px">3. Lançamentos duplicados</div>
+      <div style="color:var(--mut);margin-bottom:12px">Verificação manual (botão na tela de Backup) — procura lançamentos idênticos (mesma conta, data, valor, tipo, fornecedor/cliente), útil depois de importar extratos.</div>
+      <div style="font-size:11px;color:var(--mut);border-top:1px solid var(--bor);padding-top:10px;margin-top:6px">
+        Novas regras vão sendo criadas conforme a gente for identificando padrões nas conversas — não existe um jeito automático de "pedir novas regras" pelo próprio app ainda (isso exigiria conectar uma IA de verdade, algo que decidimos deixar pra depois). Por enquanto, sempre que quiser revisar ou pedir uma regra nova, é só me chamar no chat.
+      </div>
+    </div>
+    <div style="margin-top:14px">${B('Fechar','FM()','var(--sur)','var(--txt)')}</div>
+  `);
 }
 async function atualizarResumoChequeSys(silencioso){
   const token = getTokenChequeSys();
