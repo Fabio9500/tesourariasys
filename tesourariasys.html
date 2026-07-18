@@ -64,12 +64,12 @@ tr:hover td{background:#1e2a3a22}
 @keyframes sp{to{transform:rotate(360deg)}}
 #tela-token{position:fixed;inset:0;background:var(--bg);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px}
 @media print{#navbar,.no-print,#status,#fab-buttons{display:none!important}#main{padding:0;max-width:none}}
-#fab-buttons{position:fixed;bottom:70px;right:16px;display:flex;flex-direction:column;gap:10px;z-index:300}
+#fab-buttons{position:fixed;bottom:70px;left:16px;display:flex;flex-direction:column;gap:10px;z-index:300}
 .fab{width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px #0006;transition:transform .15s,opacity .15s;font-family:inherit}
 .fab:hover{transform:scale(1.1);opacity:.95}
 .fab-dash{background:var(--acc);color:#000}
 .fab-back{background:var(--sur);color:var(--txt);border:1px solid var(--bor)}
-.fab-tooltip{position:absolute;right:58px;background:#111;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;top:50%;transform:translateY(-50%)}
+.fab-tooltip{position:absolute;left:58px;background:#111;color:#fff;padding:4px 10px;border-radius:6px;font-size:11px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .2s;top:50%;transform:translateY(-50%)}
 .fab:hover .fab-tooltip{opacity:1}
 .barra{height:6px;border-radius:3px;background:#30363d;overflow:hidden;margin-top:4px}
 .barra-f{height:100%;border-radius:3px}
@@ -1085,7 +1085,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.26';
+const VERSAO = 'v1.27';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
