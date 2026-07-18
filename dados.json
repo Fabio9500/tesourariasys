@@ -12764,22 +12764,6 @@
       "criadoEm": "2026-07-18T15:06:50.343Z"
     },
     {
-      "id": "mrqi2naf3reem",
-      "contaId": "mrnty0gh9748t",
-      "data": "2026-05-15",
-      "tipo": "saida",
-      "valor": 3563.29,
-      "categoriaId": "mrnty0ghwv185",
-      "centroCustoId": "",
-      "contraparte": "Apl.invest Fac",
-      "direcionamento": "",
-      "descricao": "Apl.invest Fac",
-      "origem": "ofx",
-      "fitid": "N223FC:15/05/26:-3563.29:0628587: Apl.invest Fac:",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-18T15:06:50.343Z"
-    },
-    {
       "id": "mrqi2nafb1up2",
       "contaId": "mrnty0gh9748t",
       "data": "2026-05-18",
