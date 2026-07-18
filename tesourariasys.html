@@ -1085,7 +1085,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.25';
+const VERSAO = 'v1.26';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1334,13 +1334,20 @@ function resumoFaturasDeDados(dados){
     porDirecionamento[nome].total += Number(c.valorParcela||0);
   });
   let totalAberto = 0, proxima = null;
+  const porCartao = {};
+  const faturasAbertas = [];
   Object.values(grupos).forEach(g=>{
     const key = g.cartao+'|'+g.venc;
     if(pagamentos[key]) return;
     totalAberto += g.total;
     if(!proxima || g.venc<proxima.venc) proxima = g;
+    if(!porCartao[g.cartao]) porCartao[g.cartao] = {aberto:0, proximaVenc:null};
+    porCartao[g.cartao].aberto += g.total;
+    if(!porCartao[g.cartao].proximaVenc || g.venc<porCartao[g.cartao].proximaVenc) porCartao[g.cartao].proximaVenc = g.venc;
+    faturasAbertas.push({ cartao:g.cartao, venc:g.venc, total:g.total });
   });
-  return { totalAberto, proximaVenc: proxima?proxima.venc:null, proximoValor: proxima?proxima.total:0, porDirecionamento };
+  faturasAbertas.sort((a,b)=>a.venc.localeCompare(b.venc));
+  return { totalAberto, proximaVenc: proxima?proxima.venc:null, proximoValor: proxima?proxima.total:0, porDirecionamento, porCartao, faturasAbertas };
 }
 async function atualizarResumoCartoes(silencioso){
   const tokenPF = getTokenCartoesPF(), tokenPJ = getTokenCartoesPJ();
@@ -1390,19 +1397,24 @@ function htmlResumoCartoesCard(filtro){
   const linhaResumo = (label,dado,erro) => dado
     ? `<div>${label}: <strong>R$ ${fmt(dado.totalAberto)}</strong> em aberto${dado.proximaVenc?` · próxima fatura ${fmtD(dado.proximaVenc)} — R$ ${fmt(dado.proximoValor)}`:''}</div>`
     : `<div style="color:var(--mut)">${label}: ${esc(erro||'carregando...')}</div>`;
-  const linhasCartoesIndividuais = (tag,dado)=>{
-    if(!dado || !dado.porCartao) return '';
-    return Object.entries(dado.porCartao).sort((a,b)=>b[1].aberto-a[1].aberto).map(([chave,v])=>
-      `<tr><td>${esc(nomeCartaoAmigavel(chave))} ${T(tag,tag==='PF'?'az':'pur')}</td><td>${v.proximaVenc?fmtD(v.proximaVenc):'-'}</td><td style="text-align:right;font-weight:700">R$ ${fmt(v.aberto)}</td></tr>`
+  const linhasFaturas = (tag,tipoLower,dado)=>{
+    if(!dado || !dado.faturasAbertas || !dado.faturasAbertas.length) return '';
+    return dado.faturasAbertas.map(f=>
+      `<tr onclick="abrirPagamentoFaturaCartao('${tipoLower}',${f.total})" style="cursor:pointer" title="Registrar pagamento desta fatura">
+        <td>${esc(nomeCartaoAmigavel(f.cartao))} ${T(tag,tag==='PF'?'az':'pur')}</td>
+        <td>${fmtD(f.venc)}</td>
+        <td style="text-align:right;font-weight:700">R$ ${fmt(f.total)}</td>
+      </tr>`
     ).join('');
   };
-  const temCartoesPF = filtro!=='PJ' && Object.keys(r?.pf?.porCartao||{}).length>0;
-  const temCartoesPJ = filtro!=='PF' && Object.keys(r?.pj?.porCartao||{}).length>0;
-  const composicaoCartoes = `<table><thead><tr><th>Cartão</th><th>Próx. Vencimento</th><th style="text-align:right">Em Aberto</th></tr></thead><tbody>
-    ${filtro!=='PJ' ? linhasCartoesIndividuais('PF', r?.pf) : ''}
-    ${filtro!=='PF' ? linhasCartoesIndividuais('PJ', r?.pj) : ''}
-    ${(!temCartoesPF && !temCartoesPJ) ? '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Toque em 🔄 para carregar</td></tr>' : ''}
-  </tbody></table>`;
+  const temFaturasPF = filtro!=='PJ' && (r?.pf?.faturasAbertas||[]).length>0;
+  const temFaturasPJ = filtro!=='PF' && (r?.pj?.faturasAbertas||[]).length>0;
+  const composicaoCartoes = `<table><thead><tr><th>Cartão / Fatura</th><th>Vencimento</th><th style="text-align:right">Valor</th></tr></thead><tbody>
+    ${filtro!=='PJ' ? linhasFaturas('PF','pf', r?.pf) : ''}
+    ${filtro!=='PF' ? linhasFaturas('PJ','pj', r?.pj) : ''}
+    ${(!temFaturasPF && !temFaturasPJ) ? '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Nenhuma fatura em aberto (ou toque em 🔄 para carregar)</td></tr>' : ''}
+  </tbody></table>
+  <div style="font-size:11px;color:var(--mut);margin-top:8px">Faturas em aberto e próximas a pagar, da mais próxima do vencimento para a mais distante. Toque numa fatura para registrar o pagamento dela.</div>`;
   return `<div class="card" style="margin-bottom:14px">
     <div onclick="toggleKpi('cartoes')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-weight:700">💳 Cartões de Crédito ${filtro==='todos'?'(CartoesPF/PJ)':filtro==='PF'?'(CartoesPF)':'(CartoesPJ)'}</div>
@@ -1667,10 +1679,12 @@ function linhasContasChequeSys(){
 }
 
 // ── Registro de Pagamento de Fatura de Cartão (apenas lança a saída — NUNCA sincroniza de volta com CartoesPF/PJ) ──
-function abrirPagamentoFaturaCartao(){
+function abrirPagamentoFaturaCartao(tipoPre, valorPre){
   const r = _resumoCartoes;
-  const sugestaoPF = r?.pf?.totalAberto||0;
-  const sugestaoPJ = r?.pj?.totalAberto||0;
+  const sugestaoPF = valorPre!==undefined && tipoPre==='pf' ? valorPre : (r?.pf?.totalAberto||0);
+  const sugestaoPJ = valorPre!==undefined && tipoPre==='pj' ? valorPre : (r?.pj?.totalAberto||0);
+  const tipoInicial = tipoPre || 'pf';
+  const sugestaoInicial = tipoInicial==='pf' ? sugestaoPF : sugestaoPJ;
   AM('💳 Registrar Pagamento de Fatura de Cartão',`
     ${EH('e-pagcc')}
     <div style="font-size:11px;color:var(--mut);margin-bottom:10px;line-height:1.5">
@@ -1678,13 +1692,13 @@ function abrirPagamentoFaturaCartao(){
     </div>
     <div class="row">
       ${C('Cartão *',`<select id="pagcc-tipo" onchange="atualizarSugestaoPagamentoCC()">
-        <option value="pf">CartoesPF${sugestaoPF?' — sugestão R$ '+fmt(sugestaoPF):''}</option>
-        <option value="pj">CartoesPJ${sugestaoPJ?' — sugestão R$ '+fmt(sugestaoPJ):''}</option>
+        <option value="pf"${tipoInicial==='pf'?' selected':''}>CartoesPF${sugestaoPF?' — sugestão R$ '+fmt(sugestaoPF):''}</option>
+        <option value="pj"${tipoInicial==='pj'?' selected':''}>CartoesPJ${sugestaoPJ?' — sugestão R$ '+fmt(sugestaoPJ):''}</option>
       </select>`,'1','220')}
       ${C('Conta de Pagamento *',`<select id="pagcc-conta">${opcoesContas()}</select>`,'1','200')}
     </div>
     <div class="row">
-      ${C('Valor (R$) *',`<input id="pagcc-valor" value="${sugestaoPF?fmt(sugestaoPF):''}" placeholder="0,00">`,'1','160')}
+      ${C('Valor (R$) *',`<input id="pagcc-valor" value="${sugestaoInicial?fmt(sugestaoInicial):''}" placeholder="0,00">`,'1','160')}
       ${C('Data do Pagamento *',`<input type="date" id="pagcc-data" value="${hoje()}">`,'1','150')}
     </div>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -4138,15 +4152,22 @@ function htmlInvestimentosSeguros(){
 // ══════════════════════════════════════════
 // RENDER — RELATÓRIOS
 // ══════════════════════════════════════════
-let RelExtrato = { contaId:'', de:'', ate:'', fornecedor:'' };
+let RelExtrato = { contaId:'', de:'', ate:'', fornecedor:'', categoriaId:'', direcionamento:'' };
 function aplicarFiltroRelExtrato(){
   RelExtrato.contaId = document.getElementById('re-conta')?.value||'';
   RelExtrato.de = document.getElementById('re-de')?.value||'';
   RelExtrato.ate = document.getElementById('re-ate')?.value||'';
   RelExtrato.fornecedor = document.getElementById('re-forn')?.value||'';
+  RelExtrato.categoriaId = document.getElementById('re-categoria')?.value||'';
+  RelExtrato.direcionamento = document.getElementById('re-direc')?.value||'';
   renderAba();
 }
-function limparFiltroRelExtrato(){ RelExtrato = {contaId:'',de:'',ate:'',fornecedor:''}; renderAba(); }
+function limparFiltroRelExtrato(){ RelExtrato = {contaId:'',de:'',ate:'',fornecedor:'',categoriaId:'',direcionamento:''}; renderAba(); }
+// Ao tocar numa célula de Categoria/Direcionamento/Fornecedor no extrato — refiltra pelo item,
+// mantendo a conta e o período que já estavam selecionados.
+function filtrarExtratoPorCategoria(catId){ RelExtrato.categoriaId = catId; RelExtrato.fornecedor=''; RelExtrato.direcionamento=''; renderAba(); }
+function filtrarExtratoPorDirecionamento(valor){ RelExtrato.direcionamento = valor; RelExtrato.fornecedor=''; RelExtrato.categoriaId=''; renderAba(); }
+function filtrarExtratoPorFornecedor(nome){ RelExtrato.fornecedor = nome; RelExtrato.categoriaId=''; RelExtrato.direcionamento=''; renderAba(); }
 
 let RelPagarF = { de:'', ate:'', centroCustoId:'', texto:'' };
 function aplicarFiltroRelPagar(){
@@ -4169,6 +4190,73 @@ function aplicarFiltroRelReceber(){
 function limparFiltroRelReceber(){ RelReceberF = {de:'',ate:'',centroCustoId:'',texto:''}; renderAba(); }
 
 let RLT = { cat: null, tipo: null };
+// ── Impressão de relatórios: gera uma janela separada, com layout claro/legível
+// (fundo branco, tabela com bordas), em vez de imprimir a tela escura do app. ──
+function imprimirRelatorio(titulo, subtitulo, corpoHtml){
+  const win = window.open('', 'tsr_impressao');
+  if(!win){ alert('Seu navegador bloqueou a janela de impressão. Permita pop-ups para este site e tente de novo.'); return; }
+  const agora = new Date().toLocaleString('pt-BR');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(titulo)}</title>
+    <style>
+      *{box-sizing:border-box}
+      body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;padding:22px;font-size:12px;margin:0}
+      h1{font-size:19px;margin:0 0 2px;color:#0b3d24}
+      .sub{color:#555;font-size:11px;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;margin-bottom:14px}
+      th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;font-size:11px;vertical-align:top}
+      th{background:#eef1f0;font-weight:700}
+      tr.trow td{background:#eaf3ff;font-weight:700}
+      .kpi-print{display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+      .kpi-print div{border:1px solid #ccc;border-radius:6px;padding:8px 14px}
+      .kpi-print b{display:block;font-size:14px}
+      .footer{margin-top:24px;font-size:9px;color:#999;border-top:1px solid #ddd;padding-top:8px}
+      @media print{ @page{margin:14mm} a{color:inherit;text-decoration:none} }
+    </style>
+  </head><body>
+    <h1>${esc(titulo)}</h1>
+    <div class="sub">${esc(subtitulo)}<br>Impresso em ${agora} — TesourariaSys</div>
+    ${corpoHtml}
+    <div class="footer">Fabio Oliveira Santos — Telasul / Construsul — documento gerado automaticamente, sujeito a conferência.</div>
+  </body></html>`);
+  win.document.close();
+  win.focus();
+  setTimeout(()=>{ try{ win.print(); }catch(e){} }, 350);
+}
+let _impPagarTotal = 0, _impPagarLinhas = '';
+let _impReceberTotal = 0, _impReceberLinhas = '';
+function imprimirPagarPeriodo(){
+  const partes = [];
+  if(RelPagarF.de||RelPagarF.ate) partes.push('Período: '+(RelPagarF.de?fmtD(RelPagarF.de):'início')+' até '+(RelPagarF.ate?fmtD(RelPagarF.ate):'hoje'));
+  if(RelPagarF.centroCustoId){ const cc=centroCustoById(RelPagarF.centroCustoId); if(cc) partes.push('Centro de Custo: '+cc.nome); }
+  if(RelPagarF.texto) partes.push('Fornecedor: '+RelPagarF.texto);
+  const kpis = `<div class="kpi-print"><div>Total Pago no Filtro<b style="color:#b3261e">R$ ${fmt(_impPagarTotal)}</b></div></div>`;
+  imprimirRelatorio('Contas a Pagar — Pagamentos por Período', partes.join(' · ')||'Todos os pagamentos', kpis+`<table><thead><tr><th>Data Pagamento</th><th>Favorecido</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Pago</th></tr></thead><tbody>${_impPagarLinhas}</tbody></table>`);
+}
+function imprimirReceberPeriodo(){
+  const partes = [];
+  if(RelReceberF.de||RelReceberF.ate) partes.push('Período: '+(RelReceberF.de?fmtD(RelReceberF.de):'início')+' até '+(RelReceberF.ate?fmtD(RelReceberF.ate):'hoje'));
+  if(RelReceberF.centroCustoId){ const cc=centroCustoById(RelReceberF.centroCustoId); if(cc) partes.push('Centro de Custo: '+cc.nome); }
+  if(RelReceberF.texto) partes.push('Cliente: '+RelReceberF.texto);
+  const kpis = `<div class="kpi-print"><div>Total Recebido no Filtro<b style="color:#0a7d33">R$ ${fmt(_impReceberTotal)}</b></div></div>`;
+  imprimirRelatorio('Contas a Receber — Recebimentos por Período', partes.join(' · ')||'Todos os recebimentos', kpis+`<table><thead><tr><th>Data Recebimento</th><th>Cliente</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Recebido</th></tr></thead><tbody>${_impReceberLinhas}</tbody></table>`);
+}
+let _impExtratoEnt = 0, _impExtratoSai = 0, _impExtratoCabecalho = '', _impExtratoLinhas = '';
+function imprimirExtrato(){
+  const contaExt = RelExtrato.contaId ? contaById(RelExtrato.contaId) : null;
+  const partes = [];
+  if(contaExt) partes.push('Conta: '+contaExt.titular);
+  if(RelExtrato.de||RelExtrato.ate) partes.push('Período: '+(RelExtrato.de?fmtD(RelExtrato.de):'início')+' até '+(RelExtrato.ate?fmtD(RelExtrato.ate):'hoje'));
+  if(RelExtrato.fornecedor) partes.push('Fornecedor/Cliente: '+RelExtrato.fornecedor);
+  if(RelExtrato.categoriaId){ const c=categoriaById(RelExtrato.categoriaId); if(c) partes.push('Categoria: '+c.nome); }
+  if(RelExtrato.direcionamento) partes.push('Direcionamento: '+RelExtrato.direcionamento);
+  const subtitulo = partes.length ? partes.join(' · ') : 'Todas as contas, sem filtro de período';
+  const kpis = `<div class="kpi-print">
+    <div>Entradas<b style="color:#0a7d33">R$ ${fmt(_impExtratoEnt)}</b></div>
+    <div>Saídas<b style="color:#b3261e">R$ ${fmt(_impExtratoSai)}</b></div>
+    <div>Resultado<b>R$ ${fmt(_impExtratoEnt-_impExtratoSai)}</b></div>
+  </div>`;
+  imprimirRelatorio('Extrato de Conta', subtitulo, kpis+`<table><thead>${_impExtratoCabecalho}</thead><tbody>${_impExtratoLinhas}</tbody></table>`);
+}
 function irRelCategoria(cat, tipo){
   RLT.cat=cat; RLT.tipo=tipo; renderAba();
   if(cat==='cartoes') atualizarResumoCartoes(true);
@@ -4389,24 +4477,29 @@ function htmlRelatorios(){
   const totalPagarPend = contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0);
   const posicaoLiquida = saldoTotalGeral() + totalSaldoChequeSys() + totalPatrimonioInvestido() + totalReceberPend - totalPagarPend - chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0) - cartoesPF - cartoesPJ;
 
-  // ── Extrato por Conta / Período / Fornecedor (Contas Bancárias) ──
+  // ── Extrato por Conta / Período / Fornecedor / Categoria / Direcionamento (Contas Bancárias) ──
   let extratoLista = (DB.lancamentos||[]).filter(l=>contaTipoOk(l.contaId));
   if(RelExtrato.contaId) extratoLista = extratoLista.filter(l=>l.contaId===RelExtrato.contaId);
   if(RelExtrato.de) extratoLista = extratoLista.filter(l=>l.data>=RelExtrato.de);
   if(RelExtrato.ate) extratoLista = extratoLista.filter(l=>l.data<=RelExtrato.ate);
   if(RelExtrato.fornecedor) extratoLista = extratoLista.filter(l=>(l.contraparte||'').toLowerCase().includes(RelExtrato.fornecedor.toLowerCase()));
+  if(RelExtrato.categoriaId) extratoLista = extratoLista.filter(l=>l.categoriaId===RelExtrato.categoriaId);
+  if(RelExtrato.direcionamento) extratoLista = extratoLista.filter(l=>(l.direcionamento||'')===RelExtrato.direcionamento);
   extratoLista = extratoLista.slice().sort((a,b)=>a.data.localeCompare(b.data)||a.criadoEm.localeCompare(b.criadoEm));
   const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
   const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
 
-  // Saldo de fechamento do dia — só é um "saldo de banco" de verdade quando filtrado
-  // por UMA conta específica (soma múltiplas contas não corresponde a extrato bancário nenhum).
+  // Saldo de fechamento do dia — só faz sentido como reconciliação bancária real quando
+  // filtrado por UMA conta específica e sem recorte de categoria/direcionamento/fornecedor
+  // (que são consultas de investigação, não o extrato completo da conta).
+  const extratoEhRecorteItem = !!(RelExtrato.categoriaId || RelExtrato.direcionamento || RelExtrato.fornecedor);
   let saldoAcumuladoExtrato = null;
-  if(RelExtrato.contaId){
+  if(RelExtrato.contaId && !extratoEhRecorteItem){
     const contaExt = contaById(RelExtrato.contaId);
     const anteriores = (DB.lancamentos||[]).filter(l=>l.contaId===RelExtrato.contaId && (!RelExtrato.de || l.data < RelExtrato.de));
     saldoAcumuladoExtrato = (contaExt?Number(contaExt.saldoInicial||0):0) + anteriores.reduce((s,l)=>s+(l.tipo==='entrada'?l.valor:-l.valor),0);
   }
+  const nCols = 6 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
   const gruposPorDia = {};
   const ordemDias = [];
   extratoLista.forEach(l=>{
@@ -4418,23 +4511,38 @@ function htmlRelatorios(){
       const cta = contaById(l.contaId);
       const cat = categoriaById(l.categoriaId);
       if(saldoAcumuladoExtrato!==null) saldoAcumuladoExtrato += (l.tipo==='entrada'?l.valor:-l.valor);
-      return `<tr><td>${fmtD(l.data)}</td>${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}<td>${esc(l.contraparte||l.descricao||'-')}</td><td>${esc(cat?cat.nome:'-')}</td><td>${esc(l.direcionamento||'-')}</td><td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td><td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td></tr>`;
+      return `<tr>
+        <td>${fmtD(l.data)}</td>
+        ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
+        <td${l.contraparte?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este fornecedor/cliente" onclick="filtrarExtratoPorFornecedor('${esc(l.contraparte).replace(/'/g,"\\'")}')"`:''}>${esc(l.contraparte||'-')}</td>
+        <td>${esc(l.descricao||'-')}</td>
+        <td${l.categoriaId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só esta categoria" onclick="filtrarExtratoPorCategoria('${l.categoriaId}')"`:''}>${esc(cat?cat.nome:'-')}</td>
+        <td${l.direcionamento?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este direcionamento" onclick="filtrarExtratoPorDirecionamento('${esc(l.direcionamento).replace(/'/g,"\\'")}')"`:''}>${esc(l.direcionamento||'-')}</td>
+        <td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td>
+        <td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td>
+      </tr>`;
     }).join('');
     const linhaSaldoDia = saldoAcumuladoExtrato!==null
-      ? `<tr class="trow"><td colspan="${RelExtrato.contaId?5:6}" style="font-weight:700">Saldo do dia — ${fmtD(dia)}</td><td style="text-align:right;font-weight:800;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
+      ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo do dia — ${fmtD(dia)}</td><td style="text-align:right;font-weight:800;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
       : '';
     return linhasDia + linhaSaldoDia;
-  }).join('') || `<tr><td colspan="${RelExtrato.contaId?6:7}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
-  const cabecalhoExtrato = `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Contraparte/Descrição</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
+  }).join('') || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
+  const cabecalhoExtrato = `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
+  _impExtratoEnt = extratoTotEnt; _impExtratoSai = extratoTotSai;
+  _impExtratoCabecalho = cabecalhoExtrato; _impExtratoLinhas = linhasExtrato;
   const filtroExtratoHtml = `
     <div class="row" style="margin-bottom:10px">
       ${C('Conta',`<select id="re-conta" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesContasFiltradas(RelExtrato.contaId)}</select>`,'1','200')}
       ${C('De',`<input type="date" id="re-de" value="${RelExtrato.de}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
       ${C('Até',`<input type="date" id="re-ate" value="${RelExtrato.ate}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
-      ${C('Fornecedor/Contraparte',`<input type="text" id="re-forn" value="${esc(RelExtrato.fornecedor)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelExtrato()">`,'1','200')}
+      ${C('Fornecedor/Cliente',`<input type="text" id="re-forn" value="${esc(RelExtrato.fornecedor)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelExtrato()">`,'1','200')}
+      ${C('Categoria',`<select id="re-categoria" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesCategorias('',RelExtrato.categoriaId)}</select>`,'1','180')}
+      ${C('Direcionamento',`<input type="text" id="re-direc" list="dl-direcionamentos-rel" value="${esc(RelExtrato.direcionamento)}" placeholder="Buscar..." onchange="aplicarFiltroRelExtrato()"><datalist id="dl-direcionamentos-rel">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`,'1','180')}
     </div>
-    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}</div>
-    ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}`;
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirExtrato()','var(--sur)','var(--txt)')}</div>
+    ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}
+    ${extratoEhRecorteItem ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">🔎 Filtrando por um item específico (fornecedor/categoria/direcionamento) — o saldo do dia fica oculto porque essa visão mostra só uma parte da conta, não o extrato completo.</div>' : ''}
+    <div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Toque em um Fornecedor, Categoria ou Direcionamento na tabela abaixo para ver só os lançamentos daquele item, mantendo o período filtrado.</div>`;
 
   // ── Contas a Pagar — Pagas em Período (com filtro CC / texto) ──
   let pagarLista = (DB.contasPagar||[]).filter(cp=>cp.status==='pago' && contaTipoOk(cp.contaId));
@@ -4456,7 +4564,8 @@ function htmlRelatorios(){
       ${C('Centro de Custo',`<select id="rp-cc" onchange="aplicarFiltroRelPagar()"><option value="">Todos</option>${opcoesCC(RelPagarF.centroCustoId)}</select>`,'1','180')}
       ${C('Fornecedor',`<input type="text" id="rp-txt" value="${esc(RelPagarF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelPagar()">`,'1','200')}
     </div>
-    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelPagar()','var(--sur)','var(--txt)')}</div>`;
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelPagar()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirPagarPeriodo()','var(--sur)','var(--txt)')}</div>`;
+  _impPagarTotal = pagarTotFiltro; _impPagarLinhas = linhasPagarPeriodo;
 
   // ── Contas a Receber — Recebidas em Período (com filtro CC / texto) ──
   let receberLista = (DB.contasReceber||[]).filter(cr=>cr.status==='recebido' && contaTipoOk(cr.contaId));
@@ -4478,7 +4587,8 @@ function htmlRelatorios(){
       ${C('Centro de Custo',`<select id="rr-cc" onchange="aplicarFiltroRelReceber()"><option value="">Todos</option>${opcoesCC(RelReceberF.centroCustoId)}</select>`,'1','180')}
       ${C('Cliente',`<input type="text" id="rr-txt" value="${esc(RelReceberF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelReceber()">`,'1','200')}
     </div>
-    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelReceber()','var(--sur)','var(--txt)')}</div>`;
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelReceber()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirReceberPeriodo()','var(--sur)','var(--txt)')}</div>`;
+  _impReceberTotal = receberTotFiltro; _impReceberLinhas = linhasReceberPeriodo;
 
   // ── Cartões por Direcionamento (PF + PJ) ──
   const direcPF = _resumoCartoes?.pf?.porDirecionamento || {};
