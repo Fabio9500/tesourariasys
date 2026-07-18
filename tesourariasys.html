@@ -1085,7 +1085,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.22';
+const VERSAO = 'v1.23';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2096,6 +2096,8 @@ function novoLancamento(contaIdPre){
     </div>
     ${C('Cliente / Fornecedor (opcional)',`<input id="lc-contraparte" list="dl-contrapartes" placeholder="Quem pagou ou recebeu">
       <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
+    ${C('Direcionamento (opcional)',`<input id="lc-direcionamento" list="dl-direcionamentos" placeholder="Ex: Obra X, Setor Y...">
+      <datalist id="dl-direcionamentos">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="lc-desc" placeholder="Ex: recebimento cliente X">`)}
     <div id="lc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -2125,6 +2127,11 @@ function contrapartesPorTipoConta(tipo){
   (DB.lancamentos||[]).forEach(l=>{ if(l.contraparte && contasDoTipo.has(l.contaId)) nomesUsados.add(l.contraparte); });
   const filtrados = todos.filter(x=>nomesUsados.has(x.nome));
   return filtrados.length ? filtrados : todos;
+}
+function direcionamentosExistentes(){
+  const vistos = new Set();
+  (DB.lancamentos||[]).forEach(l=>{ if(l.direcionamento) vistos.add(l.direcionamento); });
+  return [...vistos].sort();
 }
 function categoriasPorTipoConta(tipoReceitaDespesa, tipoConta){
   const base = (DB.categorias||[]).filter(c=>!tipoReceitaDespesa||c.tipo===tipoReceitaDespesa);
@@ -2168,6 +2175,7 @@ function salvarNovoLancamento(){
     categoriaId: document.getElementById('lc-categoria').value||'',
     centroCustoId: document.getElementById('lc-cc').value||'',
     contraparte: document.getElementById('lc-contraparte').value.trim(),
+    direcionamento: document.getElementById('lc-direcionamento').value.trim(),
     descricao: document.getElementById('lc-desc').value.trim(),
     origem:'manual', contaPagarId:null,
     criadoEm: new Date().toISOString()
@@ -2247,6 +2255,8 @@ function editarLancamento(id){
     </div>
     ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
       <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
+    ${C('Direcionamento (opcional)',`<input id="elc-direcionamento" list="dl-direcionamentos-ed" value="${esc(l.direcionamento||'')}">
+      <datalist id="dl-direcionamentos-ed">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="elc-desc" value="${esc(l.descricao||'')}">`)}
     <div id="elc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -2272,6 +2282,7 @@ function salvarEdicaoLancamento(id){
     categoriaId: document.getElementById('elc-categoria').value||'',
     centroCustoId: document.getElementById('elc-cc').value||'',
     contraparte: document.getElementById('elc-contraparte').value.trim(),
+    direcionamento: document.getElementById('elc-direcionamento').value.trim(),
     descricao: document.getElementById('elc-desc').value.trim()
   };
   salvar({...DB, lancamentos:(DB.lancamentos||[]).map(l=>l.id===id?{...l,...patch}:l)});
@@ -4325,10 +4336,34 @@ function htmlRelatorios(){
   extratoLista = extratoLista.slice().sort((a,b)=>a.data.localeCompare(b.data)||a.criadoEm.localeCompare(b.criadoEm));
   const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
   const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
-  const linhasExtrato = extratoLista.map(l=>{
-    const cta = contaById(l.contaId);
-    return `<tr><td>${fmtD(l.data)}</td><td>${esc(cta?cta.titular:'-')}</td><td>${esc(l.contraparte||l.descricao||'-')}</td><td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td><td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td></tr>`;
-  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>';
+
+  // Saldo de fechamento do dia — só é um "saldo de banco" de verdade quando filtrado
+  // por UMA conta específica (soma múltiplas contas não corresponde a extrato bancário nenhum).
+  let saldoAcumuladoExtrato = null;
+  if(RelExtrato.contaId){
+    const contaExt = contaById(RelExtrato.contaId);
+    const anteriores = (DB.lancamentos||[]).filter(l=>l.contaId===RelExtrato.contaId && (!RelExtrato.de || l.data < RelExtrato.de));
+    saldoAcumuladoExtrato = (contaExt?Number(contaExt.saldoInicial||0):0) + anteriores.reduce((s,l)=>s+(l.tipo==='entrada'?l.valor:-l.valor),0);
+  }
+  const gruposPorDia = {};
+  const ordemDias = [];
+  extratoLista.forEach(l=>{
+    if(!gruposPorDia[l.data]){ gruposPorDia[l.data]=[]; ordemDias.push(l.data); }
+    gruposPorDia[l.data].push(l);
+  });
+  const linhasExtrato = ordemDias.map(dia=>{
+    const linhasDia = gruposPorDia[dia].map(l=>{
+      const cta = contaById(l.contaId);
+      const cat = categoriaById(l.categoriaId);
+      if(saldoAcumuladoExtrato!==null) saldoAcumuladoExtrato += (l.tipo==='entrada'?l.valor:-l.valor);
+      return `<tr><td>${fmtD(l.data)}</td>${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}<td>${esc(l.contraparte||l.descricao||'-')}</td><td>${esc(cat?cat.nome:'-')}</td><td>${esc(l.direcionamento||'-')}</td><td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td><td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td></tr>`;
+    }).join('');
+    const linhaSaldoDia = saldoAcumuladoExtrato!==null
+      ? `<tr class="trow"><td colspan="${RelExtrato.contaId?5:6}" style="font-weight:700">Saldo do dia — ${fmtD(dia)}</td><td style="text-align:right;font-weight:800;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
+      : '';
+    return linhasDia + linhaSaldoDia;
+  }).join('') || `<tr><td colspan="${RelExtrato.contaId?6:7}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
+  const cabecalhoExtrato = `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Contraparte/Descrição</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
   const filtroExtratoHtml = `
     <div class="row" style="margin-bottom:10px">
       ${C('Conta',`<select id="re-conta" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesContasFiltradas(RelExtrato.contaId)}</select>`,'1','200')}
@@ -4336,7 +4371,8 @@ function htmlRelatorios(){
       ${C('Até',`<input type="date" id="re-ate" value="${RelExtrato.ate}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
       ${C('Fornecedor/Contraparte',`<input type="text" id="re-forn" value="${esc(RelExtrato.fornecedor)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelExtrato()">`,'1','200')}
     </div>
-    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}</div>`;
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}</div>
+    ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}`;
 
   // ── Contas a Pagar — Pagas em Período (com filtro CC / texto) ──
   let pagarLista = (DB.contasPagar||[]).filter(cp=>cp.status==='pago' && contaTipoOk(cp.contaId));
@@ -4476,7 +4512,7 @@ function htmlRelatorios(){
         <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" style="color:#f85149">R$ ${fmt(extratoTotSai)}</div></div>
         <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:${(extratoTotEnt-extratoTotSai)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(extratoTotEnt-extratoTotSai)}</div></div>
       </div>
-      <table><thead><tr><th>Data</th><th>Conta</th><th>Contraparte/Descrição</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr></thead><tbody>${linhasExtrato}</tbody></table>
+      <table><thead>${cabecalhoExtrato}</thead><tbody>${linhasExtrato}</tbody></table>
     </div>`,
     tarifas_conta: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏦 Tarifas Bancárias por Conta</div>
       <table><thead><tr><th>Conta</th><th style="text-align:right">Total em Tarifas</th></tr></thead><tbody>${linhasTarifa}</tbody></table></div>`,
