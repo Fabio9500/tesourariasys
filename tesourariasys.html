@@ -509,7 +509,7 @@ async function seedInicial(){
   if(!DB.seguros) DB.seguros = [];
 }
 
-function dbVazio(){ return {usuarios:[],contas:[],categorias:[],centrosCusto:[],lancamentos:[],contasPagar:[],contasReceber:[],fornecedores:[],clientes:[],chequesEmitidos:[],investimentos:[],previdencias:[],capitalizacoes:[],seguros:[],integracaoChequeSys:{mapaContas:{},contaPadrao:null,sincronizados:{}}}; }
+function dbVazio(){ return {usuarios:[],contas:[],categorias:[],centrosCusto:[],lancamentos:[],contasPagar:[],contasReceber:[],fornecedores:[],clientes:[],chequesEmitidos:[],investimentos:[],previdencias:[],capitalizacoes:[],seguros:[],integracaoChequeSys:{mapaContas:{},contaPadrao:null,sincronizados:{}},alertas:[]}; }
 
 // ══════════════════════════════════════════
 // BIOMETRIA (WebAuthn / Face ID / Touch ID)
@@ -1085,7 +1085,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.27';
+const VERSAO = 'v1.28';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1506,6 +1506,98 @@ function resumoPorPessoaChequeSys(dados){
   });
   return { porEmitente, porSacado };
 }
+// ══════════════════════════════════════════
+// 🔔 ALERTAS — detecta mudanças importantes no ChequeSys a cada sincronização
+// (por enquanto: cheque/boleto que passou a "devolvido") e registra no
+// histórico do TesourariaSys, perguntando o que fazer em vez de decidir sozinho.
+// ══════════════════════════════════════════
+function detectarAlertasChequeSys(dados){
+  let snapshot = {};
+  try{ snapshot = JSON.parse(localStorage.getItem('tsr_snapshot_chequesys_status')||'{}'); }catch(e){}
+  const novosAlertas = [];
+  const emitentes = dados.emitentes||[], sacados = dados.sacados||[];
+  (dados.cheques||[]).forEach(c=>{
+    const statusAnterior = snapshot['chq_'+c.id];
+    if(c.status==='devolvido' && statusAnterior && statusAnterior!=='devolvido'){
+      const em = emitentes.find(e=>e.id===c.emitenteId);
+      novosAlertas.push({
+        id: uid(), tipo:'chequesys_devolvido', entidadeTipo:'cheque', entidadeId:c.id,
+        numero: c.numero, pessoa: em?em.nome:'(emitente não identificado)', valor: Number(c.bruto||0),
+        detectadoEm: new Date().toISOString(), status:'pendente', decisao:null,
+      });
+    }
+    snapshot['chq_'+c.id] = c.status;
+  });
+  (dados.boletos||[]).forEach(b=>{
+    const statusAnterior = snapshot['bol_'+b.id];
+    if(b.status==='devolvido' && statusAnterior && statusAnterior!=='devolvido'){
+      const sac = b.sacado || (sacados.find(s=>s.id===b.sacadoId)||{}).nome;
+      novosAlertas.push({
+        id: uid(), tipo:'chequesys_devolvido', entidadeTipo:'boleto', entidadeId:b.id,
+        numero: b.numero||b.id, pessoa: sac||'(sacado não identificado)', valor: Number(b.bruto||0),
+        detectadoEm: new Date().toISOString(), status:'pendente', decisao:null,
+      });
+    }
+    snapshot['bol_'+b.id] = b.status;
+  });
+  try{ localStorage.setItem('tsr_snapshot_chequesys_status', JSON.stringify(snapshot)); }catch(e){}
+  return novosAlertas;
+}
+async function processarNovosAlertas(novosAlertas){
+  if(!novosAlertas.length) return;
+  const dbAtualizado = {...DB, alertas:[...(DB.alertas||[]), ...novosAlertas]};
+  await ghSalvar(dbAtualizado);
+  mostrarPainelAlertas(true);
+}
+function alertasPendentes(){ return (DB.alertas||[]).filter(a=>a.status==='pendente'); }
+function mostrarPainelAlertas(somenteSeHouverPendente){
+  const pend = alertasPendentes();
+  if(somenteSeHouverPendente && !pend.length) return;
+  const resolvidos = (DB.alertas||[]).filter(a=>a.status==='resolvido').sort((a,b)=>b.detectadoEm.localeCompare(a.detectadoEm)).slice(0,15);
+  const rotuloOpcao = {criar_receber:'Conta a Receber criada', so_marcar:'Marcado como resolvido', ignorar:'Ignorado'};
+  const linhaAlerta = a => {
+    const rotulo = a.entidadeTipo==='cheque' ? 'Cheque' : 'Boleto';
+    return `<div class="card" style="margin-bottom:10px;border:1px solid var(--red)">
+      <div style="font-weight:700;margin-bottom:6px">⚠️ ${rotulo} devolvido — ${esc(a.pessoa)}</div>
+      <div style="font-size:12px;color:var(--mut);margin-bottom:10px">Nº ${esc(a.numero)} · R$ ${fmt(a.valor)} · detectado ${new Date(a.detectadoEm).toLocaleString('pt-BR')}</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${B('➕ Criar Conta a Receber de cobrança','resolverAlerta(\''+a.id+'\',\'criar_receber\')','var(--acc)','#000')}
+        ${B('✅ Já resolvido, só marcar como visto','resolverAlerta(\''+a.id+'\',\'so_marcar\')','var(--sur)','var(--txt)')}
+        ${B('⏭ Ignorar por enquanto','resolverAlerta(\''+a.id+'\',\'ignorar\')','var(--sur)','var(--mut)')}
+      </div>
+    </div>`;
+  };
+  const linhaHistorico = a => {
+    const rotulo = a.entidadeTipo==='cheque' ? 'Cheque' : 'Boleto';
+    return `<tr><td>${new Date(a.detectadoEm).toLocaleDateString('pt-BR')}</td><td>${rotulo} nº ${esc(a.numero)} — ${esc(a.pessoa)}</td><td style="text-align:right">R$ ${fmt(a.valor)}</td><td>${rotuloOpcao[a.decisao?.opcao]||'-'}</td></tr>`;
+  };
+  AM('🔔 Alertas do ChequeSys', `
+    ${pend.length
+      ? `<div style="font-size:12px;color:var(--mut);margin-bottom:12px">O ChequeSys sinalizou ${pend.length} título(s) devolvido(s) desde a última sincronização. O que você quer fazer com cada um?</div>${pend.map(linhaAlerta).join('')}`
+      : `<div style="font-size:13px;color:var(--mut);margin-bottom:14px">Nenhum alerta pendente no momento.</div>`}
+    ${resolvidos.length ? `
+    <div style="margin-top:${pend.length?'18px':'0'};padding-top:14px;border-top:1px solid var(--bor)">
+      <div style="font-weight:700;margin-bottom:8px">Histórico de decisões recentes</div>
+      <table><thead><tr><th>Data</th><th>Título</th><th style="text-align:right">Valor</th><th>Decisão</th></tr></thead><tbody>${resolvidos.map(linhaHistorico).join('')}</tbody></table>
+    </div>` : ''}
+    <div style="margin-top:14px">${B('Fechar','FM()','var(--sur)','var(--txt)')}</div>
+  `);
+}
+function resolverAlerta(id, opcao){
+  const a = (DB.alertas||[]).find(x=>x.id===id); if(!a) return;
+  if(opcao==='criar_receber'){
+    FM();
+    novaContaReceber();
+    setTimeout(()=>{
+      const cliEl = document.getElementById('cr-cli'); if(cliEl) cliEl.value = a.pessoa;
+      const valEl = document.getElementById('cr-valor'); if(valEl) valEl.value = fmt(a.valor);
+      const obsEl = document.getElementById('cr-obs'); if(obsEl) obsEl.value = `Cobrança referente a ${a.entidadeTipo} devolvido nº ${a.numero} (ChequeSys)`;
+    }, 100);
+  }
+  const patch = { status:'resolvido', decisao:{ opcao, data:new Date().toISOString() } };
+  salvar({...DB, alertas:(DB.alertas||[]).map(x=>x.id===id?{...x,...patch}:x)});
+  if(opcao!=='criar_receber'){ mostrarPainelAlertas(true); if(!alertasPendentes().length) FM(); }
+}
 async function atualizarResumoChequeSys(silencioso){
   const token = getTokenChequeSys();
   const resultado = { contas:[], total:0, porEmitente:{}, porSacado:{}, erro:null, atualizadoEm:new Date().toISOString() };
@@ -1516,6 +1608,8 @@ async function atualizarResumoChequeSys(silencioso){
       resultado.contas = r.contas; resultado.total = r.total;
       const p = resumoPorPessoaChequeSys(dados);
       resultado.porEmitente = p.porEmitente; resultado.porSacado = p.porSacado;
+      const novosAlertas = detectarAlertasChequeSys(dados);
+      if(novosAlertas.length) await processarNovosAlertas(novosAlertas);
     }catch(e){ resultado.erro = 'Não foi possível conectar (verifique o token).'; }
   } else { resultado.erro = 'Token não configurado.'; }
   _resumoChequeSys = resultado;
@@ -3721,7 +3815,10 @@ function htmlDashboard(){
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
       <div class="titulo acc" style="margin-bottom:0">📊 Dashboard — TesourariaSys</div>
-      ${B(_dashSoTitulos?'▶ Expandir':'▼ Recolher','alternarDashSoTitulos()','var(--sur)','var(--txt)',1,'Alterna entre ver só os títulos ou todas as informações dos cards')}
+      <div style="display:flex;gap:6px">
+        ${B(alertasPendentes().length?`🔔 ${alertasPendentes().length}`:'🔔','mostrarPainelAlertas(false)',alertasPendentes().length?'var(--red)':'var(--sur)',alertasPendentes().length?'#fff':'var(--txt)',1,'Alertas do ChequeSys')}
+        ${B(_dashSoTitulos?'▶ Expandir':'▼ Recolher','alternarDashSoTitulos()','var(--sur)','var(--txt)',1,'Alterna entre ver só os títulos ou todas as informações dos cards')}
+      </div>
     </div>
     <div style="height:8px"></div>
     ${tabsPFPJ}
