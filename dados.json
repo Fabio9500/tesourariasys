@@ -924,20 +924,6 @@
       "criadoEm": "2026-07-16T23:00:00.000Z"
     },
     {
-      "id": "mr6cj1mgbq5mz",
-      "contaId": "mrnty0gh9748t",
-      "data": "2026-05-18",
-      "tipo": "saida",
-      "valor": 3030,
-      "categoriaId": "mrnty0ghhldot",
-      "centroCustoId": "",
-      "contraparte": "Devol.Cheque Depositado",
-      "descricao": "12-Chq.s/Fundos 2a.Apres.",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-16T23:00:00.000Z"
-    },
-    {
       "id": "mrifh5s6qe6qe",
       "contaId": "mrnty0gh9748t",
       "data": "2026-05-25",
