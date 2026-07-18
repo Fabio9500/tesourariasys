@@ -1089,7 +1089,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.33';
+const VERSAO = 'v1.34';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -4971,6 +4971,7 @@ function htmlRelatorios(){
             <td>${esc(l.direcionamento||'-')}</td>
             <td>${l.tipo==='entrada'?'Entrada':'Saída'}</td>
             <td style="text-align:right">R$ ${fmt(l.valor)}</td>
+            <td>${BPerm('excluir','🗑','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1,'Excluir este lançamento')}</td>
           </tr>`;
         }
         return `<tr>
@@ -4982,6 +4983,7 @@ function htmlRelatorios(){
           <td><input type="text" id="edtx-direc-${l.id}" value="${esc(l.direcionamento||'')}" list="dl-direcionamentos-edtx" style="width:110px;font-size:11px"></td>
           <td><select id="edtx-tipo-${l.id}" style="font-size:11px"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select></td>
           <td><input type="text" id="edtx-valor-${l.id}" value="${fmt(l.valor)}" style="width:90px;font-size:11px;text-align:right"></td>
+          <td>${BPerm('excluir','🗑','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1,'Excluir este lançamento')}</td>
         </tr>`;
       }
       return `<tr>
@@ -5003,7 +5005,7 @@ function htmlRelatorios(){
       ? `<tr class="trow" style="border-top:2px solid var(--acc)"><td colspan="${nCols-1}" style="font-weight:800">Saldo Atual</td><td style="text-align:right;font-weight:900;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
       : '') || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
   const cabecalhoExtrato = _extratoModoEdicao
-    ? `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th>Tipo</th><th style="text-align:right">Valor</th></tr>`
+    ? `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th>Tipo</th><th style="text-align:right">Valor</th><th></th></tr>`
     : `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
   // Dados brutos (não HTML) para a impressão poder escolher colunas dinamicamente
   const impRows = [];
