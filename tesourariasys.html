@@ -1085,7 +1085,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.23';
+const VERSAO = 'v1.24';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1381,21 +1381,42 @@ function salvarTokensCartoes(){
 function htmlResumoCartoesCard(filtro){
   filtro = filtro || 'todos';
   const r = _resumoCartoes;
-  const linha = (label,dado,erro) => dado
+  if(_dashSoTitulos){
+    return `<div class="card kpi" style="margin-bottom:14px;cursor:pointer" onclick="alternarDashSoTitulos()">
+      <div class="kpi-l">💳 Cartões de Crédito</div>
+    </div>`;
+  }
+  const aberto = _kpiAberto==='cartoes';
+  const linhaResumo = (label,dado,erro) => dado
     ? `<div>${label}: <strong>R$ ${fmt(dado.totalAberto)}</strong> em aberto${dado.proximaVenc?` · próxima fatura ${fmtD(dado.proximaVenc)} — R$ ${fmt(dado.proximoValor)}`:''}</div>`
     : `<div style="color:var(--mut)">${label}: ${esc(erro||'carregando...')}</div>`;
+  const linhasCartoesIndividuais = (tag,dado)=>{
+    if(!dado || !dado.porCartao) return '';
+    return Object.entries(dado.porCartao).sort((a,b)=>b[1].aberto-a[1].aberto).map(([chave,v])=>
+      `<tr><td>${esc(nomeCartaoAmigavel(chave))} ${T(tag,tag==='PF'?'az':'pur')}</td><td>${v.proximaVenc?fmtD(v.proximaVenc):'-'}</td><td style="text-align:right;font-weight:700">R$ ${fmt(v.aberto)}</td></tr>`
+    ).join('');
+  };
+  const temCartoesPF = filtro!=='PJ' && Object.keys(r?.pf?.porCartao||{}).length>0;
+  const temCartoesPJ = filtro!=='PF' && Object.keys(r?.pj?.porCartao||{}).length>0;
+  const composicaoCartoes = `<table><thead><tr><th>Cartão</th><th>Próx. Vencimento</th><th style="text-align:right">Em Aberto</th></tr></thead><tbody>
+    ${filtro!=='PJ' ? linhasCartoesIndividuais('PF', r?.pf) : ''}
+    ${filtro!=='PF' ? linhasCartoesIndividuais('PJ', r?.pj) : ''}
+    ${(!temCartoesPF && !temCartoesPJ) ? '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Toque em 🔄 para carregar</td></tr>' : ''}
+  </tbody></table>`;
   return `<div class="card" style="margin-bottom:14px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div onclick="toggleKpi('cartoes')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-weight:700">💳 Cartões de Crédito ${filtro==='todos'?'(CartoesPF/PJ)':filtro==='PF'?'(CartoesPF)':'(CartoesPJ)'}</div>
-      <div>
+      <div onclick="event.stopPropagation()">
         ${B('⚙','configurarTokensCartoes()','var(--sur)','var(--txt)',1,'Configurar tokens')}
         ${B('🔄','atualizarResumoCartoes(false)','var(--sur)','var(--txt)',1,'Atualizar agora')}
+        <span style="font-size:11px;color:var(--mut);cursor:pointer" onclick="toggleKpi('cartoes')">${aberto?'▲':'▼'}</span>
       </div>
     </div>
     <div style="font-size:13px;line-height:1.9;margin-bottom:8px">
-      ${r && filtro!=='PJ' ? linha('PF',r.pf,r.erroPf) : (filtro!=='PJ' ? '<div style="color:var(--mut)">Toque em 🔄 para carregar o resumo pela primeira vez.</div>' : '')}
-      ${r && filtro!=='PF' ? linha('PJ',r.pj,r.erroPj) : ''}
+      ${r && filtro!=='PJ' ? linhaResumo('PF',r.pf,r.erroPf) : (filtro!=='PJ' ? '<div style="color:var(--mut)">Toque em 🔄 para carregar o resumo pela primeira vez.</div>' : '')}
+      ${r && filtro!=='PF' ? linhaResumo('PJ',r.pj,r.erroPj) : ''}
     </div>
+    ${aberto ? `<div style="margin-top:6px;padding-top:10px;border-top:1px solid var(--bor)" onclick="event.stopPropagation()">${composicaoCartoes}</div>` : ''}
     ${BPerm('lancamentos','💳 Registrar Pagamento de Fatura','abrirPagamentoFaturaCartao()','var(--acc)')}
   </div>`;
 }
@@ -1403,6 +1424,13 @@ function totalFaturasCartoesAberto(){
   if(!_resumoCartoes) return 0;
   return (_resumoCartoes.pf?.totalAberto||0) + (_resumoCartoes.pj?.totalAberto||0);
 }
+// Nomes amigáveis dos cartões conhecidos do CartõesPF/PJ — se um cartão novo for
+// criado lá e não aparecer aqui, mostra a chave crua mesmo (não trava nada).
+const NOMES_CARTOES = {
+  bradesco1:'Bradesco BRA 01', bradesco10:'Bradesco BRA 10', bradesco20:'Bradesco BRA 20',
+  santander:'Santander', picpay:'PicPay',
+};
+function nomeCartaoAmigavel(chave){ return NOMES_CARTOES[chave] || chave; }
 
 // ══════════════════════════════════════════
 // INTEGRAÇÃO — CONTAS DO CHEQUESYS (Sessão 5)
@@ -3639,12 +3667,12 @@ function htmlDashboard(){
     <tr><td>Faturas de Cartão em Aberto</td><td style="text-align:right;color:#f85149">− R$ ${fmt(totalFaturasCartoesAberto())}</td></tr>
   </tbody></table>`;
   const compSaldoTotal = `<table><tbody>
-    ${contasTodasAtivas.map(c=>`<tr><td>${esc(c.titular)} ${T(c.tipo,c.tipo==='PF'?'az':'pur')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}
+    ${contasTodasAtivas.map(c=>`<tr onclick="abrirContaEmLancamentos('${c.id}')" style="cursor:pointer"><td>${esc(c.titular)} ${T(c.tipo,c.tipo==='PF'?'az':'pur')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}
     ${(_resumoChequeSys?.contas||[]).map(c=>`<tr><td>${esc(c.nome)} ${T('ChequeSys','pur')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(c.saldo)}</td></tr>`).join('')}
   </tbody></table>
-  <div style="font-size:11px;color:var(--mut);margin-top:6px">Toque em uma conta na tabela "Saldo por Conta" abaixo para ver a movimentação dela.</div>`;
-  const compSaldoPF = `<table><tbody>${contasTodasAtivas.filter(c=>c.tipo==='PF').map(c=>`<tr><td>${esc(c.titular)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}</tbody></table>`;
-  const compSaldoPJ = `<table><tbody>${contasTodasAtivas.filter(c=>c.tipo==='PJ').map(c=>`<tr><td>${esc(c.titular)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}</tbody></table>`;
+  <div style="font-size:11px;color:var(--mut);margin-top:6px">Toque em uma conta acima (ou na tabela "Saldo por Conta" abaixo) para ver a movimentação dela.</div>`;
+  const compSaldoPF = `<table><tbody>${contasTodasAtivas.filter(c=>c.tipo==='PF').map(c=>`<tr onclick="abrirContaEmLancamentos('${c.id}')" style="cursor:pointer"><td>${esc(c.titular)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}</tbody></table>`;
+  const compSaldoPJ = `<table><tbody>${contasTodasAtivas.filter(c=>c.tipo==='PJ').map(c=>`<tr onclick="abrirContaEmLancamentos('${c.id}')" style="cursor:pointer"><td>${esc(c.titular)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}</tbody></table>`;
   const compPagar = pendentes.length ? `<table><tbody>${pendentes.slice(0,10).map(cp=>`<tr><td>${esc(cp.favorecido)}</td><td>${fmtD(cp.vencimento)}</td><td style="text-align:right;color:${diffDias(cp.vencimento)<0?'var(--red)':'inherit'}">R$ ${fmt(cp.valor)}</td></tr>`).join('')}</tbody></table>${pendentes.length>10?`<div style="font-size:11px;color:var(--mut);margin-top:6px">+ ${pendentes.length-10} outra(s) — veja a aba Contas a Pagar</div>`:''}` : '';
   const compReceber = receberPendentes.length ? `<table><tbody>${receberPendentes.slice(0,10).map(cr=>`<tr><td>${esc(cr.cliente)}</td><td>${fmtD(cr.vencimento)}</td><td style="text-align:right;color:${diffDias(cr.vencimento)<0?'var(--red)':'inherit'}">R$ ${fmt(cr.valor)}</td></tr>`).join('')}</tbody></table>${receberPendentes.length>10?`<div style="font-size:11px;color:var(--mut);margin-top:6px">+ ${receberPendentes.length-10} outra(s) — veja a aba Contas a Receber</div>`:''}` : '';
   const compCheques = chequesPend.length ? `<table><tbody>${chequesPend.slice(0,10).map(c=>`<tr><td>${esc(c.favorecido)}</td><td>${fmtD(c.dataPrevista)}</td><td style="text-align:right">R$ ${fmt(c.valor)}</td></tr>`).join('')}</tbody></table>` : '';
@@ -3673,19 +3701,26 @@ function htmlDashboard(){
     ${tabsPFPJ}
     ${alertas}
     <div class="kpis">${kpisHtml}</div>
-    ${_dashSoTitulos ? '' : htmlResumoCartoesCard(filtro)}
+    ${htmlResumoCartoesCard(filtro)}
+    ${_dashSoTitulos ? `
+    <div class="card kpi" style="margin-bottom:14px;cursor:pointer" onclick="alternarDashSoTitulos()">
+      <div class="kpi-l">🏦 Saldo por Conta</div>
+    </div>` : `
     <div class="card" style="margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div onclick="toggleKpi('saldoporconta')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-weight:700">🏦 Saldo por Conta ${filtro==='todos'?'(TesourariaSys + ChequeSys)':'('+filtro+')'}</div>
-        <div>
+        <div onclick="event.stopPropagation()">
           ${B('⚙','configurarTokenChequeSys()','var(--sur)','var(--txt)',1,'Configurar integração com ChequeSys')}
           ${B('🔄','atualizarResumoChequeSys(false)','var(--sur)','var(--txt)',1,'Atualizar agora')}
+          <span style="font-size:11px;color:var(--mut);cursor:pointer" onclick="toggleKpi('saldoporconta')">${_kpiAberto==='saldoporconta'?'▲':'▼'}</span>
         </div>
       </div>
-      ${filtro==='todos'&&_resumoChequeSys?.erro?`<div style="font-size:11px;color:var(--mut);margin-bottom:8px">ChequeSys: ${esc(_resumoChequeSys.erro)}</div>`:''}
-      ${filtro!=='todos'?`<div style="font-size:11px;color:var(--mut);margin-bottom:8px">Contas do ChequeSys não são classificadas como PF/PJ — aparecem só na visão "Ver Tudo".</div>`:''}
-      <table><thead><tr><th>Conta</th><th>Banco</th><th style="text-align:right">Saldo Atual</th></tr></thead><tbody>${linhasContas}</tbody></table>
-    </div>
+      ${_kpiAberto==='saldoporconta' ? `<div onclick="event.stopPropagation()">
+        ${filtro==='todos'&&_resumoChequeSys?.erro?`<div style="font-size:11px;color:var(--mut);margin-bottom:8px">ChequeSys: ${esc(_resumoChequeSys.erro)}</div>`:''}
+        ${filtro!=='todos'?`<div style="font-size:11px;color:var(--mut);margin-bottom:8px">Contas do ChequeSys não são classificadas como PF/PJ — aparecem só na visão "Ver Tudo".</div>`:''}
+        <table><thead><tr><th>Conta</th><th>Banco</th><th style="text-align:right">Saldo Atual</th></tr></thead><tbody>${linhasContas}</tbody></table>
+      </div>` : ''}
+    </div>`}
     <div class="row" style="gap:10px">
       ${BPerm('lancamentos','➕ Novo Lançamento','novoLancamento()','var(--acc)')}
       ${BPerm('lancamentos','➕ Nova Conta a Pagar','novaContaPagar()','var(--blu)','#fff')}
