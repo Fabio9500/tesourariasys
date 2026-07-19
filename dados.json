@@ -322,20 +322,6 @@
   ],
   "lancamentos": [
     {
-      "id": "mrnuvci9oj9m",
-      "contaId": "mrntzv0bzlw1q",
-      "data": "2026-07-16",
-      "tipo": "saida",
-      "valor": 22844.4,
-      "categoriaId": "mrnty0ghmi40z",
-      "centroCustoId": "",
-      "contraparte": "CartoesPF",
-      "descricao": "Pagamento fatura Santander (15) (CartoesPF)",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-16T18:41:46.257Z"
-    },
-    {
       "id": "mrumxa832oq21",
       "contaId": "mrnty0gh80gr3",
       "data": "2026-07-03",
