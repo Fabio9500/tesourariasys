@@ -4949,16 +4949,32 @@ function htmlRelatorios(){
     ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo Anterior${RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''}</td><td style="text-align:right;font-weight:800;color:${saldoAnteriorExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAnteriorExtrato)}</td></tr>`
     : '';
   const gruposPorDia = {};
-  const ordemDias = [];
+  const ordemDiasAsc = [];
   extratoLista.forEach(l=>{
-    if(!gruposPorDia[l.data]){ gruposPorDia[l.data]=[]; ordemDias.push(l.data); }
+    if(!gruposPorDia[l.data]){ gruposPorDia[l.data]=[]; ordemDiasAsc.push(l.data); }
     gruposPorDia[l.data].push(l);
   });
-  const linhasExtrato = linhaAnterior + ordemDias.map(dia=>{
-    const linhasDia = gruposPorDia[dia].map(l=>{
+  // pré-calcula o saldo acumulado ao final de cada dia, em ordem cronológica ascendente
+  // (o cálculo tem que ser feito do mais antigo pro mais recente pra ficar correto,
+  // mesmo que a exibição depois seja do mais recente pro mais antigo)
+  const saldoFinalPorDia = {};
+  let _saldoCalc = saldoAcumuladoExtrato;
+  if(_saldoCalc!==null){
+    ordemDiasAsc.forEach(dia=>{
+      gruposPorDia[dia].forEach(l=>{ _saldoCalc += (l.tipo==='entrada'?l.valor:-l.valor); });
+      saldoFinalPorDia[dia] = _saldoCalc;
+    });
+  }
+  const saldoAtualExtrato = _saldoCalc;
+  const linhaAtual = (saldoAtualExtrato!==null && !_extratoModoEdicao)
+    ? `<tr class="trow" style="border-top:2px solid var(--acc)"><td colspan="${nCols-1}" style="font-weight:800">Saldo Atual</td><td style="text-align:right;font-weight:900;color:${saldoAtualExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAtualExtrato)}</td></tr>`
+    : '';
+  // exibição: do mais recente para o mais antigo (dias e lançamentos dentro do dia)
+  const ordemDias = ordemDiasAsc.slice().reverse();
+  const linhasExtrato = linhaAtual + ordemDias.map(dia=>{
+    const linhasDia = gruposPorDia[dia].slice().reverse().map(l=>{
       const cta = contaById(l.contaId);
       const cat = categoriaById(l.categoriaId);
-      if(saldoAcumuladoExtrato!==null) saldoAcumuladoExtrato += (l.tipo==='entrada'?l.valor:-l.valor);
       if(_extratoModoEdicao){
         const protegido = l.origem && l.origem!=='manual' && l.origem!=='ofx';
         if(protegido){
@@ -4997,13 +5013,12 @@ function htmlRelatorios(){
         <td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td>
       </tr>`;
     }).join('');
-    const linhaSaldoDia = (saldoAcumuladoExtrato!==null && !_extratoModoEdicao)
-      ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo do dia — ${fmtD(dia)}</td><td style="text-align:right;font-weight:800;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
+    const saldoDoDia = saldoFinalPorDia[dia];
+    const linhaSaldoDia = (saldoDoDia!==undefined && !_extratoModoEdicao)
+      ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo do dia — ${fmtD(dia)}</td><td style="text-align:right;font-weight:800;color:${saldoDoDia<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoDoDia)}</td></tr>`
       : '';
     return linhasDia + linhaSaldoDia;
-  }).join('') + ((saldoAcumuladoExtrato!==null && !_extratoModoEdicao)
-      ? `<tr class="trow" style="border-top:2px solid var(--acc)"><td colspan="${nCols-1}" style="font-weight:800">Saldo Atual</td><td style="text-align:right;font-weight:900;color:${saldoAcumuladoExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAcumuladoExtrato)}</td></tr>`
-      : '') || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
+  }).join('') + linhaAnterior || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
   const cabecalhoExtrato = _extratoModoEdicao
     ? `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th>Tipo</th><th style="text-align:right">Valor</th><th></th></tr>`
     : `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
