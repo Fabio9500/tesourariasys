@@ -6183,21 +6183,6 @@
       "direcionamento": ""
     },
     {
-      "id": "mrzwm55z4k6l1",
-      "contaId": "mrnty0ghvteo1",
-      "data": "2026-07-17",
-      "tipo": "entrada",
-      "valor": 3000,
-      "categoriaId": "mrnty0ghgioaj",
-      "centroCustoId": "",
-      "contraparte": "Inacio Pereira dos Nascimento",
-      "descricao": "Pix Recebido",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-18T09:20:00.000Z",
-      "direcionamento": ""
-    },
-    {
       "id": "mrmtetqzwqmw0",
       "contaId": "mrnty0ghvteo1",
       "data": "2026-07-17",
