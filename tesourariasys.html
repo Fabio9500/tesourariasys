@@ -2483,7 +2483,7 @@ function novoLancamento(contaIdPre){
       ${C('Data *',`<input type="date" id="lc-data" value="${hoje()}">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Tipo *',`<select id="lc-tipo" onchange="atualizarSugestoesConta('lc')"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>`,'1','140')}
+      ${C('Tipo *',`<select id="lc-tipo" onchange="atualizarSugestoesConta('lc');atualizarLabelRecorrencia()"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>`,'1','140')}
       ${C('Valor (R$) *',`<input id="lc-valor" placeholder="0,00">`,'1','150')}
     </div>
     <div class="row">
@@ -2494,14 +2494,37 @@ function novoLancamento(contaIdPre){
       <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
     ${C('Direcionamento (opcional)',`<input id="lc-direcionamento" list="dl-direcionamentos" placeholder="Ex: Obra X, Setor Y...">
       <datalist id="dl-direcionamentos">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
-    ${C('Descrição / Histórico',`<input id="lc-desc" placeholder="Ex: recebimento cliente X">`)}
+    ${C('Descrição / Histórico',`<input id="lc-desc" list="dl-descricoes" placeholder="Ex: recebimento cliente X">
+      <datalist id="dl-descricoes">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     <div id="lc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
+
+    <div class="card" style="margin:10px 0;padding:10px;background:var(--sur)">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:13px">
+        <input type="checkbox" id="lc-recorrente" onchange="document.getElementById('lc-recorrencia-opcoes').style.display=this.checked?'block':'none'">
+        🔁 Replicar automaticamente em <span id="lc-rec-label">Contas a Receber</span>
+      </label>
+      <div id="lc-recorrencia-opcoes" style="display:none;margin-top:10px">
+        <div style="font-size:11px;color:var(--mut);margin-bottom:8px">Cria os próximos lançamentos já pendentes em Contas a Pagar/Receber, repetindo favorecido, valor, categoria e conta deste — pra você não ter que redigitar todo mês.</div>
+        <div class="row">
+          ${C('Periodicidade',`<select id="lc-rec-periodo"><option value="mensal">Mensal</option><option value="quinzenal">Quinzenal</option><option value="semanal">Semanal</option></select>`,'1','150')}
+          ${C('Quantas vezes replicar',`<input type="number" id="lc-rec-qtd" min="1" max="60" value="12">`,'1','150')}
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarNovoLancamento()','var(--acc)')}
       ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
     </div>
   `);
   atualizarSugestoesConta('lc');
+  atualizarLabelRecorrencia();
+}
+function atualizarLabelRecorrencia(){
+  const tipoEl = document.getElementById('lc-tipo');
+  const label = document.getElementById('lc-rec-label');
+  if(!tipoEl || !label) return;
+  label.textContent = tipoEl.value==='saida' ? 'Contas a Pagar' : 'Contas a Receber';
 }
 // ══════════════════════════════════════════
 // 🔀 SUGESTÕES SEPARADAS POR PF/PJ — a pedido de Fabio: fornecedor,
@@ -2529,6 +2552,11 @@ function direcionamentosExistentes(){
   (DB.lancamentos||[]).forEach(l=>{ if(l.direcionamento) vistos.add(l.direcionamento); });
   return [...vistos].sort();
 }
+function descricoesExistentes(){
+  const vistos = new Set();
+  (DB.lancamentos||[]).forEach(l=>{ if(l.descricao) vistos.add(l.descricao); });
+  return [...vistos].sort();
+}
 function contrapartesExistentes(){
   const vistos = new Set();
   (DB.lancamentos||[]).forEach(l=>{ if(l.contraparte) vistos.add(l.contraparte); });
@@ -2540,8 +2568,11 @@ function categoriasPorTipoConta(tipoReceitaDespesa, tipoConta){
   const contasDoTipo = new Set((DB.contas||[]).filter(c=>c.tipo===tipoConta).map(c=>c.id));
   const idsUsados = new Set();
   (DB.lancamentos||[]).forEach(l=>{ if(l.categoriaId && contasDoTipo.has(l.contaId)) idsUsados.add(l.categoriaId); });
-  const filtradas = base.filter(c=>idsUsados.has(c.id));
-  return filtradas.length ? filtradas : base;
+  // CORRIGIDO: antes esse filtro EXCLUÍA da lista qualquer categoria nunca usada
+  // nesse tipo de conta (PF/PJ) — na prática, isso fazia a categoria certa às
+  // vezes nem aparecer pra escolher. Agora só reordena (usadas primeiro),
+  // sem esconder nenhuma opção.
+  return base.slice().sort((a,b)=>(idsUsados.has(b.id)?1:0)-(idsUsados.has(a.id)?1:0));
 }
 function atualizarSugestoesConta(prefixo){
   const contaEl = document.getElementById(prefixo+'-conta');
@@ -2563,6 +2594,13 @@ function atualizarCatsLancamento(){
   const tipo = document.getElementById('lc-tipo').value==='entrada'?'receita':'despesa';
   document.getElementById('lc-categoria').innerHTML = opcoesCategorias(tipo);
 }
+function proximaDataRecorrencia(data, periodo){
+  const d = new Date(data+'T12:00:00');
+  if(periodo==='semanal') d.setDate(d.getDate()+7);
+  else if(periodo==='quinzenal') d.setDate(d.getDate()+15);
+  else d.setMonth(d.getMonth()+1); // mensal
+  return d.toISOString().slice(0,10);
+}
 function salvarNovoLancamento(){
   const contaId = document.getElementById('lc-conta').value;
   const valor = parseValor(document.getElementById('lc-valor').value);
@@ -2581,7 +2619,35 @@ function salvarNovoLancamento(){
     origem:'manual', contaPagarId:null,
     criadoEm: new Date().toISOString()
   };
-  salvar({...DB, lancamentos:[...(DB.lancamentos||[]), novo]});
+  let novoDB = {...DB, lancamentos:[...(DB.lancamentos||[]), novo]};
+
+  const recorrente = document.getElementById('lc-recorrente')?.checked;
+  if(recorrente){
+    const periodo = document.getElementById('lc-rec-periodo').value;
+    const qtd = Math.max(1, Math.min(60, Number(document.getElementById('lc-rec-qtd').value)||1));
+    const ehPagar = novo.tipo==='saida';
+    const novasContas = [];
+    let dataAtual = novo.data;
+    for(let i=0;i<qtd;i++){
+      dataAtual = proximaDataRecorrencia(dataAtual, periodo);
+      const base = {
+        id:uid(), valor:novo.valor, vencimento:dataAtual,
+        categoriaId:novo.categoriaId, centroCustoId:novo.centroCustoId, contaId:novo.contaId,
+        lancamentoId:null,
+        obs:`Replicado automaticamente a partir do lançamento de ${fmtD(novo.data)}${novo.descricao?' — '+novo.descricao:''}`,
+        criadoEm:new Date().toISOString()
+      };
+      if(ehPagar){
+        novasContas.push({...base, favorecido:novo.contraparte||'(replicado)', fornecedorId:fornecedorIdPorNome(novo.contraparte), status:'pendente', dataPagamento:null, valorPago:null});
+      } else {
+        novasContas.push({...base, cliente:novo.contraparte||'(replicado)', clienteId:clienteIdPorNome(novo.contraparte), status:'pendente', dataRecebimento:null, valorRecebido:null});
+      }
+    }
+    if(ehPagar) novoDB = {...novoDB, contasPagar:[...(DB.contasPagar||[]), ...novasContas]};
+    else novoDB = {...novoDB, contasReceber:[...(DB.contasReceber||[]), ...novasContas]};
+  }
+
+  salvar(novoDB);
   FM();
 }
 function editarLancamento(id){
@@ -2658,7 +2724,8 @@ function editarLancamento(id){
       <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
     ${C('Direcionamento (opcional)',`<input id="elc-direcionamento" list="dl-direcionamentos-ed" value="${esc(l.direcionamento||'')}">
       <datalist id="dl-direcionamentos-ed">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
-    ${C('Descrição / Histórico',`<input id="elc-desc" value="${esc(l.descricao||'')}">`)}
+    ${C('Descrição / Histórico',`<input id="elc-desc" list="dl-descricoes-ed" value="${esc(l.descricao||'')}">
+      <datalist id="dl-descricoes-ed">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     <div id="elc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarEdicaoLancamento(\''+id+'\')','var(--acc)')}
