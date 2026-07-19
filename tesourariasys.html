@@ -1108,7 +1108,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.36';
+const VERSAO = 'v1.37';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1428,7 +1428,7 @@ function htmlResumoCartoesCard(filtro){
   const linhasCartoesResumo = (tag,tipoLower,dado)=>{
     if(!dado || !dado.porCartao) return '';
     return Object.entries(dado.porCartao).map(([nome,info])=>
-      `<tr onclick="selecionarCartaoDash('${tipoLower}',${JSON.stringify(nome)})" style="cursor:pointer" title="Ver faturas a vencer deste cartão">
+      `<tr onclick="selecionarCartaoDash('${tipoLower}','${esc(nome).replace(/'/g,"\\'")}')" style="cursor:pointer" title="Ver faturas a vencer deste cartão">
         <td>${esc(nomeCartaoAmigavel(nome))} ${T(tag,tag==='PF'?'az':'pur')}</td>
         <td>${info.proximaVenc?fmtD(info.proximaVenc):'-'}</td>
         <td style="text-align:right;font-weight:700">R$ ${fmt(info.aberto)}</td>
