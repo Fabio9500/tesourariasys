@@ -12780,6 +12780,81 @@
       "fitid": "N20023:17/07/26:-3000.0:1914330: Transferencia Pix: Des: Construtora Sul Bahia 17/07",
       "contaPagarId": null,
       "criadoEm": "2026-07-18T15:06:50.343Z"
+    },
+    {
+      "id": "mrr3eg158a10y",
+      "contaId": "mrnty0ghvteo1",
+      "data": "2026-07-17",
+      "tipo": "entrada",
+      "valor": 2500,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Resgate cheque 00000039 — Philison",
+      "origem": "chequesys",
+      "origemId": "mrqzbfe0z24h",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T01:03:52.745Z"
+    },
+    {
+      "id": "mrr3eg15quezi",
+      "contaId": "mrnty0ghvteo1",
+      "data": "2026-07-17",
+      "tipo": "entrada",
+      "valor": 3000,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Resgate cheque 3 — Philison",
+      "origem": "chequesys",
+      "origemId": "mrqzc2et2y5m",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T01:03:52.745Z"
+    },
+    {
+      "id": "mrr3eg15ybkzq",
+      "contaId": "mrnty0ghvteo1",
+      "data": "2026-07-17",
+      "tipo": "entrada",
+      "valor": 5000,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Liquidação cheque 00000258 — Philison",
+      "origem": "chequesys",
+      "origemId": "mrqzd2jjv8gc",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T01:03:52.745Z"
+    },
+    {
+      "id": "mrr3eg160v0z9",
+      "contaId": "mrnty0ghvteo1",
+      "data": "2026-07-17",
+      "tipo": "entrada",
+      "valor": 2750,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Liquidação cheque 00000028 — Philison",
+      "origem": "chequesys",
+      "origemId": "mrqzdj8v959s",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T01:03:52.746Z"
+    },
+    {
+      "id": "mrr3eg16umgx7",
+      "contaId": "mrnty0ghvteo1",
+      "data": "2026-07-17",
+      "tipo": "entrada",
+      "valor": 2500,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "",
+      "descricao": "[ChequeSys] Resgate cheque 00000039 — Philison",
+      "origem": "chequesys",
+      "origemId": "mrr1fm3cw45m",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T01:03:52.746Z"
     }
   ],
   "contasPagar": [
@@ -12919,6 +12994,26 @@
       "mrnesszrdwk8": {
         "lancId": "mroc2ed1qfdpb",
         "fingerprint": "entrada|2300|2026-07-14|Compensação cheque 00000035 — Philison|mrnty0ghvteo1"
+      },
+      "mrqzbfe0z24h": {
+        "lancId": "mrr3eg158a10y",
+        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1"
+      },
+      "mrqzc2et2y5m": {
+        "lancId": "mrr3eg15quezi",
+        "fingerprint": "entrada|3000|2026-07-17|Resgate cheque 3 — Philison|mrnty0ghvteo1"
+      },
+      "mrqzd2jjv8gc": {
+        "lancId": "mrr3eg15ybkzq",
+        "fingerprint": "entrada|5000|2026-07-17|Liquidação cheque 00000258 — Philison|mrnty0ghvteo1"
+      },
+      "mrqzdj8v959s": {
+        "lancId": "mrr3eg160v0z9",
+        "fingerprint": "entrada|2750|2026-07-17|Liquidação cheque 00000028 — Philison|mrnty0ghvteo1"
+      },
+      "mrr1fm3cw45m": {
+        "lancId": "mrr3eg16umgx7",
+        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1"
       }
     }
   }
