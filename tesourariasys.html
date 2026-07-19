@@ -4940,7 +4940,7 @@ function htmlRelatorios(){
   let saldoAcumuladoExtrato = null;
   if(RelExtrato.contaId && !extratoEhRecorteItem){
     const contaExt = contaById(RelExtrato.contaId);
-    const anteriores = (DB.lancamentos||[]).filter(l=>l.contaId===RelExtrato.contaId && (!RelExtrato.de || l.data < RelExtrato.de));
+    const anteriores = (DB.lancamentos||[]).filter(l=>l.contaId===RelExtrato.contaId && RelExtrato.de && l.data < RelExtrato.de);
     saldoAcumuladoExtrato = (contaExt?Number(contaExt.saldoInicial||0):0) + anteriores.reduce((s,l)=>s+(l.tipo==='entrada'?l.valor:-l.valor),0);
   }
   const nCols = 6 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
