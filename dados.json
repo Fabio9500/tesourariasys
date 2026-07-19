@@ -37970,6 +37970,21 @@
       "fitid": "BBPF20260629108464401430208",
       "contaPagarId": null,
       "criadoEm": "2026-07-19T13:00:00.000Z"
+    },
+    {
+      "id": "mrs0wumbha3hh",
+      "contaId": "mrnty0gh0cojz",
+      "data": "2026-06-26",
+      "tipo": "saida",
+      "valor": 90,
+      "categoriaId": "mroc2e3kkybiv",
+      "centroCustoId": "mrnty0gh5bqi7",
+      "contraparte": "",
+      "direcionamento": "",
+      "descricao": "Estorno do valor de Ednaldo",
+      "origem": "manual",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T16:41:58.787Z"
     }
   ],
   "contasPagar": [
