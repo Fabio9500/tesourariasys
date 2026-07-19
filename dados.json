@@ -6153,21 +6153,6 @@
       "direcionamento": ""
     },
     {
-      "id": "mriy0sif15f2r",
-      "contaId": "mrnty0ghvteo1",
-      "data": "2026-07-17",
-      "tipo": "entrada",
-      "valor": 2000,
-      "categoriaId": "mrnty0ghgioaj",
-      "centroCustoId": "",
-      "contraparte": "Fausto Auto Eletrica",
-      "descricao": "Pix Recebido",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-18T09:20:00.000Z",
-      "direcionamento": ""
-    },
-    {
       "id": "mrmtetqzwqmw0",
       "contaId": "mrnty0ghvteo1",
       "data": "2026-07-17",
