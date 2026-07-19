@@ -185,10 +185,11 @@
       "banco": "InfinitePay",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 0,
-      "dataSaldoInicial": "2026-07-01",
+      "saldoInicial": 632.79,
+      "dataSaldoInicial": "2025-07-01",
       "ativa": true,
-      "obs": ""
+      "obs": "",
+      "atualizadoEm": "2026-07-19T23:46:58.350Z"
     },
     {
       "id": "mrntzv0bpr6y8",
