@@ -42510,6 +42510,21 @@
       "contaPagarId": null,
       "criadoEm": "2026-07-19T19:27:16.000Z",
       "direcionamento": ""
+    },
+    {
+      "id": "mrsax9qb9uj1c",
+      "contaId": "mr7dnk1g3zvd5",
+      "data": "2026-07-02",
+      "tipo": "saida",
+      "valor": 199.71,
+      "categoriaId": "mrnty0gh0d7u2",
+      "centroCustoId": "mrnty0gh0mdau",
+      "contraparte": "Banco Itaú",
+      "direcionamento": "Juros e IOF",
+      "descricao": "Valor sobre utilização cheque especial",
+      "origem": "manual",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T21:22:14.531Z"
     }
   ],
   "contasPagar": [
