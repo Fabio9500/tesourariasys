@@ -320,6 +320,25 @@ async function ghSalvar(db, pularMesclagem){
             db = { ...db, lancamentos: [...(db.lancamentos||[]), ...novosDoRemoto] };
             setStatus('warn', `🔄 ${novosDoRemoto.length} lançamento(s) de outro sistema mesclado(s) antes de salvar`);
           }
+          // Protege as CONTAS (saldo inicial etc.) do mesmo jeito: se alguém salvou uma
+          // versão diferente nesse meio-tempo, compara por "atualizadoEm" e mantém sempre
+          // a edição mais recente de cada conta — em vez de deixar a gravação atual (que
+          // pode estar operando com uma cópia mais antiga de outra conta) apagar sem querer
+          // uma alteração feita em outro dispositivo/aba, ou vice-versa.
+          if(remoto.contas && remoto.contas.length){
+            const remotoPorId = {}; remoto.contas.forEach(c=>{ remotoPorId[c.id]=c; });
+            const localPorId = {}; (db.contas||[]).forEach(c=>{ localPorId[c.id]=c; });
+            const idsTodos = new Set([...Object.keys(remotoPorId), ...Object.keys(localPorId)]);
+            const contasMescladas = [...idsTodos].map(id=>{
+              const l = localPorId[id], r = remotoPorId[id];
+              if(l && !r) return l; // conta nova, só existe local
+              if(r && !l) return r; // conta nova, só existe remoto
+              const tL = l.atualizadoEm ? new Date(l.atualizadoEm).getTime() : 0;
+              const tR = r.atualizadoEm ? new Date(r.atualizadoEm).getTime() : 0;
+              return tR > tL ? r : l; // mantém sempre a edição mais recente
+            });
+            db = { ...db, contas: contasMescladas };
+          }
         }catch(eMerge){ /* se a mesclagem falhar, segue salvando o que já tínhamos, melhor que travar */ }
       }
     }
@@ -1968,7 +1987,8 @@ function salvarNovaConta(){
     saldoInicial: parseValor(document.getElementById('cta-saldo').value),
     dataSaldoInicial: document.getElementById('cta-data-saldo').value||hoje(),
     ativa: true,
-    obs: document.getElementById('cta-obs').value.trim()
+    obs: document.getElementById('cta-obs').value.trim(),
+    atualizadoEm: new Date().toISOString()
   };
   salvar({...DB, contas:[...(DB.contas||[]), nova]});
   FM();
@@ -2069,7 +2089,8 @@ function salvarEdicaoConta(id){
     conta: document.getElementById('ecta-conta').value.trim(),
     saldoInicial: parseValor(document.getElementById('ecta-saldo').value),
     dataSaldoInicial: document.getElementById('ecta-data-saldo').value||hoje(),
-    obs: document.getElementById('ecta-obs').value.trim()
+    obs: document.getElementById('ecta-obs').value.trim(),
+    atualizadoEm: new Date().toISOString()
   };
   salvar({...DB, contas:(DB.contas||[]).map(c=>c.id===id?{...c,...patch}:c)});
   FM();
@@ -2520,9 +2541,10 @@ function novoLancamento(contaIdPre){
   atualizarSugestoesConta('lc');
   atualizarLabelRecorrencia();
 }
-function atualizarLabelRecorrencia(){
-  const tipoEl = document.getElementById('lc-tipo');
-  const label = document.getElementById('lc-rec-label');
+function atualizarLabelRecorrencia(prefixo){
+  prefixo = prefixo || 'lc';
+  const tipoEl = document.getElementById(prefixo+'-tipo');
+  const label = document.getElementById(prefixo+'-rec-label');
   if(!tipoEl || !label) return;
   label.textContent = tipoEl.value==='saida' ? 'Contas a Pagar' : 'Contas a Receber';
 }
@@ -2713,7 +2735,7 @@ function editarLancamento(id){
       ${C('Data *',`<input type="date" id="elc-data" value="${l.data}">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Tipo *',`<select id="elc-tipo" onchange="atualizarSugestoesConta('elc')"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select>`,'1','140')}
+      ${C('Tipo *',`<select id="elc-tipo" onchange="atualizarSugestoesConta('elc');atualizarLabelRecorrencia('elc')"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select>`,'1','140')}
       ${C('Valor (R$) *',`<input id="elc-valor" value="${fmt(l.valor)}">`,'1','150')}
     </div>
     <div class="row">
@@ -2727,6 +2749,21 @@ function editarLancamento(id){
     ${C('Descrição / Histórico',`<input id="elc-desc" list="dl-descricoes-ed" value="${esc(l.descricao||'')}">
       <datalist id="dl-descricoes-ed">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     <div id="elc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
+
+    <div class="card" style="margin:10px 0;padding:10px;background:var(--sur)">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:13px">
+        <input type="checkbox" id="elc-recorrente" onchange="document.getElementById('elc-recorrencia-opcoes').style.display=this.checked?'block':'none'">
+        🔁 Replicar automaticamente em <span id="elc-rec-label">Contas a Receber</span>
+      </label>
+      <div id="elc-recorrencia-opcoes" style="display:none;margin-top:10px">
+        <div style="font-size:11px;color:var(--mut);margin-bottom:8px">Útil quando este lançamento já foi importado/lançado (então não passou pelo "Novo Lançamento") e você quer gerar as próximas ocorrências pendentes em Contas a Pagar/Receber a partir dele agora.</div>
+        <div class="row">
+          ${C('Periodicidade',`<select id="elc-rec-periodo"><option value="mensal">Mensal</option><option value="quinzenal">Quinzenal</option><option value="semanal">Semanal</option></select>`,'1','150')}
+          ${C('Quantas vezes replicar',`<input type="number" id="elc-rec-qtd" min="1" max="60" value="12">`,'1','150')}
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarEdicaoLancamento(\''+id+'\')','var(--acc)')}
       ${BPerm('excluir','🗑 Excluir','excluirLancamento(\''+id+'\')','var(--red)','#fff')}
@@ -2734,6 +2771,7 @@ function editarLancamento(id){
     </div>
   `);
   atualizarSugestoesConta('elc');
+  atualizarLabelRecorrencia('elc');
 }
 function atualizarCatsLancamentoEd(){
   const tipo = document.getElementById('elc-tipo').value==='entrada'?'receita':'despesa';
@@ -2753,7 +2791,35 @@ function salvarEdicaoLancamento(id){
     direcionamento: document.getElementById('elc-direcionamento').value.trim(),
     descricao: document.getElementById('elc-desc').value.trim()
   };
-  salvar({...DB, lancamentos:(DB.lancamentos||[]).map(l=>l.id===id?{...l,...patch}:l)});
+  let novoDB = {...DB, lancamentos:(DB.lancamentos||[]).map(l=>l.id===id?{...l,...patch}:l)};
+
+  const recorrente = document.getElementById('elc-recorrente')?.checked;
+  if(recorrente){
+    const periodo = document.getElementById('elc-rec-periodo').value;
+    const qtd = Math.max(1, Math.min(60, Number(document.getElementById('elc-rec-qtd').value)||1));
+    const ehPagar = patch.tipo==='saida';
+    const novasContas = [];
+    let dataAtual = patch.data;
+    for(let i=0;i<qtd;i++){
+      dataAtual = proximaDataRecorrencia(dataAtual, periodo);
+      const base = {
+        id:uid(), valor:patch.valor, vencimento:dataAtual,
+        categoriaId:patch.categoriaId, centroCustoId:patch.centroCustoId, contaId:patch.contaId,
+        lancamentoId:null,
+        obs:`Replicado automaticamente a partir do lançamento de ${fmtD(patch.data)}${patch.descricao?' — '+patch.descricao:''}`,
+        criadoEm:new Date().toISOString()
+      };
+      if(ehPagar){
+        novasContas.push({...base, favorecido:patch.contraparte||'(replicado)', fornecedorId:fornecedorIdPorNome(patch.contraparte), status:'pendente', dataPagamento:null, valorPago:null});
+      } else {
+        novasContas.push({...base, cliente:patch.contraparte||'(replicado)', clienteId:clienteIdPorNome(patch.contraparte), status:'pendente', dataRecebimento:null, valorRecebido:null});
+      }
+    }
+    if(ehPagar) novoDB = {...novoDB, contasPagar:[...(DB.contasPagar||[]), ...novasContas]};
+    else novoDB = {...novoDB, contasReceber:[...(DB.contasReceber||[]), ...novasContas]};
+  }
+
+  salvar(novoDB);
   FM();
 }
 function excluirLancamento(id){
