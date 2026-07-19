@@ -305,6 +305,11 @@
       "id": "mrsflfwm8gow4",
       "tipo": "despesa",
       "nome": "Desp. Fixas"
+    },
+    {
+      "id": "mrsfn6xkln2n5",
+      "tipo": "despesa",
+      "nome": "Desp. C/ Obras"
     }
   ],
   "centrosCusto": [
