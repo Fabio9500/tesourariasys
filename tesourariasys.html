@@ -1108,7 +1108,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.37';
+const VERSAO = 'v1.38';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -5225,6 +5225,7 @@ function htmlRelatorios(){
     <div class="row" style="margin-bottom:10px">
       ${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}
       ${B('🖨 Imprimir','abrirOpcoesImpressaoExtrato()','var(--sur)','var(--txt)')}
+      ${!_extratoModoEdicao ? BPerm('lancamentos','➕ Novo Lançamento',`novoLancamento('${RelExtrato.contaId||''}')`,'var(--acc)') : ''}
       ${_extratoModoEdicao
         ? BPerm('lancamentos','💾 Salvar Alterações','salvarEdicaoEmMassaExtrato()','var(--grn)','#fff') + B('✕ Cancelar Edição','cancelarEdicaoExtrato()','var(--sur)','var(--mut)')
         : BPerm('lancamentos','✏️ Editar','alternarEdicaoExtrato()','var(--blu)','#fff')}
