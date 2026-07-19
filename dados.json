@@ -10736,7 +10736,7 @@
       "categoriaId": "mroc2e3kfi98c",
       "centroCustoId": "",
       "contraparte": "Philison",
-      "descricao": "[ChequeSys — Receb. Cheque] Cheque nº 00000039 — Emitente: Blue Com. Representação Ltda — Resgate cheque 00000039 — Philison",
+      "descricao": "[ChequeSys — Receb. Cheque] Resgate cheque 00000039 — Philison",
       "origem": "chequesys",
       "origemId": "mrqzbfe0z24h",
       "contaPagarId": null,
@@ -10804,7 +10804,7 @@
       "categoriaId": "mroc2e3kfi98c",
       "centroCustoId": "",
       "contraparte": "Philison",
-      "descricao": "[ChequeSys — Receb. Cheque] Cheque nº 00000039 — Emitente: Blue Com. Representação Ltda — Resgate cheque 00000039 — Philison",
+      "descricao": "[ChequeSys — Receb. Cheque] Resgate cheque 00000039 — Philison",
       "origem": "chequesys",
       "origemId": "mrr1fm3cw45m",
       "contaPagarId": null,
@@ -42857,7 +42857,7 @@
       },
       "mrqzbfe0z24h": {
         "lancId": "mrr3eg158a10y",
-        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000039 — Emitente: Blue Com. Representação Ltda|CHQ0065|"
+        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque||CHQ0065|"
       },
       "mrqzc2et2y5m": {
         "lancId": "mrr3eg15quezi",
@@ -42873,7 +42873,7 @@
       },
       "mrr1fm3cw45m": {
         "lancId": "mrr3eg16umgx7",
-        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000039 — Emitente: Blue Com. Representação Ltda|CHQ0065|"
+        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque||CHQ0065|"
       }
     }
   }
