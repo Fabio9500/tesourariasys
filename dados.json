@@ -6138,21 +6138,6 @@
       "criadoEm": "2026-07-17T12:00:00.000Z"
     },
     {
-      "id": "mrhyl6o9qfuov",
-      "contaId": "mrnty0ghvteo1",
-      "data": "2026-07-17",
-      "tipo": "entrada",
-      "valor": 3000,
-      "categoriaId": "mrnty0ghgioaj",
-      "centroCustoId": "",
-      "contraparte": "Fausto Auto Eletrica",
-      "descricao": "Pix Recebido",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-18T09:20:00.000Z",
-      "direcionamento": ""
-    },
-    {
       "id": "mrmtetqzwqmw0",
       "contaId": "mrnty0ghvteo1",
       "data": "2026-07-17",
