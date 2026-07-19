@@ -1108,7 +1108,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.39';
+const VERSAO = 'v1.40';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1791,6 +1791,14 @@ function salvarTokenChequeSys(){
 function categoriaOperacaoChequeSys(tipoLancamento){
   return categoriaPorNome('Operação ChequeSys', tipoLancamento==='entrada'?'receita':'despesa');
 }
+// Monta o link que abre o ChequeSys já direto na tela de edição do cheque/boleto
+// de origem de um lançamento sincronizado — usa os campos chequeId/boletoId
+// gravados pela sincronização (ver sincronizarCaixaChequeSys).
+function linkEdicaoChequeSys(l){
+  if(l.chequeId) return 'https://fabio9500.github.io/chequesys/chequesys.html?editarCheque='+encodeURIComponent(l.chequeId);
+  if(l.boletoId) return 'https://fabio9500.github.io/chequesys/chequesys.html?editarBoleto='+encodeURIComponent(l.boletoId);
+  return null;
+}
 function abrirMapeamentoChequeSys(){
   if(!_resumoChequeSys || _resumoChequeSys.erro){
     AM('🔗 Sincronizar Caixa do ChequeSys',`
@@ -1897,13 +1905,14 @@ async function sincronizarCaixaChequeSys(silencioso){
         id:uid(), contaId:contaDestino, data:chq.data, tipo:chq.tipo, valor:Number(chq.valor||0),
         categoriaId: cat?cat.id:'', centroCustoId:'', contraparte,
         descricao, origem:'chequesys', origemId:chq.id,
+        chequeId: chq.chequeId||null, boletoId: chq.boletoId||null,
         contaPagarId:null, criadoEm:new Date().toISOString()
       };
       lancamentos.push(novo);
       sincronizados[chq.id] = {lancId:novo.id, fingerprint};
       mudou = true;
     } else if(reg.fingerprint !== fingerprint){
-      lancamentos = lancamentos.map(l=> l.id===reg.lancId ? {...l, contaId:contaDestino, data:chq.data, tipo:chq.tipo, valor:Number(chq.valor||0), contraparte, descricao} : l);
+      lancamentos = lancamentos.map(l=> l.id===reg.lancId ? {...l, contaId:contaDestino, data:chq.data, tipo:chq.tipo, valor:Number(chq.valor||0), contraparte, descricao, chequeId:chq.chequeId||null, boletoId:chq.boletoId||null} : l);
       sincronizados[chq.id] = {...reg, fingerprint};
       mudou = true;
     }
@@ -2771,12 +2780,16 @@ function editarLancamento(id){
     return;
   }
   if(l.origem==='chequesys'){
+    const linkChq = linkEdicaoChequeSys(l);
     AM('ℹ Lançamento do ChequeSys',`
       <div style="font-size:13px;color:var(--mut);line-height:1.6">
         Este lançamento foi sincronizado automaticamente do <strong>ChequeSys</strong> (caixa da operação de factoring).<br><br>
         Para alterá-lo ou excluí-lo, faça isso diretamente no ChequeSys — a próxima sincronização (automática ao abrir o app, ou pelo botão 🔄) atualiza ou remove o espelho aqui.
       </div>
-      <div style="margin-top:14px">${B('Entendi','FM()','var(--sur)','var(--txt)')}</div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        ${linkChq ? B('🔗 Abrir no ChequeSys',`window.open('${linkChq}','tsr_janela_chequesys')`,'var(--acc)') : ''}
+        ${B('Entendi','FM()','var(--sur)','var(--txt)')}
+      </div>
     `);
     return;
   }
@@ -2877,11 +2890,15 @@ function salvarEdicaoLancamento(id){
 function excluirLancamento(id){
   const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
   if(l.origem==='chequesys'){
+    const linkChq = linkEdicaoChequeSys(l);
     AM('ℹ Lançamento do ChequeSys',`
       <div style="font-size:13px;color:var(--mut);line-height:1.6">
         Este lançamento veio do ChequeSys — exclua-o por lá; a sincronização remove o espelho automaticamente aqui.
       </div>
-      <div style="margin-top:14px">${B('Entendi','FM()','var(--sur)','var(--txt)')}</div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        ${linkChq ? B('🔗 Abrir no ChequeSys',`window.open('${linkChq}','tsr_janela_chequesys')`,'var(--acc)') : ''}
+        ${B('Entendi','FM()','var(--sur)','var(--txt)')}
+      </div>
     `);
     return;
   }
