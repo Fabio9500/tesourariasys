@@ -2838,7 +2838,9 @@
       "origem": "chequesys",
       "origemId": "mrks3g65uts3",
       "contaPagarId": null,
-      "criadoEm": "2026-07-17T02:43:08.725Z"
+      "criadoEm": "2026-07-17T02:43:08.725Z",
+      "chequeId": "CHQ0003",
+      "boletoId": null
     },
     {
       "id": "mroc2ed1slhnf",
@@ -2853,7 +2855,9 @@
       "origem": "chequesys",
       "origemId": "mrmtymjh083j",
       "contaPagarId": null,
-      "criadoEm": "2026-07-17T02:43:08.725Z"
+      "criadoEm": "2026-07-17T02:43:08.725Z",
+      "chequeId": "mqmz7rlqcoza",
+      "boletoId": null
     },
     {
       "id": "mroc2ed1lxxqt",
@@ -2868,7 +2872,9 @@
       "origem": "chequesys",
       "origemId": "mrneojp5md4r",
       "contaPagarId": null,
-      "criadoEm": "2026-07-17T02:43:08.725Z"
+      "criadoEm": "2026-07-17T02:43:08.725Z",
+      "chequeId": "CHQ0012",
+      "boletoId": null
     },
     {
       "id": "mroc2ed14of9v",
@@ -2883,7 +2889,9 @@
       "origem": "chequesys",
       "origemId": "mrnepbtdqsuk",
       "contaPagarId": null,
-      "criadoEm": "2026-07-17T02:43:08.725Z"
+      "criadoEm": "2026-07-17T02:43:08.725Z",
+      "chequeId": "mqidwfyyer0z",
+      "boletoId": null
     },
     {
       "id": "mroc2ed1qfdpb",
@@ -2898,7 +2906,9 @@
       "origem": "chequesys",
       "origemId": "mrnesszrdwk8",
       "contaPagarId": null,
-      "criadoEm": "2026-07-17T02:43:08.725Z"
+      "criadoEm": "2026-07-17T02:43:08.725Z",
+      "chequeId": "CHQ0064",
+      "boletoId": null
     },
     {
       "id": "mrlirc5wkub6u",
@@ -10730,7 +10740,9 @@
       "origem": "chequesys",
       "origemId": "mrqzbfe0z24h",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T01:03:52.745Z"
+      "criadoEm": "2026-07-19T01:03:52.745Z",
+      "chequeId": "CHQ0065",
+      "boletoId": null
     },
     {
       "id": "mrr3eg15quezi",
@@ -10745,7 +10757,9 @@
       "origem": "chequesys",
       "origemId": "mrqzc2et2y5m",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T01:03:52.745Z"
+      "criadoEm": "2026-07-19T01:03:52.745Z",
+      "chequeId": "mqidfv4pgutr",
+      "boletoId": null
     },
     {
       "id": "mrr3eg15ybkzq",
@@ -10760,7 +10774,9 @@
       "origem": "chequesys",
       "origemId": "mrqzd2jjv8gc",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T01:03:52.745Z"
+      "criadoEm": "2026-07-19T01:03:52.745Z",
+      "chequeId": "CHQ0036",
+      "boletoId": null
     },
     {
       "id": "mrr3eg160v0z9",
@@ -10775,7 +10791,9 @@
       "origem": "chequesys",
       "origemId": "mrqzdj8v959s",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T01:03:52.746Z"
+      "criadoEm": "2026-07-19T01:03:52.746Z",
+      "chequeId": "CHQ0039",
+      "boletoId": null
     },
     {
       "id": "mrr3eg16umgx7",
@@ -10790,7 +10808,9 @@
       "origem": "chequesys",
       "origemId": "mrr1fm3cw45m",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T01:03:52.746Z"
+      "criadoEm": "2026-07-19T01:03:52.746Z",
+      "chequeId": "CHQ0065",
+      "boletoId": null
     },
     {
       "id": "mrpzhv5beh2i8",
@@ -42773,87 +42793,87 @@
     "sincronizados": {
       "mr8iqr7z0zio": {
         "lancId": "mroc2ed158k9c",
-        "fingerprint": "entrada|140|2026-07-06|Juros renovação cheque 00850110 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz||recebimento_cheque|"
+        "fingerprint": "entrada|140|2026-07-06|Juros renovação cheque 00850110 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz||recebimento_cheque|||"
       },
       "mr8is67lna7r": {
         "lancId": "mroc2ed1hhxnk",
-        "fingerprint": "entrada|184|2026-07-06|Juros renovação cheque 00850001 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz||recebimento_cheque|"
+        "fingerprint": "entrada|184|2026-07-06|Juros renovação cheque 00850001 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz||recebimento_cheque|||"
       },
       "mr8iskwrtqdi": {
         "lancId": "mroc2ed1p77t4",
-        "fingerprint": "entrada|184|2026-07-06|Juros renovação cheque 00850002 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz||recebimento_cheque|"
+        "fingerprint": "entrada|184|2026-07-06|Juros renovação cheque 00850002 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz||recebimento_cheque|||"
       },
       "mr8iswxr8rbl": {
         "lancId": "mroc2ed1ueooa",
-        "fingerprint": "entrada|182|2026-07-06|Juros renovação cheque 00850003 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz||recebimento_cheque|"
+        "fingerprint": "entrada|182|2026-07-06|Juros renovação cheque 00850003 — Ednaldo Carvalho de Andrade|mrnty0gh0cojz||recebimento_cheque|||"
       },
       "mrcq7n85rr6x": {
         "lancId": "mroc2ed1al2tj",
-        "fingerprint": "saida|690|2026-07-08|Juros Renovação Ednaldo (Proprio)|mrnty0gh0cojz|Ednaldo Carvalho de Andrade|desconto_cheque|"
+        "fingerprint": "saida|690|2026-07-08|Juros Renovação Ednaldo (Proprio)|mrnty0gh0cojz|Ednaldo Carvalho de Andrade|desconto_cheque|||"
       },
       "mrcq9z4ydjan": {
         "lancId": "mroc2ed16ns7s",
-        "fingerprint": "entrada|90|2026-06-26|Juros Renovação Ednaldo (Proprio)|mrnty0gh0cojz|Ednaldo Carvalho de Andrade|recebimento_emprestimo|"
+        "fingerprint": "entrada|90|2026-06-26|Juros Renovação Ednaldo (Proprio)|mrnty0gh0cojz|Ednaldo Carvalho de Andrade|recebimento_emprestimo|||"
       },
       "mre4n2h3l23z": {
         "lancId": "mroc2ed1grdht",
-        "fingerprint": "entrada|3000|2026-07-09|Juros E0002 — Batista Aguiar Combustivel Ltda|mrnty0ghhcv08|Batista Aguiar Combustivel Ltda|recebimento_emprestimo|"
+        "fingerprint": "entrada|3000|2026-07-09|Juros E0002 — Batista Aguiar Combustivel Ltda|mrnty0ghhcv08|Batista Aguiar Combustivel Ltda|recebimento_emprestimo|||"
       },
       "mre68al1zirz": {
         "lancId": "mroc2ed1r9pit",
-        "fingerprint": "saida|3000|2026-07-09|DEpt. Bc. c6|mrnty0ghhcv08|Batista Aguiar Combustivel Ltda|outros|"
+        "fingerprint": "saida|3000|2026-07-09|DEpt. Bc. c6|mrnty0ghhcv08|Batista Aguiar Combustivel Ltda|outros|||"
       },
       "mrks3g65uts3": {
         "lancId": "mroc2ed1jtvjb",
-        "fingerprint": "entrada|1800|2026-07-13|Resgate cheque 00000693 — Joao Pezzo|mrnty0ghvteo1|Joao Pezzo|recebimento_cheque|"
+        "fingerprint": "entrada|1800|2026-07-13|Resgate cheque 00000693 — Joao Pezzo|mrnty0ghvteo1|Joao Pezzo|recebimento_cheque||CHQ0003|"
       },
       "mrmdz1lg3jkn": {
         "lancId": "mroc2ed1xer7g",
-        "fingerprint": "entrada|4950|2026-07-15|Liquidação cheque 00000059 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000059 — Emitente: J V Santana (Colégio Divina)"
+        "fingerprint": "entrada|4950|2026-07-15|Liquidação cheque 00000059 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000059 — Emitente: J V Santana (Colégio Divina)|CHQ0089|"
       },
       "mrmdz8fc2hcc": {
         "lancId": "mroc2ed184jp7",
-        "fingerprint": "entrada|5000|2026-07-15|Liquidação cheque 00000048 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000048 — Emitente: J V Santana (Colégio Divina)"
+        "fingerprint": "entrada|5000|2026-07-15|Liquidação cheque 00000048 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000048 — Emitente: J V Santana (Colégio Divina)|CHQ0082|"
       },
       "mrmdzhplv2nl": {
         "lancId": "mroc2ed1z1jiz",
-        "fingerprint": "entrada|8200|2026-07-15|Liquidação cheque 00000037 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000037 — Emitente: J V Santana (Colégio Divina)"
+        "fingerprint": "entrada|8200|2026-07-15|Liquidação cheque 00000037 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000037 — Emitente: J V Santana (Colégio Divina)|CHQ0080|"
       },
       "mrmtymjh083j": {
         "lancId": "mroc2ed1slhnf",
-        "fingerprint": "entrada|900|2026-07-16|Compensação cheque 3 — Marcus Vinicius Oliveira dos Santos|mrntzv0bzlw1q|Marcus Vinicius Oliveira dos Santos|recebimento_cheque|Cheque nº 3 — Emitente: Rosilda Oliveira Santos"
+        "fingerprint": "entrada|900|2026-07-16|Compensação cheque 3 — Marcus Vinicius Oliveira dos Santos|mrntzv0bzlw1q|Marcus Vinicius Oliveira dos Santos|recebimento_cheque|Cheque nº 3 — Emitente: Rosilda Oliveira Santos|mqmz7rlqcoza|"
       },
       "mrneojp5md4r": {
         "lancId": "mroc2ed1lxxqt",
-        "fingerprint": "entrada|3000|2026-07-15|Compensação cheque 00000906 — Philison|mrnty0gh9748t|Philison|recebimento_cheque|Cheque nº 00000906 — Emitente: Francisco Lucas Andrade de Morais"
+        "fingerprint": "entrada|3000|2026-07-15|Compensação cheque 00000906 — Philison|mrnty0gh9748t|Philison|recebimento_cheque|Cheque nº 00000906 — Emitente: Francisco Lucas Andrade de Morais|CHQ0012|"
       },
       "mrnepbtdqsuk": {
         "lancId": "mroc2ed14of9v",
-        "fingerprint": "entrada|2950|2026-07-16|Compensação cheque 164 — Philison|mrnty0gh9748t|Philison|recebimento_cheque|Cheque nº 164 — Emitente: Carlos Alberto de Jesus"
+        "fingerprint": "entrada|2950|2026-07-16|Compensação cheque 164 — Philison|mrnty0gh9748t|Philison|recebimento_cheque|Cheque nº 164 — Emitente: Carlos Alberto de Jesus|mqidwfyyer0z|"
       },
       "mrnesszrdwk8": {
         "lancId": "mroc2ed1qfdpb",
-        "fingerprint": "entrada|2300|2026-07-14|Compensação cheque 00000035 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000035 — Emitente: Blue Com. Representação Ltda"
+        "fingerprint": "entrada|2300|2026-07-14|Compensação cheque 00000035 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000035 — Emitente: Blue Com. Representação Ltda|CHQ0064|"
       },
       "mrqzbfe0z24h": {
         "lancId": "mrr3eg158a10y",
-        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000039 — Emitente: Blue Com. Representação Ltda"
+        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000039 — Emitente: Blue Com. Representação Ltda|CHQ0065|"
       },
       "mrqzc2et2y5m": {
         "lancId": "mrr3eg15quezi",
-        "fingerprint": "entrada|3000|2026-07-17|Resgate cheque 3 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 3 — Emitente: Jamile Oliveira santos"
+        "fingerprint": "entrada|3000|2026-07-17|Resgate cheque 3 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 3 — Emitente: Jamile Oliveira santos|mqidfv4pgutr|"
       },
       "mrqzd2jjv8gc": {
         "lancId": "mrr3eg15ybkzq",
-        "fingerprint": "entrada|5000|2026-07-17|Liquidação cheque 00000258 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000258 — Emitente: Fausto Auto Eletrica"
+        "fingerprint": "entrada|5000|2026-07-17|Liquidação cheque 00000258 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000258 — Emitente: Fausto Auto Eletrica|CHQ0036|"
       },
       "mrqzdj8v959s": {
         "lancId": "mrr3eg160v0z9",
-        "fingerprint": "entrada|2750|2026-07-17|Liquidação cheque 00000028 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000028 — Emitente: Arena Prime Eventos"
+        "fingerprint": "entrada|2750|2026-07-17|Liquidação cheque 00000028 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000028 — Emitente: Arena Prime Eventos|CHQ0039|"
       },
       "mrr1fm3cw45m": {
         "lancId": "mrr3eg16umgx7",
-        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000039 — Emitente: Blue Com. Representação Ltda"
+        "fingerprint": "entrada|2500|2026-07-17|Resgate cheque 00000039 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000039 — Emitente: Blue Com. Representação Ltda|CHQ0065|"
       }
     }
   }
