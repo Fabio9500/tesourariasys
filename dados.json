@@ -300,6 +300,11 @@
       "id": "mroc2e3kfi98c",
       "tipo": "receita",
       "nome": "Operação ChequeSys"
+    },
+    {
+      "id": "mrsflfwm8gow4",
+      "tipo": "despesa",
+      "nome": "Folha de Pagt."
     }
   ],
   "centrosCusto": [
