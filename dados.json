@@ -42525,6 +42525,21 @@
       "origem": "manual",
       "contaPagarId": null,
       "criadoEm": "2026-07-19T21:22:14.531Z"
+    },
+    {
+      "id": "mrsazfs9k1tbw",
+      "contaId": "mr7dnk1g3zvd5",
+      "data": "2026-07-02",
+      "tipo": "saida",
+      "valor": 86.8,
+      "categoriaId": "mrnty0gh0d7u2",
+      "centroCustoId": "mrnty0gh0mdau",
+      "contraparte": "Banco Itaú",
+      "direcionamento": "Cesta de Tarifas",
+      "descricao": "Cesta de serviços.",
+      "origem": "manual",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T21:23:55.689Z"
     }
   ],
   "contasPagar": [
