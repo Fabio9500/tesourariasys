@@ -1799,6 +1799,12 @@ async function sincronizarCaixaChequeSys(silencioso){
   catch(e){ if(!silencioso){ setStatus('err','⚠ Não foi possível sincronizar com o ChequeSys'); setTimeout(()=>{document.getElementById('status').style.display='none';},4000); } return; }
 
   const caixa = dados.caixa||[];
+  // Nome dos clientes do ChequeSys, pra trazer como contraparte do lançamento espelhado
+  const clientesChq = {};
+  (dados.clientes||[]).forEach(cl=>{ clientesChq[cl.id] = cl.nome||''; });
+  // Rótulo da categoria específica do ChequeSys (mesmo mapa usado na aba Caixa/Minhas Contas de lá),
+  // pra não jogar tudo achatado num "Outros" genérico do lado do TesourariaSys
+  const CATS_CHQ = {desconto_cheque:'Desc. Cheque',emprestimo:'Empréstimo',recebimento_cheque:'Receb. Cheque',recebimento_emprestimo:'Receb. Empréstimo',recebimento_boleto:'Receb. Boleto',outros:'Outros'};
   const sincronizados = {...(integ.sincronizados||{})};
   let lancamentos = [...(DB.lancamentos||[])];
   let mudou = false;
@@ -1809,21 +1815,24 @@ async function sincronizarCaixaChequeSys(silencioso){
     const contaDestino = destinoConta(chq.contaId);
     if(!contaDestino) continue;
     idsAtuais.add(chq.id);
-    const fingerprint = `${chq.tipo}|${chq.valor}|${chq.data}|${chq.desc||''}|${contaDestino}`;
+    const contraparte = clientesChq[chq.clienteId] || '';
+    const rotuloCat = CATS_CHQ[chq.cat] || chq.cat || '';
+    const descricao = `[ChequeSys${rotuloCat?' — '+rotuloCat:''}] ${chq.desc||''}`.trim();
+    const fingerprint = `${chq.tipo}|${chq.valor}|${chq.data}|${chq.desc||''}|${contaDestino}|${contraparte}|${chq.cat||''}`;
     const reg = sincronizados[chq.id];
     if(!reg){
       const cat = categoriaOperacaoChequeSys(chq.tipo);
       const novo = {
         id:uid(), contaId:contaDestino, data:chq.data, tipo:chq.tipo, valor:Number(chq.valor||0),
-        categoriaId: cat?cat.id:'', centroCustoId:'', contraparte:'',
-        descricao:`[ChequeSys] ${chq.desc||''}`, origem:'chequesys', origemId:chq.id,
+        categoriaId: cat?cat.id:'', centroCustoId:'', contraparte,
+        descricao, origem:'chequesys', origemId:chq.id,
         contaPagarId:null, criadoEm:new Date().toISOString()
       };
       lancamentos.push(novo);
       sincronizados[chq.id] = {lancId:novo.id, fingerprint};
       mudou = true;
     } else if(reg.fingerprint !== fingerprint){
-      lancamentos = lancamentos.map(l=> l.id===reg.lancId ? {...l, contaId:contaDestino, data:chq.data, tipo:chq.tipo, valor:Number(chq.valor||0), descricao:`[ChequeSys] ${chq.desc||''}`} : l);
+      lancamentos = lancamentos.map(l=> l.id===reg.lancId ? {...l, contaId:contaDestino, data:chq.data, tipo:chq.tipo, valor:Number(chq.valor||0), contraparte, descricao} : l);
       sincronizados[chq.id] = {...reg, fingerprint};
       mudou = true;
     }
