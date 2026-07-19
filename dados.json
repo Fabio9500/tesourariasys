@@ -6209,7 +6209,8 @@
       "descricao": "Resg. Tit. Capitalizacao 1235 0050138638-3",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-18T09:25:00.000Z"
+      "criadoEm": "2026-07-18T09:25:00.000Z",
+      "direcionamento": ""
     },
     {
       "id": "mro1xymoqzx16",
@@ -6223,7 +6224,8 @@
       "descricao": "Tarifa Registro Cobranca",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-18T09:25:00.000Z"
+      "criadoEm": "2026-07-18T09:25:00.000Z",
+      "direcionamento": ""
     },
     {
       "id": "mrhm7yvmnnrgd",
@@ -6237,7 +6239,8 @@
       "descricao": "Mora Capital de Giro Contr 017581476 Parc 003/012",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-18T09:25:00.000Z"
+      "criadoEm": "2026-07-18T09:25:00.000Z",
+      "direcionamento": ""
     },
     {
       "id": "mrqi2naf39yqo",
