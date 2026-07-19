@@ -1108,7 +1108,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.38';
+const VERSAO = 'v1.39';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1851,6 +1851,15 @@ async function sincronizarCaixaChequeSys(silencioso){
   // Nome dos clientes do ChequeSys, pra trazer como contraparte do lançamento espelhado
   const clientesChq = {};
   (dados.clientes||[]).forEach(cl=>{ clientesChq[cl.id] = cl.nome||''; });
+  // Emitentes (cheques) e cheques/boletos do ChequeSys, pra identificar número do
+  // título + emitente/sacado direto no lançamento espelhado — em vez de depender
+  // só do texto livre da descrição (que nem sempre traz isso de forma clara/completa).
+  const emitentesChq = {};
+  (dados.emitentes||[]).forEach(e=>{ emitentesChq[e.id] = e.razaoSocial||e.nome||''; });
+  const chequesChq = {};
+  (dados.cheques||[]).forEach(c=>{ chequesChq[c.id] = c; });
+  const boletosChq = {};
+  (dados.boletos||[]).forEach(b=>{ boletosChq[b.id] = b; });
   // Rótulo da categoria específica do ChequeSys (mesmo mapa usado na aba Caixa/Minhas Contas de lá),
   // pra não jogar tudo achatado num "Outros" genérico do lado do TesourariaSys
   const CATS_CHQ = {desconto_cheque:'Desc. Cheque',emprestimo:'Empréstimo',recebimento_cheque:'Receb. Cheque',recebimento_emprestimo:'Receb. Empréstimo',recebimento_boleto:'Receb. Boleto',outros:'Outros'};
@@ -1866,8 +1875,21 @@ async function sincronizarCaixaChequeSys(silencioso){
     idsAtuais.add(chq.id);
     const contraparte = clientesChq[chq.clienteId] || '';
     const rotuloCat = CATS_CHQ[chq.cat] || chq.cat || '';
-    const descricao = `[ChequeSys${rotuloCat?' — '+rotuloCat:''}] ${chq.desc||''}`.trim();
-    const fingerprint = `${chq.tipo}|${chq.valor}|${chq.data}|${chq.desc||''}|${contaDestino}|${contraparte}|${chq.cat||''}`;
+
+    // Identificação do título (número + emitente/sacado), quando o lançamento
+    // vier de um cheque ou boleto específico
+    let identificacao = '';
+    if(chq.chequeId && chequesChq[chq.chequeId]){
+      const c = chequesChq[chq.chequeId];
+      const nomeEmitente = emitentesChq[c.emitenteId] || '';
+      identificacao = `Cheque nº ${c.numero||'-'}${nomeEmitente?' — Emitente: '+nomeEmitente:''}`;
+    } else if(chq.boletoId && boletosChq[chq.boletoId]){
+      const b = boletosChq[chq.boletoId];
+      identificacao = `Boleto nº ${b.numero||'-'}${b.sacado?' — Sacado: '+b.sacado:''}`;
+    }
+
+    const descricao = `[ChequeSys${rotuloCat?' — '+rotuloCat:''}]${identificacao?' '+identificacao+' —':''} ${chq.desc||''}`.trim();
+    const fingerprint = `${chq.tipo}|${chq.valor}|${chq.data}|${chq.desc||''}|${contaDestino}|${contraparte}|${chq.cat||''}|${identificacao}`;
     const reg = sincronizados[chq.id];
     if(!reg){
       const cat = categoriaOperacaoChequeSys(chq.tipo);
