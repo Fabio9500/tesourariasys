@@ -97,7 +97,7 @@
     {
       "id": "mrnty0ghe9nr1",
       "tipo": "PJ",
-      "titular": "MS Cosmetico (BRA)",
+      "titular": "MS Cobrança (BRA)",
       "banco": "Bradesco",
       "agencia": "",
       "conta": "",
@@ -41023,8 +41023,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr4wsgaa3isy9",
@@ -41038,8 +41037,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr2rio8rnqv4h",
@@ -41053,8 +41051,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr2yqfm8lx9rc",
@@ -41068,8 +41065,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrji9lgear6lv",
@@ -41083,8 +41079,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr08n53ygjb0f",
@@ -41098,8 +41093,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrjol7g76yghp",
@@ -41113,8 +41107,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrhkahwm26uf3",
@@ -41128,8 +41121,7 @@
       "descricao": "Rendimento aplicação automática",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrz3wjbe6kvfa",
@@ -41143,8 +41135,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrshtmqg1imz4",
@@ -41158,8 +41149,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrxltwmvbyt68",
@@ -41173,8 +41163,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mryx2rxhs4sj0",
@@ -41188,8 +41177,7 @@
       "descricao": "Rendimento aplicação automática",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mremmupokboic",
@@ -41203,8 +41191,7 @@
       "descricao": "Depósito de cheque",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr5r7h2eqtrcr",
@@ -41218,8 +41205,7 @@
       "descricao": "Depósito de cheque",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr3bwahrrtc7t",
@@ -41233,8 +41219,7 @@
       "descricao": "Estorno de depósito de cheque",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrrbqmurp1srj",
@@ -41248,8 +41233,7 @@
       "descricao": "Depósito de cheque",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrv6kxg69ghpm",
@@ -41263,8 +41247,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrfqrlur3m4yk",
@@ -41278,8 +41261,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr7xwkcytx6le",
@@ -41293,8 +41275,7 @@
       "descricao": "Tar Pacote Itau Mai/26",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrev8u6m52v0v",
@@ -41308,23 +41289,7 @@
       "descricao": "Depósito de cheque",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
-    },
-    {
-      "id": "mri94osahbkla",
-      "contaId": "mr7dnk1g3zvd5",
-      "data": "2026-06-08",
-      "tipo": "entrada",
-      "valor": 4200,
-      "categoriaId": "mrnty0ghwuaoz",
-      "centroCustoId": "",
-      "contraparte": "Depósito cheque nº 000046",
-      "descricao": "Depósito de cheque",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr3mrjr31rown",
@@ -41338,8 +41303,7 @@
       "descricao": "Depósito de cheque",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr19d5sbrwjhx",
@@ -41353,8 +41317,7 @@
       "descricao": "Débito de IOF",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrhxtegtlf7kd",
@@ -41368,8 +41331,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr83jrq7g6y3l",
@@ -41383,8 +41345,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mreqummm1wwz5",
@@ -41398,8 +41359,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrdi808s65faz",
@@ -41413,8 +41373,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrouxdo6vdtoa",
@@ -41428,8 +41387,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr53ez28ojtir",
@@ -41443,8 +41401,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrbuw8r6tt454",
@@ -41458,8 +41415,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrw6zv2r3qb4k",
@@ -41473,8 +41429,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr1ljmi5k1oiz",
@@ -41488,8 +41443,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr3qthrw88om3",
@@ -41503,8 +41457,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr6tt8h3bogcb",
@@ -41518,8 +41471,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrj76qknuxen5",
@@ -41533,8 +41485,7 @@
       "descricao": "Rendimento aplicação automática",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrwn8gwkpnybl",
@@ -41548,8 +41499,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrsh7j3wq96zs",
@@ -41563,8 +41513,7 @@
       "descricao": "Tar Pacote Itau Abr/26",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr9gkl0tbuuph",
@@ -41578,8 +41527,7 @@
       "descricao": "Débito de IOF",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrf8nwbq9dgth",
@@ -41593,8 +41541,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr8gzfb5xm4f0",
@@ -41608,8 +41555,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr5iuor2af93a",
@@ -41623,8 +41569,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr0broxun9jx0",
@@ -41638,8 +41583,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr87yu0j3nnz1",
@@ -41653,8 +41597,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrzw7uxtn0sua",
@@ -41668,8 +41611,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mraal2r8rbczm",
@@ -41683,8 +41625,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mry6u94xdd87t",
@@ -41698,8 +41639,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr42xqst08enw",
@@ -41713,8 +41653,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrj2i2zq1eb8p",
@@ -41728,8 +41667,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrr683fav5b0q",
@@ -41743,8 +41681,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr2pgnrakx1p9",
@@ -41758,8 +41695,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mreq3dhcu9ylb",
@@ -41773,8 +41709,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrwflp0hh93b8",
@@ -41788,8 +41723,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mry8f7816suej",
@@ -41803,8 +41737,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr3v97ngvkjbl",
@@ -41818,8 +41751,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrp9cuiyxg4u4",
@@ -41833,8 +41765,7 @@
       "descricao": "Débito de IOF",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mre0oj0r543qk",
@@ -41848,8 +41779,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrouf3tu0t342",
@@ -41863,8 +41793,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrb1tt2cpg8ka",
@@ -41878,8 +41807,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrelqjiu28qxn",
@@ -41893,8 +41821,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrzgthn0nc5ux",
@@ -41908,8 +41835,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr3c6ptpgl23g",
@@ -41923,8 +41849,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr1sypv5lihf5",
@@ -41938,8 +41863,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrl12gvibl00n",
@@ -41953,8 +41877,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrzb705gbb9on",
@@ -41968,8 +41891,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrzobaq2kugrj",
@@ -41983,8 +41905,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrhvb8e6znq4a",
@@ -41998,8 +41919,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrkbl2zt246kq",
@@ -42013,8 +41933,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrwmomto3hh1m",
@@ -42028,8 +41947,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr4c5e22oe9f1",
@@ -42043,8 +41961,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrhyafw8llg56",
@@ -42058,8 +41975,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrpdd2f2y7clz",
@@ -42073,8 +41989,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrl5a0zsh9mfb",
@@ -42088,8 +42003,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrp5379r7gcff",
@@ -42103,8 +42017,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr60ymrmbn8kd",
@@ -42118,8 +42031,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrmiwk3lilw39",
@@ -42133,8 +42045,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr08dj46gzp3v",
@@ -42148,8 +42059,7 @@
       "descricao": "Rendimento aplicação automática",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrh7wi24i7hf1",
@@ -42163,8 +42073,7 @@
       "descricao": "Rendimento aplicação automática",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr0355x4nlmrw",
@@ -42178,8 +42087,7 @@
       "descricao": "Débito de IOF",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr07li9rr61ec",
@@ -42193,8 +42101,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrybyfkfi5pol",
@@ -42208,8 +42115,7 @@
       "descricao": "Rendimento aplicação automática",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mri7mo9fxs6md",
@@ -42223,8 +42129,7 @@
       "descricao": "Juros Limite Da Conta",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr05psoysxbkv",
@@ -42238,8 +42143,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrqskcqc14q4y",
@@ -42253,8 +42157,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mru0ondt6yo0g",
@@ -42268,8 +42171,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrnys3razf8uq",
@@ -42283,8 +42185,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrqz7ut1kofmk",
@@ -42298,8 +42199,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrfnl0apff4ax",
@@ -42313,8 +42213,7 @@
       "descricao": "Débito de IOF",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrqhngbyzv94x",
@@ -42328,8 +42227,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mre9zh1muddxf",
@@ -42343,8 +42241,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrstfa78tejo7",
@@ -42358,8 +42255,7 @@
       "descricao": "Pagamento de boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr6gj50o2y7hd",
@@ -42373,8 +42269,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrh741049pi2m",
@@ -42388,8 +42283,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr4xwxlnhlmtu",
@@ -42403,8 +42297,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrox2s9cz2qm5",
@@ -42418,8 +42311,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrauug7kmh0ke",
@@ -42433,8 +42325,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrpgx8k3cdr0l",
@@ -42448,8 +42339,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrf5p8f55y6ab",
@@ -42463,8 +42353,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrmu1zsxlnt7a",
@@ -42478,8 +42367,7 @@
       "descricao": "Pix recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mr64w37upgfb9",
@@ -42493,8 +42381,7 @@
       "descricao": "Pix enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrg04rjeyo5q2",
@@ -42508,8 +42395,7 @@
       "descricao": "Rendimento aplicação automática",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     },
     {
       "id": "mrfxwsn0ij6ot",
@@ -42523,8 +42409,7 @@
       "descricao": "Débito de IOF",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T19:27:16.000Z",
-      "direcionamento": ""
+      "criadoEm": "2026-07-19T19:27:16.000Z"
     }
   ],
   "contasPagar": [
