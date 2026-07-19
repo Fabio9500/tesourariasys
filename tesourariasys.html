@@ -1108,7 +1108,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.40';
+const VERSAO = 'v1.41';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1897,7 +1897,7 @@ async function sincronizarCaixaChequeSys(silencioso){
     }
 
     const descricao = `[ChequeSys${rotuloCat?' — '+rotuloCat:''}]${identificacao?' '+identificacao+' —':''} ${chq.desc||''}`.trim();
-    const fingerprint = `${chq.tipo}|${chq.valor}|${chq.data}|${chq.desc||''}|${contaDestino}|${contraparte}|${chq.cat||''}|${identificacao}`;
+    const fingerprint = `${chq.tipo}|${chq.valor}|${chq.data}|${chq.desc||''}|${contaDestino}|${contraparte}|${chq.cat||''}|${identificacao}|${chq.chequeId||''}|${chq.boletoId||''}`;
     const reg = sincronizados[chq.id];
     if(!reg){
       const cat = categoriaOperacaoChequeSys(chq.tipo);
@@ -4411,7 +4411,7 @@ function htmlLancamentos(){
       <td>${esc(cat?cat.nome:'-')}</td>
       <td>${esc(cc?cc.nome:'-')}</td>
       <td>${esc(l.contraparte||'-')}</td>
-      <td>${esc(l.descricao||'-')}${l.origem==='pagamento'?' '+T('Pagamento','az'):''}</td>
+      <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}${l.origem==='pagamento'?' '+T('Pagamento','az'):''}</td>
       <td style="text-align:right;font-weight:700;color:${l.tipo==='entrada'?'#3fb950':'#f85149'}">${l.tipo==='entrada'?'+':'-'} R$ ${fmt(l.valor)}</td>
       <td>${B('✏','editarLancamento(\''+l.id+'\')','var(--sur)','var(--txt)',1)}</td>
     </tr>`;
@@ -5218,7 +5218,7 @@ function htmlRelatorios(){
         <td>${fmtD(l.data)}</td>
         ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
         <td${l.contraparte?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este fornecedor/cliente" onclick="filtrarExtratoPorFornecedor('${esc(l.contraparte).replace(/'/g,"\\'")}')"`:''}>${esc(l.contraparte||'-')}</td>
-        <td>${esc(l.descricao||'-')}</td>
+        <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}</td>
         <td${l.categoriaId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só esta categoria" onclick="filtrarExtratoPorCategoria('${l.categoriaId}')"`:''}>${esc(cat?cat.nome:'-')}</td>
         <td${l.direcionamento?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este direcionamento" onclick="filtrarExtratoPorDirecionamento('${esc(l.direcionamento).replace(/'/g,"\\'")}')"`:''}>${esc(l.direcionamento||'-')}</td>
         <td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td>
