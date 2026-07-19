@@ -1108,7 +1108,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.35';
+const VERSAO = 'v1.36';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1408,6 +1408,9 @@ function salvarTokensCartoes(){
   FM();
   atualizarResumoCartoes(false);
 }
+let _cartaoSelecionadoDash = null; // {tag:'pf'|'pj', cartao:'nome do cartão'}
+function selecionarCartaoDash(tag, cartao){ _cartaoSelecionadoDash = {tag, cartao}; renderAba(); }
+function voltarListaCartoesDash(){ _cartaoSelecionadoDash = null; renderAba(); }
 function htmlResumoCartoesCard(filtro){
   filtro = filtro || 'todos';
   const r = _resumoCartoes;
@@ -1420,24 +1423,51 @@ function htmlResumoCartoesCard(filtro){
   const linhaResumo = (label,dado,erro) => dado
     ? `<div>${label}: <strong>R$ ${fmt(dado.totalAberto)}</strong> em aberto${dado.proximaVenc?` · próxima fatura ${fmtD(dado.proximaVenc)} — R$ ${fmt(dado.proximoValor)}`:''}</div>`
     : `<div style="color:var(--mut)">${label}: ${esc(erro||'carregando...')}</div>`;
-  const linhasFaturas = (tag,tipoLower,dado)=>{
-    if(!dado || !dado.faturasAbertas || !dado.faturasAbertas.length) return '';
-    return dado.faturasAbertas.map(f=>
-      `<tr onclick="abrirPagamentoFaturaCartao('${tipoLower}',${f.total})" style="cursor:pointer" title="Registrar pagamento desta fatura">
-        <td>${esc(nomeCartaoAmigavel(f.cartao))} ${T(tag,tag==='PF'?'az':'pur')}</td>
-        <td>${fmtD(f.venc)}</td>
-        <td style="text-align:right;font-weight:700">R$ ${fmt(f.total)}</td>
+
+  // ── Nível 1: cartões agrupados, cada um com seu total em aberto (toque pra ver as faturas dele) ──
+  const linhasCartoesResumo = (tag,tipoLower,dado)=>{
+    if(!dado || !dado.porCartao) return '';
+    return Object.entries(dado.porCartao).map(([nome,info])=>
+      `<tr onclick="selecionarCartaoDash('${tipoLower}',${JSON.stringify(nome)})" style="cursor:pointer" title="Ver faturas a vencer deste cartão">
+        <td>${esc(nomeCartaoAmigavel(nome))} ${T(tag,tag==='PF'?'az':'pur')}</td>
+        <td>${info.proximaVenc?fmtD(info.proximaVenc):'-'}</td>
+        <td style="text-align:right;font-weight:700">R$ ${fmt(info.aberto)}</td>
       </tr>`
     ).join('');
   };
-  const temFaturasPF = filtro!=='PJ' && (r?.pf?.faturasAbertas||[]).length>0;
-  const temFaturasPJ = filtro!=='PF' && (r?.pj?.faturasAbertas||[]).length>0;
-  const composicaoCartoes = `<table><thead><tr><th>Cartão / Fatura</th><th>Vencimento</th><th style="text-align:right">Valor</th></tr></thead><tbody>
-    ${filtro!=='PJ' ? linhasFaturas('PF','pf', r?.pf) : ''}
-    ${filtro!=='PF' ? linhasFaturas('PJ','pj', r?.pj) : ''}
-    ${(!temFaturasPF && !temFaturasPJ) ? '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Nenhuma fatura em aberto (ou toque em 🔄 para carregar)</td></tr>' : ''}
+  const temCartoesPF = filtro!=='PJ' && r?.pf?.porCartao && Object.keys(r.pf.porCartao).length>0;
+  const temCartoesPJ = filtro!=='PF' && r?.pj?.porCartao && Object.keys(r.pj.porCartao).length>0;
+  const composicaoCartoesLista = `<table><thead><tr><th>Cartão</th><th>Próx. Vencimento</th><th style="text-align:right">Em Aberto</th></tr></thead><tbody>
+    ${filtro!=='PJ' ? linhasCartoesResumo('PF','pf', r?.pf) : ''}
+    ${filtro!=='PF' ? linhasCartoesResumo('PJ','pj', r?.pj) : ''}
+    ${(!temCartoesPF && !temCartoesPJ) ? '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Nenhuma fatura em aberto (ou toque em 🔄 para carregar)</td></tr>' : ''}
   </tbody></table>
-  <div style="font-size:11px;color:var(--mut);margin-top:8px">Faturas em aberto e próximas a pagar, da mais próxima do vencimento para a mais distante. Toque numa fatura para registrar o pagamento dela.</div>`;
+  <div style="font-size:11px;color:var(--mut);margin-top:8px">Toque num cartão para ver as faturas a vencer dele.</div>`;
+
+  // ── Nível 2: faturas a vencer só do cartão selecionado ──
+  const sel = _cartaoSelecionadoDash;
+  let composicaoCartoesDetalhe = '';
+  if(sel){
+    const dado = sel.tag==='pf' ? r?.pf : r?.pj;
+    const tagLabel = sel.tag==='pf' ? 'PF' : 'PJ';
+    const faturasDoCartao = (dado?.faturasAbertas||[]).filter(f=>f.cartao===sel.cartao).sort((a,b)=>a.venc.localeCompare(b.venc));
+    composicaoCartoesDetalhe = `
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+        ${B('◀ Voltar aos cartões','voltarListaCartoesDash()','var(--sur)','var(--txt)',1)}
+        <div style="font-weight:700;font-size:12px">${esc(nomeCartaoAmigavel(sel.cartao))} ${T(tagLabel,tagLabel==='PF'?'az':'pur')}</div>
+      </div>
+      <table><thead><tr><th>Vencimento</th><th style="text-align:right">Valor</th></tr></thead><tbody>
+      ${faturasDoCartao.length ? faturasDoCartao.map(f=>
+        `<tr onclick="abrirPagamentoFaturaCartao('${sel.tag}',${f.total})" style="cursor:pointer" title="Registrar pagamento desta fatura">
+          <td>${fmtD(f.venc)}</td>
+          <td style="text-align:right;font-weight:700">R$ ${fmt(f.total)}</td>
+        </tr>`).join('')
+        : '<tr><td colspan="2" style="text-align:center;color:var(--mut)">Nenhuma fatura em aberto para este cartão</td></tr>'}
+      </tbody></table>
+      <div style="font-size:11px;color:var(--mut);margin-top:8px">Toque numa fatura para registrar o pagamento dela.</div>`;
+  }
+  const composicaoCartoes = sel ? composicaoCartoesDetalhe : composicaoCartoesLista;
+
   return `<div class="card" style="margin-bottom:14px">
     <div onclick="toggleKpi('cartoes')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div style="font-weight:700">💳 Cartões de Crédito ${filtro==='todos'?'(CartoesPF/PJ)':filtro==='PF'?'(CartoesPF)':'(CartoesPJ)'}</div>
@@ -4087,12 +4117,13 @@ function confirmarRenovarSeguro(id){
 // RENDER — DASHBOARD
 // ══════════════════════════════════════════
 let _filtroDashPFPJ = 'todos';
-function mudarFiltroDashPFPJ(tipo){ _filtroDashPFPJ = tipo; renderAba(); }
+function mudarFiltroDashPFPJ(tipo){ _filtroDashPFPJ = tipo; _cartaoSelecionadoDash = null; renderAba(); }
 let _dashSoTitulos = false;
 let _kpiAberto = null;
 function alternarDashSoTitulos(){ _dashSoTitulos = !_dashSoTitulos; _kpiAberto=null; renderAba(); }
 function toggleKpi(chave){
   _kpiAberto = (_kpiAberto===chave ? null : chave);
+  if(_kpiAberto!=='cartoes') _cartaoSelecionadoDash = null;
   renderAba();
   if(_kpiAberto==='cartoes'){
     const semDados = !_resumoCartoes || (!_resumoCartoes.pf?.porCartao && !_resumoCartoes.pj?.porCartao);
