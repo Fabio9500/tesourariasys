@@ -42506,6 +42506,23 @@
       "origem": "manual",
       "contaPagarId": null,
       "criadoEm": "2026-07-19T22:33:40.852Z"
+    },
+    {
+      "id": "mrtvt1f0l769y",
+      "contaId": "mrnty0gh9748t",
+      "data": "2026-07-20",
+      "tipo": "entrada",
+      "valor": 20721,
+      "categoriaId": "mroc2e3kfi98c",
+      "centroCustoId": "",
+      "contraparte": "Infinity Comercio  Atac.De Prod. LTD",
+      "descricao": "[ChequeSys — Receb. Cheque] Cheque nº 00000127 — Emitente: HD Santos Filho — Depósito — Cheque 00000127 — Emitente: HD Santos Filho — Venc: 20/07/2026",
+      "origem": "chequesys",
+      "origemId": "mrtuxfemi18d",
+      "chequeId": "CHQ0109",
+      "boletoId": null,
+      "contaPagarId": null,
+      "criadoEm": "2026-07-20T23:54:35.244Z"
     }
   ],
   "contasPagar": [
@@ -42853,6 +42870,10 @@
       "mrqzdj8v959s": {
         "lancId": "mrr3eg160v0z9",
         "fingerprint": "entrada|2750|2026-07-17|Liquidação cheque 00000028 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000028 — Emitente: Arena Prime Eventos|CHQ0039|"
+      },
+      "mrtuxfemi18d": {
+        "lancId": "mrtvt1f0l769y",
+        "fingerprint": "entrada|20721|2026-07-20|Depósito — Cheque 00000127 — Emitente: HD Santos Filho — Venc: 20/07/2026|mrnty0gh9748t|Infinity Comercio  Atac.De Prod. LTD|recebimento_cheque|Cheque nº 00000127 — Emitente: HD Santos Filho|CHQ0109|"
       }
     }
   }
