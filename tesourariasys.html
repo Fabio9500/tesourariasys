@@ -1108,7 +1108,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.41';
+const VERSAO = 'v1.42';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1155,10 +1155,13 @@ function diasEntreDatas(a,b){
 // do que adivinhar pelo nome do favorecido, que pode coincidir com um cliente real.
 function identificarTransferenciasInternas(lancamentos){
   const contaIds = new Set((DB.contas||[]).map(c=>c.id));
-  const saidas = lancamentos.filter(l=>l.tipo==='saida' && contaIds.has(l.contaId));
-  const entradas = lancamentos.filter(l=>l.tipo==='entrada' && contaIds.has(l.contaId));
-  const usadas = new Set();
   const idsPareados = new Set();
+  // Pareamento explícito: lançamentos criados pelo tipo "Transferência" já vêm
+  // linkados por transferenciaId — não precisa adivinhar por valor/data.
+  lancamentos.forEach(l=>{ if(l.origem==='transferencia' && l.transferenciaId) idsPareados.add(l.id); });
+  const saidas = lancamentos.filter(l=>l.tipo==='saida' && contaIds.has(l.contaId) && !idsPareados.has(l.id));
+  const entradas = lancamentos.filter(l=>l.tipo==='entrada' && contaIds.has(l.contaId) && !idsPareados.has(l.id));
+  const usadas = new Set();
   saidas.forEach(s=>{
     const cand = entradas.find(e=>
       !usadas.has(e.id) && e.contaId!==s.contaId &&
@@ -2561,15 +2564,21 @@ function novoLancamento(contaIdPre){
   AM('➕ Novo Lançamento',`
     ${EH('e-lanc')}
     <div class="row">
-      ${C('Conta *',`<select id="lc-conta" onchange="atualizarSugestoesConta('lc')">${opcoesContas(contaIdPre)}</select>`,'2','200')}
+      ${C('<span id="lc-conta-label">Conta *</span>',`<select id="lc-conta" onchange="atualizarSugestoesConta('lc')">${opcoesContas(contaIdPre)}</select>`,'2','200')}
       ${C('Data *',`<input type="date" id="lc-data" value="${hoje()}">`,'1','150')}
     </div>
+    <div class="row" id="lc-destino-wrap" style="display:none">
+      ${C('Conta Destino *',`<select id="lc-conta-destino">${opcoesContas()}</select>`,'2','200')}
+    </div>
     <div class="row">
-      ${C('Tipo *',`<select id="lc-tipo" onchange="atualizarSugestoesConta('lc');atualizarLabelRecorrencia()"><option value="entrada">Entrada</option><option value="saida">Saída</option></select>`,'1','140')}
+      ${C('Tipo *',`<select id="lc-tipo" onchange="atualizarSugestoesConta('lc');atualizarLabelRecorrencia();atualizarUITipoLancamento('lc')"><option value="entrada">Entrada</option><option value="saida">Saída</option><option value="transferencia">Transferência</option></select>`,'1','140')}
       ${C('Valor (R$) *',`<input id="lc-valor" placeholder="0,00">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Categoria',`<select id="lc-categoria">${opcoesCategorias('receita')}</select>`,'1','180')}
+      <div class="campo" id="lc-categoria-wrap" style="flex:1;min-width:180px;margin-bottom:10px">
+        <label>Categoria</label>
+        <select id="lc-categoria">${opcoesCategorias('receita')}</select>
+      </div>
       ${C('Centro de Custo',`<select id="lc-cc"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
     </div>
     ${C('Cliente / Fornecedor (opcional)',`<input id="lc-contraparte" list="dl-contrapartes" placeholder="Quem pagou ou recebeu">
@@ -2580,7 +2589,7 @@ function novoLancamento(contaIdPre){
       <datalist id="dl-descricoes">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     <div id="lc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
 
-    <div class="card" style="margin:10px 0;padding:10px;background:var(--sur)">
+    <div class="card" id="lc-recorrencia-wrap" style="margin:10px 0;padding:10px;background:var(--sur)">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:13px">
         <input type="checkbox" id="lc-recorrente" onchange="document.getElementById('lc-recorrencia-opcoes').style.display=this.checked?'block':'none'">
         🔁 Replicar automaticamente em <span id="lc-rec-label">Contas a Receber</span>
@@ -2601,6 +2610,20 @@ function novoLancamento(contaIdPre){
   `);
   atualizarSugestoesConta('lc');
   atualizarLabelRecorrencia();
+  atualizarUITipoLancamento('lc');
+}
+function atualizarUITipoLancamento(prefixo){
+  const tipoEl = document.getElementById(prefixo+'-tipo');
+  if(!tipoEl) return;
+  const ehTransf = tipoEl.value==='transferencia';
+  const destinoWrap = document.getElementById(prefixo+'-destino-wrap');
+  const catWrap = document.getElementById(prefixo+'-categoria-wrap');
+  const recWrap = document.getElementById(prefixo+'-recorrencia-wrap');
+  const contaLabel = document.getElementById(prefixo+'-conta-label');
+  if(destinoWrap) destinoWrap.style.display = ehTransf ? 'flex' : 'none';
+  if(catWrap) catWrap.style.display = ehTransf ? 'none' : 'block';
+  if(recWrap) recWrap.style.display = ehTransf ? 'none' : 'block';
+  if(contaLabel) contaLabel.textContent = ehTransf ? 'Conta Origem *' : 'Conta *';
 }
 function atualizarLabelRecorrencia(prefixo){
   prefixo = prefixo || 'lc';
@@ -2684,7 +2707,45 @@ function proximaDataRecorrencia(data, periodo){
   else d.setMonth(d.getMonth()+1); // mensal
   return d.toISOString().slice(0,10);
 }
+function salvarNovaTransferencia(){
+  const contaOrigemId = document.getElementById('lc-conta').value;
+  const contaDestinoId = document.getElementById('lc-conta-destino').value;
+  const valor = parseValor(document.getElementById('lc-valor').value);
+  const data = document.getElementById('lc-data').value||hoje();
+  const descricao = document.getElementById('lc-desc').value.trim();
+  const direcionamento = document.getElementById('lc-direcionamento').value.trim();
+  const centroCustoId = document.getElementById('lc-cc').value||'';
+  if(!contaOrigemId){ ME('e-lanc','Selecione a conta de origem.'); return; }
+  if(!contaDestinoId){ ME('e-lanc','Selecione a conta de destino.'); return; }
+  if(contaOrigemId===contaDestinoId){ ME('e-lanc','A conta de origem e a conta de destino não podem ser a mesma.'); return; }
+  if(!valor||valor<=0){ ME('e-lanc','Informe um valor válido maior que zero.'); return; }
+  const transferenciaId = uid();
+  const nomeOrigem = nomeConta(contaById(contaOrigemId));
+  const nomeDestino = nomeConta(contaById(contaDestinoId));
+  const agora = new Date().toISOString();
+  const saida = {
+    id:uid(), contaId:contaOrigemId, data, tipo:'saida', valor,
+    categoriaId:'', centroCustoId,
+    contraparte:'', direcionamento,
+    descricao: descricao || `Transferência para ${nomeDestino}`,
+    origem:'transferencia', transferenciaId, contaVinculadaId:contaDestinoId, contaPagarId:null,
+    criadoEm: agora
+  };
+  const entrada = {
+    id:uid(), contaId:contaDestinoId, data, tipo:'entrada', valor,
+    categoriaId:'', centroCustoId,
+    contraparte:'', direcionamento,
+    descricao: descricao || `Transferência de ${nomeOrigem}`,
+    origem:'transferencia', transferenciaId, contaVinculadaId:contaOrigemId, contaPagarId:null,
+    criadoEm: agora
+  };
+  const novoDB = {...DB, lancamentos:[...(DB.lancamentos||[]), saida, entrada]};
+  salvar(novoDB);
+  FM();
+}
 function salvarNovoLancamento(){
+  const tipo = document.getElementById('lc-tipo').value;
+  if(tipo==='transferencia'){ salvarNovaTransferencia(); return; }
   const contaId = document.getElementById('lc-conta').value;
   const valor = parseValor(document.getElementById('lc-valor').value);
   if(!contaId){ ME('e-lanc','Selecione a conta.'); return; }
@@ -2731,6 +2792,19 @@ function salvarNovoLancamento(){
   }
 
   salvar(novoDB);
+  FM();
+}
+function salvarEdicaoTransferencia(transferenciaId){
+  const data = document.getElementById('etf-data').value;
+  const valor = parseValor(document.getElementById('etf-valor').value);
+  const descricao = document.getElementById('etf-desc').value.trim();
+  if(!data){ ME('e-lanc-transf','Informe a data.'); return; }
+  if(!valor||valor<=0){ ME('e-lanc-transf','Informe um valor válido maior que zero.'); return; }
+  const novoDb = {...DB, lancamentos:(DB.lancamentos||[]).map(l=>{
+    if(l.transferenciaId!==transferenciaId) return l;
+    return {...l, data, valor, descricao: descricao || l.descricao};
+  })};
+  salvar(novoDb);
   FM();
 }
 function editarLancamento(id){
@@ -2789,6 +2863,29 @@ function editarLancamento(id){
       <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
         ${linkChq ? B('🔗 Abrir no ChequeSys',`window.open('${linkChq}','tsr_janela_chequesys')`,'var(--acc)') : ''}
         ${B('Entendi','FM()','var(--sur)','var(--txt)')}
+      </div>
+    `);
+    return;
+  }
+  if(l.origem==='transferencia'){
+    const par = (DB.lancamentos||[]).find(x=>x.transferenciaId===l.transferenciaId && x.id!==l.id);
+    const contaOrigemId = l.tipo==='saida' ? l.contaId : (par?par.contaId:l.contaVinculadaId);
+    const contaDestinoId = l.tipo==='entrada' ? l.contaId : (par?par.contaId:l.contaVinculadaId);
+    AM('✏ Editar Transferência',`
+      ${EH('e-lanc-transf')}
+      <div style="font-size:12px;color:var(--mut);margin-bottom:10px;line-height:1.5">
+        Transferência de <strong>${esc(nomeConta(contaById(contaOrigemId)))}</strong> para <strong>${esc(nomeConta(contaById(contaDestinoId)))}</strong>.<br>
+        Alterar data e valor aqui atualiza as duas pernas (origem e destino) juntas.
+      </div>
+      <div class="row">
+        ${C('Data *',`<input type="date" id="etf-data" value="${l.data}">`,'1','150')}
+        ${C('Valor (R$) *',`<input id="etf-valor" value="${fmt(l.valor)}">`,'1','150')}
+      </div>
+      ${C('Descrição (opcional)',`<input id="etf-desc" value="${esc(l.descricao||'')}">`)}
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        ${B('💾 Salvar','salvarEdicaoTransferencia(\''+l.transferenciaId+'\')','var(--acc)')}
+        ${BPerm('excluir','🗑 Excluir Transferência','excluirLancamento(\''+id+'\')','var(--red)','#fff')}
+        ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
       </div>
     `);
     return;
@@ -2900,6 +2997,14 @@ function excluirLancamento(id){
         ${B('Entendi','FM()','var(--sur)','var(--txt)')}
       </div>
     `);
+    return;
+  }
+  if(l.origem==='transferencia'){
+    CF('Esta é uma Transferência entre contas. Excluir vai remover as duas pernas (origem e destino) juntas. Confirma?', ()=>{
+      const novoDb = {...DB, lancamentos:(DB.lancamentos||[]).filter(x=>x.transferenciaId!==l.transferenciaId)};
+      salvar(novoDb);
+      FM();
+    });
     return;
   }
   const nomesOrigem = {investimento:'Investimento',previdencia:'Previdência',capitalizacao:'Capitalização',seguro:'Seguro'};
@@ -4407,7 +4512,7 @@ function htmlLancamentos(){
     return `<tr>
       <td>${fmtD(l.data)}</td>
       <td>${esc(c?nomeConta(c):'-')}</td>
-      <td>${T(l.tipo==='entrada'?'Entrada':'Saída', l.tipo==='entrada'?'vd':'vm')}</td>
+      <td>${T(l.tipo==='entrada'?'Entrada':'Saída', l.tipo==='entrada'?'vd':'vm')}${l.origem==='transferencia'?' '+T('🔀 Transf.','az'):''}</td>
       <td>${esc(cat?cat.nome:'-')}</td>
       <td>${esc(cc?cc.nome:'-')}</td>
       <td>${esc(l.contraparte||'-')}</td>
