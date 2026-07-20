@@ -1108,7 +1108,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.43';
+const VERSAO = 'v1.44';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2178,6 +2178,93 @@ function excluirConta(id){
 // ══════════════════════════════════════════
 // CRUD — CATEGORIAS E CENTROS DE CUSTO
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// 🔀 SEPARAÇÃO PF/PJ NOS CADASTROS — a pedido de Fabio: Categoria, Centro de
+// Custo, Direcionamento, Fornecedor e Cliente agora carregam um campo
+// tipoPFPJ ('PF'|'PJ'|'ambos'). Itens sem tipoPFPJ definido (dado antigo)
+// são tratados como 'ambos' por segurança, até serem classificados.
+// ══════════════════════════════════════════
+function itemValidoParaPFPJ(item, tipoConta){
+  if(!tipoConta) return true; // sem conta selecionada ainda — não filtra
+  const t = item.tipoPFPJ;
+  if(!t || t==='ambos') return true;
+  return t===tipoConta;
+}
+// Sugere tipoPFPJ para um item com base em QUAIS TIPOS DE CONTA (PF/PJ) ele
+// já foi usado nos lançamentos — usado só na tela de classificação em lote.
+function sugerirTiposPorHistorico(){
+  const tipoContaId = {};
+  (DB.contas||[]).forEach(c=>{ tipoContaId[c.id]=c.tipo; });
+  function tiposUsados(matchFn){
+    const tipos = new Set();
+    (DB.lancamentos||[]).forEach(l=>{ if(matchFn(l)){ const t=tipoContaId[l.contaId]; if(t) tipos.add(t); } });
+    return tipos.size>1 ? 'ambos' : (tipos.size===1 ? [...tipos][0] : '');
+  }
+  const sug = {categorias:{}, centrosCusto:{}, direcionamentos:{}, fornecedores:{}, clientes:{}};
+  (DB.categorias||[]).forEach(c=>{ sug.categorias[c.id] = tiposUsados(l=>l.categoriaId===c.id); });
+  (DB.centrosCusto||[]).forEach(c=>{ sug.centrosCusto[c.id] = tiposUsados(l=>l.centroCustoId===c.id); });
+  (DB.direcionamentos||[]).forEach(d=>{ sug.direcionamentos[d.id] = tiposUsados(l=>l.direcionamento===d.nome); });
+  (DB.fornecedores||[]).forEach(f=>{ sug.fornecedores[f.id] = tiposUsados(l=>l.contraparte===f.nome); });
+  (DB.clientes||[]).forEach(c=>{ sug.clientes[c.id] = tiposUsados(l=>l.contraparte===c.nome); });
+  return sug;
+}
+function campoPFPJ(id, valorAtual){
+  const v = valorAtual || 'ambos';
+  return `<select id="${id}">
+    <option value="PF"${v==='PF'?' selected':''}>Somente PF</option>
+    <option value="PJ"${v==='PJ'?' selected':''}>Somente PJ</option>
+    <option value="ambos"${v==='ambos'?' selected':''}>Ambos (PF e PJ)</option>
+  </select>`;
+}
+function seletorPFPJ(campoPrefix, item, sugestao){
+  const atual = item.tipoPFPJ || sugestao || 'ambos';
+  return `<select id="pfpj-${campoPrefix}-${item.id}" style="font-size:11px">
+    <option value="PF"${atual==='PF'?' selected':''}>Somente PF</option>
+    <option value="PJ"${atual==='PJ'?' selected':''}>Somente PJ</option>
+    <option value="ambos"${atual==='ambos'?' selected':''}>Ambos</option>
+  </select>`;
+}
+function abrirClassificacaoPFPJ(){
+  const sug = sugerirTiposPorHistorico();
+  const linha = (item, sugestao, campoPrefix) => {
+    const semHistorico = !item.tipoPFPJ && !sugestao;
+    return `<div class="row" style="align-items:center;margin-bottom:6px;gap:8px">
+      <div style="flex:2;min-width:150px;font-size:12px">${esc(item.nome)}${semHistorico?' <span style="color:var(--mut);font-size:10px">(sem histórico — revise)</span>':''}</div>
+      <div style="flex:1;min-width:130px">${seletorPFPJ(campoPrefix, item, sugestao)}</div>
+    </div>`;
+  };
+  const cats = (DB.categorias||[]).map(c=>linha(c, sug.categorias[c.id], 'cat')).join('') || '<div style="font-size:11px;color:var(--mut)">Nenhuma categoria cadastrada.</div>';
+  const ccs = (DB.centrosCusto||[]).map(c=>linha(c, sug.centrosCusto[c.id], 'cc')).join('') || '<div style="font-size:11px;color:var(--mut)">Nenhum centro de custo cadastrado.</div>';
+  const direcs = (DB.direcionamentos||[]).map(c=>linha(c, sug.direcionamentos[c.id], 'direc')).join('') || '<div style="font-size:11px;color:var(--mut)">Nenhum direcionamento cadastrado ainda.</div>';
+  const forns = (DB.fornecedores||[]).map(c=>linha(c, sug.fornecedores[c.id], 'forn')).join('') || '<div style="font-size:11px;color:var(--mut)">Nenhum fornecedor cadastrado ainda.</div>';
+  const clis = (DB.clientes||[]).map(c=>linha(c, sug.clientes[c.id], 'cli')).join('') || '<div style="font-size:11px;color:var(--mut)">Nenhum cliente cadastrado ainda.</div>';
+  AM('🔀 Classificar Cadastros — PF ou PJ', `
+    <div style="font-size:11px;color:var(--mut);margin-bottom:12px;line-height:1.6">
+      Defina se cada cadastro deve aparecer só em contas <strong>PF</strong>, só em <strong>PJ</strong>, ou nos dois ("Ambos"). Isso controla onde ele aparece como sugestão no Novo Lançamento, Contas a Pagar e Contas a Receber.<br>
+      Já vem pré-marcado com uma sugestão baseada no histórico de uso — revise e ajuste o que precisar antes de salvar.
+    </div>
+    <div class="card" style="margin-bottom:10px"><div style="font-weight:700;margin-bottom:8px">📂 Categorias</div>${cats}</div>
+    <div class="card" style="margin-bottom:10px"><div style="font-weight:700;margin-bottom:8px">🏢 Centros de Custo</div>${ccs}</div>
+    <div class="card" style="margin-bottom:10px"><div style="font-weight:700;margin-bottom:8px">📍 Direcionamentos</div>${direcs}</div>
+    <div class="card" style="margin-bottom:10px"><div style="font-weight:700;margin-bottom:8px">🏭 Fornecedores</div>${forns}</div>
+    <div class="card" style="margin-bottom:10px"><div style="font-weight:700;margin-bottom:8px">🧑 Clientes</div>${clis}</div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      ${B('💾 Salvar Classificação','salvarClassificacaoPFPJ()','var(--acc)')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function salvarClassificacaoPFPJ(){
+  const ler = (campoPrefix, id) => document.getElementById(`pfpj-${campoPrefix}-${id}`)?.value || 'ambos';
+  const categorias = (DB.categorias||[]).map(c=>({...c, tipoPFPJ: ler('cat', c.id)}));
+  const centrosCusto = (DB.centrosCusto||[]).map(c=>({...c, tipoPFPJ: ler('cc', c.id)}));
+  const direcionamentos = (DB.direcionamentos||[]).map(c=>({...c, tipoPFPJ: ler('direc', c.id)}));
+  const fornecedores = (DB.fornecedores||[]).map(c=>({...c, tipoPFPJ: ler('forn', c.id)}));
+  const clientes = (DB.clientes||[]).map(c=>({...c, tipoPFPJ: ler('cli', c.id)}));
+  salvar({...DB, categorias, centrosCusto, direcionamentos, fornecedores, clientes});
+  FM();
+  setStatus('ok','✅ Classificação PF/PJ salva'); setTimeout(()=>{const el=document.getElementById('status'); if(el)el.style.display='none';},3000);
+}
 function checkboxesCC(idsSelecionados){
   const sel = new Set(idsSelecionados||[]);
   const itens = (DB.centrosCusto||[]).map(cc=>`
@@ -2192,7 +2279,10 @@ function lerCCsMarcados(){
 function novaCategoria(){
   AM('➕ Nova Categoria',`
     ${EH('e-cat')}
-    ${C('Tipo *',`<select id="cat-tipo"><option value="receita">Receita</option><option value="despesa">Despesa</option></select>`,'1','160')}
+    <div class="row">
+      ${C('Tipo *',`<select id="cat-tipo"><option value="receita">Receita</option><option value="despesa">Despesa</option></select>`,'1','160')}
+      ${C('PF ou PJ *',campoPFPJ('cat-pfpj'),'1','160')}
+    </div>
     ${C('Nome *',`<input id="cat-nome" placeholder="Ex: Tarifas Bancárias">`,'2','200')}
     <div class="campo" style="margin-bottom:10px">
       <label>Vincular a Centro(s) de Custo (opcional)</label>
@@ -2208,7 +2298,7 @@ function novaCategoria(){
 function salvarNovaCategoria(){
   const nome = document.getElementById('cat-nome').value.trim();
   if(!nome){ ME('e-cat','Informe o nome da categoria.'); return; }
-  const nova = {id:uid(), tipo:document.getElementById('cat-tipo').value, nome, centrosCustoIds:lerCCsMarcados()};
+  const nova = {id:uid(), tipo:document.getElementById('cat-tipo').value, tipoPFPJ:document.getElementById('cat-pfpj').value, nome, centrosCustoIds:lerCCsMarcados()};
   salvar({...DB, categorias:[...(DB.categorias||[]), nova]});
   FM();
 }
@@ -2216,7 +2306,10 @@ function editarCategoria(id){
   const c = categoriaById(id); if(!c) return;
   AM('✏ Editar Categoria',`
     ${EH('e-cat-ed')}
-    ${C('Tipo *',`<select id="ecat-tipo"><option value="receita"${c.tipo==='receita'?' selected':''}>Receita</option><option value="despesa"${c.tipo==='despesa'?' selected':''}>Despesa</option></select>`,'1','160')}
+    <div class="row">
+      ${C('Tipo *',`<select id="ecat-tipo"><option value="receita"${c.tipo==='receita'?' selected':''}>Receita</option><option value="despesa"${c.tipo==='despesa'?' selected':''}>Despesa</option></select>`,'1','160')}
+      ${C('PF ou PJ *',campoPFPJ('ecat-pfpj', c.tipoPFPJ),'1','160')}
+    </div>
     ${C('Nome *',`<input id="ecat-nome" value="${esc(c.nome)}">`,'2','200')}
     <div class="campo" style="margin-bottom:10px">
       <label>Vincular a Centro(s) de Custo (opcional)</label>
@@ -2233,7 +2326,7 @@ function editarCategoria(id){
 function salvarEdicaoCategoria(id){
   const nome = document.getElementById('ecat-nome').value.trim();
   if(!nome){ ME('e-cat-ed','Informe o nome da categoria.'); return; }
-  salvar({...DB, categorias:(DB.categorias||[]).map(c=>c.id===id?{...c,nome,tipo:document.getElementById('ecat-tipo').value,centrosCustoIds:lerCCsMarcados()}:c)});
+  salvar({...DB, categorias:(DB.categorias||[]).map(c=>c.id===id?{...c,nome,tipo:document.getElementById('ecat-tipo').value,tipoPFPJ:document.getElementById('ecat-pfpj').value,centrosCustoIds:lerCCsMarcados()}:c)});
   FM();
 }
 function excluirCategoria(id){
@@ -2245,7 +2338,10 @@ function excluirCategoria(id){
 function novoCentroCusto(){
   AM('➕ Novo Centro de Custo',`
     ${EH('e-cc')}
-    ${C('Nome *',`<input id="cc-nome" placeholder="Ex: Telasul">`,'2','200')}
+    <div class="row">
+      ${C('Nome *',`<input id="cc-nome" placeholder="Ex: Telasul">`,'2','200')}
+      ${C('PF ou PJ *',campoPFPJ('cc-pfpj'),'1','160')}
+    </div>
     ${C('Observações',`<input id="cc-obs" placeholder="Opcional">`,'2','200')}
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarNovoCC()','var(--acc)')}
@@ -2256,7 +2352,7 @@ function novoCentroCusto(){
 function salvarNovoCC(){
   const nome = document.getElementById('cc-nome').value.trim();
   if(!nome){ ME('e-cc','Informe o nome do centro de custo.'); return; }
-  const novo = {id:uid(), nome, obs:document.getElementById('cc-obs').value.trim()};
+  const novo = {id:uid(), nome, tipoPFPJ:document.getElementById('cc-pfpj').value, obs:document.getElementById('cc-obs').value.trim()};
   salvar({...DB, centrosCusto:[...(DB.centrosCusto||[]), novo]});
   FM();
 }
@@ -2264,7 +2360,10 @@ function editarCentroCusto(id){
   const cc = centroCustoById(id); if(!cc) return;
   AM('✏ Editar Centro de Custo',`
     ${EH('e-cc-ed')}
-    ${C('Nome *',`<input id="ecc-nome" value="${esc(cc.nome)}">`,'2','200')}
+    <div class="row">
+      ${C('Nome *',`<input id="ecc-nome" value="${esc(cc.nome)}">`,'2','200')}
+      ${C('PF ou PJ *',campoPFPJ('ecc-pfpj', cc.tipoPFPJ),'1','160')}
+    </div>
     ${C('Observações',`<input id="ecc-obs" value="${esc(cc.obs||'')}">`,'2','200')}
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarEdicaoCC(\''+id+'\')','var(--acc)')}
@@ -2276,7 +2375,7 @@ function editarCentroCusto(id){
 function salvarEdicaoCC(id){
   const nome = document.getElementById('ecc-nome').value.trim();
   if(!nome){ ME('e-cc-ed','Informe o nome.'); return; }
-  salvar({...DB, centrosCusto:(DB.centrosCusto||[]).map(c=>c.id===id?{...c,nome,obs:document.getElementById('ecc-obs').value.trim()}:c)});
+  salvar({...DB, centrosCusto:(DB.centrosCusto||[]).map(c=>c.id===id?{...c,nome,tipoPFPJ:document.getElementById('ecc-pfpj').value,obs:document.getElementById('ecc-obs').value.trim()}:c)});
   FM();
 }
 function excluirCC(id){
@@ -2289,7 +2388,10 @@ function direcionamentoById(id){ return (DB.direcionamentos||[]).find(d=>d.id===
 function novoDirecionamento(){
   AM('➕ Novo Direcionamento',`
     ${EH('e-drc')}
-    ${C('Nome *',`<input id="drc-nome" placeholder="Ex: Obra X, Setor Y...">`,'2','200')}
+    <div class="row">
+      ${C('Nome *',`<input id="drc-nome" placeholder="Ex: Obra X, Setor Y...">`,'2','200')}
+      ${C('PF ou PJ *',campoPFPJ('drc-pfpj'),'1','160')}
+    </div>
     ${C('Observações',`<input id="drc-obs" placeholder="Opcional">`,'2','200')}
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarNovoDirecionamento()','var(--acc)')}
@@ -2300,7 +2402,7 @@ function novoDirecionamento(){
 function salvarNovoDirecionamento(){
   const nome = document.getElementById('drc-nome').value.trim();
   if(!nome){ ME('e-drc','Informe o nome do direcionamento.'); return; }
-  const novo = {id:uid(), nome, obs:document.getElementById('drc-obs').value.trim()};
+  const novo = {id:uid(), nome, tipoPFPJ:document.getElementById('drc-pfpj').value, obs:document.getElementById('drc-obs').value.trim()};
   salvar({...DB, direcionamentos:[...(DB.direcionamentos||[]), novo]});
   FM();
 }
@@ -2308,7 +2410,10 @@ function editarDirecionamento(id){
   const d = direcionamentoById(id); if(!d) return;
   AM('✏ Editar Direcionamento',`
     ${EH('e-drc-ed')}
-    ${C('Nome *',`<input id="edrc-nome" value="${esc(d.nome)}">`,'2','200')}
+    <div class="row">
+      ${C('Nome *',`<input id="edrc-nome" value="${esc(d.nome)}">`,'2','200')}
+      ${C('PF ou PJ *',campoPFPJ('edrc-pfpj', d.tipoPFPJ),'1','160')}
+    </div>
     ${C('Observações',`<input id="edrc-obs" value="${esc(d.obs||'')}">`,'2','200')}
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarEdicaoDirecionamento(\''+id+'\')','var(--acc)')}
@@ -2322,7 +2427,7 @@ function salvarEdicaoDirecionamento(id){
   if(!nome){ ME('e-drc-ed','Informe o nome.'); return; }
   const antigo = direcionamentoById(id);
   const novoNome = nome;
-  let novoDb = {...DB, direcionamentos:(DB.direcionamentos||[]).map(d=>d.id===id?{...d,nome:novoNome,obs:document.getElementById('edrc-obs').value.trim()}:d)};
+  let novoDb = {...DB, direcionamentos:(DB.direcionamentos||[]).map(d=>d.id===id?{...d,nome:novoNome,tipoPFPJ:document.getElementById('edrc-pfpj').value,obs:document.getElementById('edrc-obs').value.trim()}:d)};
   // Se o nome mudou, atualiza também os lançamentos que já usam o nome antigo,
   // pra não "quebrar" o vínculo do que já foi lançado (direcionamento é texto livre).
   if(antigo && antigo.nome!==novoNome){
@@ -2352,6 +2457,7 @@ function campoFornecedorForm(prefixo, f){
       ${C('Telefone',`<input id="${prefixo}-tel" value="${esc(f.telefone||'')}" placeholder="(00) 00000-0000">`,'1','160')}
       ${C('E-mail',`<input id="${prefixo}-email" value="${esc(f.email||'')}" placeholder="contato@email.com">`,'1','200')}
     </div>
+    ${C('PF ou PJ *',campoPFPJ(prefixo+'-pfpj', f.tipoPFPJ),'1','160')}
     ${C('Endereço',`<input id="${prefixo}-end" value="${esc(f.endereco||'')}" placeholder="Opcional">`)}
     ${C('Observações',`<textarea id="${prefixo}-obs" rows="2">${esc(f.obs||'')}</textarea>`)}
   `;
@@ -2362,6 +2468,7 @@ function lerFornecedorForm(prefixo){
     cpfCnpj: document.getElementById(prefixo+'-doc')?.value?.trim()||'',
     telefone: document.getElementById(prefixo+'-tel')?.value?.trim()||'',
     email: document.getElementById(prefixo+'-email')?.value?.trim()||'',
+    tipoPFPJ: document.getElementById(prefixo+'-pfpj')?.value||'ambos',
     endereco: document.getElementById(prefixo+'-end')?.value?.trim()||'',
     obs: document.getElementById(prefixo+'-obs')?.value?.trim()||'',
   };
@@ -2581,18 +2688,19 @@ function processarArquivoOFX(){
 }
 function mostrarRevisaoOFX(){
   const conta = contaById(_ofxContaId);
+  const tipoConta = conta ? conta.tipo : null;
   const reconhecidos = _ofxPendente.filter(t=>t.reconhecido).length;
   const duplicados = _ofxPendente.filter(t=>t.jaExiste).length;
   const linhas = _ofxPendente.map((t,i)=>`<tr style="${t.jaExiste?'opacity:.5':''}">
     <td><input type="checkbox" ${t.incluir?'checked':''} onchange="_ofxPendente[${i}].incluir=this.checked">${t.jaExiste?' <span style=\"font-size:10px;color:var(--mut)\">(já importado)</span>':''}</td>
     <td>${fmtD(t.data)}</td>
     <td><input type="text" value="${esc(t.contraparte)}" style="width:100%;font-size:11px" onchange="_ofxPendente[${i}].contraparte=this.value">${t.reconhecido?' <span title="Reconhecido pelo histórico">✓</span>':''}</td>
-    <td><select style="font-size:11px" onchange="_ofxPendente[${i}].categoriaId=this.value">${opcoesCategorias(t.tipo==='entrada'?'receita':'despesa',t.categoriaId)}</select></td>
+    <td><select style="font-size:11px" onchange="_ofxPendente[${i}].categoriaId=this.value">${opcoesCategorias(t.tipo==='entrada'?'receita':'despesa',t.categoriaId,'',tipoConta)}</select></td>
     <td><input type="text" value="${esc(t.direcionamento)}" style="width:100%;font-size:11px" list="dl-direcionamentos-ofx" onchange="_ofxPendente[${i}].direcionamento=this.value"></td>
     <td style="text-align:right;color:${t.tipo==='entrada'?'#3fb950':'#f85149'};font-weight:700">${t.tipo==='entrada'?'+':'-'} R$ ${fmt(t.valor)}</td>
   </tr>`).join('');
   AM('🔍 Conferir Antes de Importar', `
-    <datalist id="dl-direcionamentos-ofx">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
+    <datalist id="dl-direcionamentos-ofx">${direcionamentosExistentes(tipoConta).map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
     <div style="font-size:12px;color:var(--mut);margin-bottom:10px">
       Conta: <strong>${esc(conta?conta.titular:'-')}</strong> · ${_ofxPendente.length} lançamento(s) encontrado(s) ·
       <span style="color:#3fb950">${reconhecidos} reconhecido(s) pelo histórico</span>
@@ -2624,11 +2732,11 @@ function confirmarImportacaoOFX(){
 function opcoesContasFiltradas(selId){
   return contasFiltradasPFPJ().map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
 }
-function opcoesCategorias(tipo,selId,centroCustoId){
-  return (DB.categorias||[]).filter(c=>(!tipo||c.tipo===tipo)&&categoriaValidaParaCC(c,centroCustoId)).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
+function opcoesCategorias(tipo,selId,centroCustoId,tipoConta){
+  return (DB.categorias||[]).filter(c=>(!tipo||c.tipo===tipo)&&categoriaValidaParaCC(c,centroCustoId)&&itemValidoParaPFPJ(c,tipoConta)).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
 }
-function opcoesCC(selId){
-  return (DB.centrosCusto||[]).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
+function opcoesCC(selId,tipoConta){
+  return (DB.centrosCusto||[]).filter(c=>itemValidoParaPFPJ(c,tipoConta)).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
 }
 // Uma categoria sem centrosCustoIds (ou array vazio) é "genérica" e aparece
 // em qualquer Centro de Custo. Se tiver centrosCustoIds preenchido, só
@@ -2729,17 +2837,20 @@ function tipoDaConta(contaId){
 }
 function contrapartesPorTipoConta(tipo){
   const todos = [...(DB.clientes||[]),...(DB.fornecedores||[])];
-  if(!tipo) return todos;
-  const contasDoTipo = new Set((DB.contas||[]).filter(c=>c.tipo===tipo).map(c=>c.id));
-  const nomesUsados = new Set();
-  (DB.lancamentos||[]).forEach(l=>{ if(l.contraparte && contasDoTipo.has(l.contaId)) nomesUsados.add(l.contraparte); });
-  const filtrados = todos.filter(x=>nomesUsados.has(x.nome));
-  return filtrados.length ? filtrados : todos;
+  return todos.filter(x=>itemValidoParaPFPJ(x,tipo));
 }
-function direcionamentosExistentes(){
+function direcionamentosExistentes(tipoConta){
   const vistos = new Set();
-  (DB.direcionamentos||[]).forEach(d=>{ if(d.nome) vistos.add(d.nome); });
-  (DB.lancamentos||[]).forEach(l=>{ if(l.direcionamento) vistos.add(l.direcionamento); });
+  (DB.direcionamentos||[]).forEach(d=>{ if(d.nome && itemValidoParaPFPJ(d,tipoConta)) vistos.add(d.nome); });
+  // Texto livre já usado em lançamentos mas ainda não cadastrado formalmente
+  // como Direcionamento — só entra no filtro se bater com o tipo de conta certo.
+  const nomesCadastrados = new Set((DB.direcionamentos||[]).map(d=>d.nome));
+  const tipoContaId = {}; (DB.contas||[]).forEach(c=>{ tipoContaId[c.id]=c.tipo; });
+  (DB.lancamentos||[]).forEach(l=>{
+    if(!l.direcionamento || nomesCadastrados.has(l.direcionamento)) return;
+    if(tipoConta && tipoContaId[l.contaId] && tipoContaId[l.contaId]!==tipoConta) return;
+    vistos.add(l.direcionamento);
+  });
   return [...vistos].sort();
 }
 function descricoesExistentes(){
@@ -2753,25 +2864,27 @@ function contrapartesExistentes(){
   return [...vistos].sort();
 }
 function categoriasPorTipoConta(tipoReceitaDespesa, tipoConta, centroCustoId){
-  const base = (DB.categorias||[]).filter(c=>(!tipoReceitaDespesa||c.tipo===tipoReceitaDespesa)&&categoriaValidaParaCC(c,centroCustoId));
-  if(!tipoConta) return base;
-  const contasDoTipo = new Set((DB.contas||[]).filter(c=>c.tipo===tipoConta).map(c=>c.id));
-  const idsUsados = new Set();
-  (DB.lancamentos||[]).forEach(l=>{ if(l.categoriaId && contasDoTipo.has(l.contaId)) idsUsados.add(l.categoriaId); });
-  // CORRIGIDO: antes esse filtro EXCLUÍA da lista qualquer categoria nunca usada
-  // nesse tipo de conta (PF/PJ) — na prática, isso fazia a categoria certa às
-  // vezes nem aparecer pra escolher. Agora só reordena (usadas primeiro),
-  // sem esconder nenhuma opção.
-  return base.slice().sort((a,b)=>(idsUsados.has(b.id)?1:0)-(idsUsados.has(a.id)?1:0));
+  // CORRIGIDO 20/07/2026: antes isso só REORDENAVA por histórico de uso, sem
+  // nunca esconder nenhuma categoria — a pedido de Fabio, agora filtra de
+  // verdade pelo campo tipoPFPJ da categoria (separação estrita PF/PJ).
+  return (DB.categorias||[]).filter(c=>(!tipoReceitaDespesa||c.tipo===tipoReceitaDespesa)&&categoriaValidaParaCC(c,centroCustoId)&&itemValidoParaPFPJ(c,tipoConta));
 }
 function atualizarSugestoesConta(prefixo){
   const contaEl = document.getElementById(prefixo+'-conta');
   const tipoConta = tipoDaConta(contaEl?.value);
   const dl = document.getElementById(prefixo==='elc' ? 'dl-contrapartes-ed' : 'dl-contrapartes');
   if(dl) dl.innerHTML = opcoesDatalist(contrapartesPorTipoConta(tipoConta));
+  const dlDirec = document.getElementById(prefixo==='elc' ? 'dl-direcionamentos-ed' : 'dl-direcionamentos');
+  if(dlDirec) dlDirec.innerHTML = direcionamentosExistentes(tipoConta).map(d=>`<option value="${esc(d)}">`).join('');
   const tipoLancEl = document.getElementById(prefixo+'-tipo');
   const tipoLanc = tipoLancEl ? (tipoLancEl.value==='entrada'?'receita':'despesa') : null;
   const ccEl = document.getElementById(prefixo+'-cc');
+  if(ccEl){
+    const ccAtual = ccEl.value;
+    const opcoesCCFiltradas = opcoesCC(ccAtual, tipoConta);
+    ccEl.innerHTML = '<option value="">-</option>'+opcoesCCFiltradas;
+    if(![...ccEl.options].some(o=>o.value===ccAtual)) ccEl.value='';
+  }
   const centroCustoId = ccEl ? ccEl.value : '';
   const catSel = document.getElementById(prefixo+'-categoria');
   if(catSel){
@@ -2783,7 +2896,7 @@ function atualizarSugestoesConta(prefixo){
   const info = document.getElementById(prefixo+'-tipo-info');
   if(info){
     const partesInfo = [];
-    if(tipoConta) partesInfo.push(`histórico de contas ${tipoConta}`);
+    if(tipoConta) partesInfo.push(`somente cadastros PF/Ambos ou PJ/Ambos, conforme a conta ${tipoConta}`);
     if(centroCustoId) partesInfo.push('categorias vinculadas ao Centro de Custo selecionado');
     info.textContent = partesInfo.length ? `Sugestões filtradas por: ${partesInfo.join(' e ')}.` : '';
   }
@@ -3161,18 +3274,37 @@ function novaContaPagar(){
       ${C('Valor (R$) *',`<input id="cp-valor" placeholder="0,00">`,'1','140')}
     </div>
     <div style="font-size:11px;color:var(--mut);margin:-6px 0 10px">Fornecedor não está na lista? Digite o nome normalmente — depois é só cadastrar os dados completos (CPF/CNPJ, contato) em <strong>Cadastros → Fornecedores</strong>.</div>
+    ${C('Conta bancária de pagamento (opcional — escolher já filtra Categoria/Fornecedor por PF/PJ)',`<select id="cp-conta" onchange="atualizarSugestoesContaPagar('cp')"><option value="">A definir no momento do pagamento</option>${opcoesContas()}</select>`)}
     <div class="row">
       ${C('Vencimento *',`<input type="date" id="cp-venc" value="${hoje()}">`,'1','150')}
-      ${C('Categoria',`<select id="cp-categoria">${opcoesCategorias('despesa')}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="cp-cc"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
+      ${C('Categoria',`<select id="cp-categoria" onchange="atualizarSugestoesContaPagar('cp')">${opcoesCategorias('despesa')}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="cp-cc" onchange="atualizarSugestoesContaPagar('cp')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
     </div>
-    ${C('Conta bancária de pagamento (direcionamento)',`<select id="cp-conta"><option value="">A definir no momento do pagamento</option>${opcoesContas()}</select>`)}
     ${C('Observações',`<textarea id="cp-obs" rows="2"></textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarNovaContaPagar()','var(--acc)')}
       ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
     </div>
   `);
+}
+function atualizarSugestoesContaPagar(prefixo){
+  const contaId = document.getElementById(prefixo+'-conta')?.value||'';
+  const tipoConta = tipoDaConta(contaId);
+  const dl = document.getElementById(prefixo==='ecp' ? 'dl-fornecedores-ed' : 'dl-fornecedores');
+  if(dl) dl.innerHTML = opcoesDatalist((DB.fornecedores||[]).filter(f=>itemValidoParaPFPJ(f,tipoConta)));
+  const ccSel = document.getElementById(prefixo+'-cc');
+  if(ccSel){
+    const ccAtual = ccSel.value;
+    ccSel.innerHTML = '<option value="">-</option>'+opcoesCC(ccAtual, tipoConta);
+    if(![...ccSel.options].some(o=>o.value===ccAtual)) ccSel.value='';
+  }
+  const catSel = document.getElementById(prefixo+'-categoria');
+  if(catSel){
+    const catAtual = catSel.value;
+    const opcoes = categoriasPorTipoConta('despesa', tipoConta, ccSel?ccSel.value:'');
+    catSel.innerHTML = opcoes.map(c=>`<option value="${c.id}"${c.id===catAtual?' selected':''}>${esc(c.nome)}</option>`).join('');
+    if(!opcoes.some(c=>c.id===catAtual)) catSel.value='';
+  }
 }
 function fornecedorIdPorNome(nome){
   const alvo = (nome||'').trim().toLowerCase();
@@ -3226,12 +3358,12 @@ function editarContaPagar(id){
         <datalist id="dl-fornecedores-ed">${opcoesDatalist(DB.fornecedores||[])}</datalist>`,'2','200')}
       ${C('Valor (R$) *',`<input id="ecp-valor" value="${fmt(cp.valor)}">`,'1','140')}
     </div>
+    ${C('Conta bancária de pagamento (opcional — escolher já filtra Categoria/Fornecedor por PF/PJ)',`<select id="ecp-conta" onchange="atualizarSugestoesContaPagar('ecp')"><option value="">A definir no momento do pagamento</option>${opcoesContas(cp.contaId)}</select>`)}
     <div class="row">
       ${C('Vencimento *',`<input type="date" id="ecp-venc" value="${cp.vencimento}">`,'1','150')}
-      ${C('Categoria',`<select id="ecp-categoria">${opcoesCategorias('despesa',cp.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="ecp-cc"><option value="">-</option>${opcoesCC(cp.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<select id="ecp-categoria" onchange="atualizarSugestoesContaPagar('ecp')">${opcoesCategorias('despesa',cp.categoriaId)}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="ecp-cc" onchange="atualizarSugestoesContaPagar('ecp')"><option value="">-</option>${opcoesCC(cp.centroCustoId)}</select>`,'1','180')}
     </div>
-    ${C('Conta bancária de pagamento (direcionamento)',`<select id="ecp-conta"><option value="">A definir no momento do pagamento</option>${opcoesContas(cp.contaId)}</select>`)}
     ${C('Observações',`<textarea id="ecp-obs" rows="2">${esc(cp.obs||'')}</textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarEdicaoContaPagar(\''+id+'\')','var(--acc)')}
@@ -3332,18 +3464,37 @@ function novaContaReceber(){
       ${C('Valor (R$) *',`<input id="cr-valor" placeholder="0,00">`,'1','140')}
     </div>
     <div style="font-size:11px;color:var(--mut);margin:-6px 0 10px">Cliente não está na lista? Digite o nome normalmente — depois é só cadastrar os dados completos em <strong>Cadastros → Clientes</strong>.</div>
+    ${C('Conta bancária de recebimento (opcional — escolher já filtra Categoria/Cliente por PF/PJ)',`<select id="cr-conta" onchange="atualizarSugestoesContaReceber('cr')"><option value="">A definir no momento do recebimento</option>${opcoesContas()}</select>`)}
     <div class="row">
       ${C('Vencimento *',`<input type="date" id="cr-venc" value="${hoje()}">`,'1','150')}
-      ${C('Categoria',`<select id="cr-categoria">${opcoesCategorias('receita')}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="cr-cc"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
+      ${C('Categoria',`<select id="cr-categoria" onchange="atualizarSugestoesContaReceber('cr')">${opcoesCategorias('receita')}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="cr-cc" onchange="atualizarSugestoesContaReceber('cr')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
     </div>
-    ${C('Conta bancária de recebimento (direcionamento)',`<select id="cr-conta"><option value="">A definir no momento do recebimento</option>${opcoesContas()}</select>`)}
     ${C('Observações',`<textarea id="cr-obs" rows="2"></textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarNovaContaReceber()','var(--acc)')}
       ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
     </div>
   `);
+}
+function atualizarSugestoesContaReceber(prefixo){
+  const contaId = document.getElementById(prefixo+'-conta')?.value||'';
+  const tipoConta = tipoDaConta(contaId);
+  const dl = document.getElementById(prefixo==='ecr' ? 'dl-clientes-ed' : 'dl-clientes');
+  if(dl) dl.innerHTML = opcoesDatalist((DB.clientes||[]).filter(c=>itemValidoParaPFPJ(c,tipoConta)));
+  const ccSel = document.getElementById(prefixo+'-cc');
+  if(ccSel){
+    const ccAtual = ccSel.value;
+    ccSel.innerHTML = '<option value="">-</option>'+opcoesCC(ccAtual, tipoConta);
+    if(![...ccSel.options].some(o=>o.value===ccAtual)) ccSel.value='';
+  }
+  const catSel = document.getElementById(prefixo+'-categoria');
+  if(catSel){
+    const catAtual = catSel.value;
+    const opcoes = categoriasPorTipoConta('receita', tipoConta, ccSel?ccSel.value:'');
+    catSel.innerHTML = opcoes.map(c=>`<option value="${c.id}"${c.id===catAtual?' selected':''}>${esc(c.nome)}</option>`).join('');
+    if(!opcoes.some(c=>c.id===catAtual)) catSel.value='';
+  }
 }
 function salvarNovaContaReceber(){
   const cli = document.getElementById('cr-cli').value.trim();
@@ -3385,12 +3536,12 @@ function editarContaReceber(id){
         <datalist id="dl-clientes-ed">${opcoesDatalist(DB.clientes||[])}</datalist>`,'2','200')}
       ${C('Valor (R$) *',`<input id="ecr-valor" value="${fmt(cr.valor)}">`,'1','140')}
     </div>
+    ${C('Conta bancária de recebimento (opcional — escolher já filtra Categoria/Cliente por PF/PJ)',`<select id="ecr-conta" onchange="atualizarSugestoesContaReceber('ecr')"><option value="">A definir no momento do recebimento</option>${opcoesContas(cr.contaId)}</select>`)}
     <div class="row">
       ${C('Vencimento *',`<input type="date" id="ecr-venc" value="${cr.vencimento}">`,'1','150')}
-      ${C('Categoria',`<select id="ecr-categoria">${opcoesCategorias('receita',cr.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="ecr-cc"><option value="">-</option>${opcoesCC(cr.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<select id="ecr-categoria" onchange="atualizarSugestoesContaReceber('ecr')">${opcoesCategorias('receita',cr.categoriaId)}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="ecr-cc" onchange="atualizarSugestoesContaReceber('ecr')"><option value="">-</option>${opcoesCC(cr.centroCustoId)}</select>`,'1','180')}
     </div>
-    ${C('Conta bancária de recebimento (direcionamento)',`<select id="ecr-conta"><option value="">A definir no momento do recebimento</option>${opcoesContas(cr.contaId)}</select>`)}
     ${C('Observações',`<textarea id="ecr-obs" rows="2">${esc(cr.obs||'')}</textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
       ${B('💾 Salvar','salvarEdicaoContaReceber(\''+id+'\')','var(--acc)')}
@@ -3489,7 +3640,7 @@ function novoChequeEmitido(contaIdPre){
   AM('➕ Novo Cheque Emitido',`
     ${EH('e-chq')}
     <div class="row">
-      ${C('Conta Emissora *',`<select id="chq-conta">${opcoesContas(contaIdPre)}</select>`,'1','200')}
+      ${C('Conta Emissora *',`<select id="chq-conta" onchange="atualizarSugestoesChequeEmitido('chq')">${opcoesContas(contaIdPre)}</select>`,'1','200')}
       ${C('Número do Cheque',`<input id="chq-numero" placeholder="Ex: 000123">`,'1','140')}
     </div>
     <div class="row">
@@ -3502,8 +3653,8 @@ function novoChequeEmitido(contaIdPre){
       ${C('Previsão de Compensação *',`<input type="date" id="chq-prevista" value="${hoje()}">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Categoria',`<select id="chq-categoria">${opcoesCategorias('despesa')}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="chq-cc"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
+      ${C('Categoria',`<select id="chq-categoria" onchange="atualizarSugestoesChequeEmitido('chq')">${opcoesCategorias('despesa')}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="chq-cc" onchange="atualizarSugestoesChequeEmitido('chq')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
     </div>
     ${C('Observações',`<textarea id="chq-obs" rows="2"></textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -3511,6 +3662,26 @@ function novoChequeEmitido(contaIdPre){
       ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
     </div>
   `);
+  atualizarSugestoesChequeEmitido('chq');
+}
+function atualizarSugestoesChequeEmitido(prefixo){
+  const contaId = document.getElementById(prefixo+'-conta')?.value||'';
+  const tipoConta = tipoDaConta(contaId);
+  const dl = document.getElementById(prefixo==='echq' ? 'dl-fornecedores-chq-ed' : 'dl-fornecedores-chq');
+  if(dl) dl.innerHTML = opcoesDatalist([...(DB.fornecedores||[]),...(DB.clientes||[])].filter(x=>itemValidoParaPFPJ(x,tipoConta)));
+  const ccSel = document.getElementById(prefixo+'-cc');
+  if(ccSel){
+    const ccAtual = ccSel.value;
+    ccSel.innerHTML = '<option value="">-</option>'+opcoesCC(ccAtual, tipoConta);
+    if(![...ccSel.options].some(o=>o.value===ccAtual)) ccSel.value='';
+  }
+  const catSel = document.getElementById(prefixo+'-categoria');
+  if(catSel){
+    const catAtual = catSel.value;
+    const opcoes = categoriasPorTipoConta('despesa', tipoConta, ccSel?ccSel.value:'');
+    catSel.innerHTML = opcoes.map(c=>`<option value="${c.id}"${c.id===catAtual?' selected':''}>${esc(c.nome)}</option>`).join('');
+    if(!opcoes.some(c=>c.id===catAtual)) catSel.value='';
+  }
 }
 function salvarNovoChequeEmitido(){
   const contaId = document.getElementById('chq-conta').value;
@@ -3551,7 +3722,7 @@ function editarChequeEmitido(id){
   AM('✏ Editar Cheque Emitido',`
     ${EH('e-chq-ed')}
     <div class="row">
-      ${C('Conta Emissora *',`<select id="echq-conta">${opcoesContas(c.contaId)}</select>`,'1','200')}
+      ${C('Conta Emissora *',`<select id="echq-conta" onchange="atualizarSugestoesChequeEmitido('echq')">${opcoesContas(c.contaId)}</select>`,'1','200')}
       ${C('Número do Cheque',`<input id="echq-numero" value="${esc(c.numero||'')}">`,'1','140')}
     </div>
     <div class="row">
@@ -3564,8 +3735,8 @@ function editarChequeEmitido(id){
       ${C('Previsão de Compensação *',`<input type="date" id="echq-prevista" value="${c.dataPrevista}">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Categoria',`<select id="echq-categoria">${opcoesCategorias('despesa',c.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="echq-cc"><option value="">-</option>${opcoesCC(c.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<select id="echq-categoria" onchange="atualizarSugestoesChequeEmitido('echq')">${opcoesCategorias('despesa',c.categoriaId)}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="echq-cc" onchange="atualizarSugestoesChequeEmitido('echq')"><option value="">-</option>${opcoesCC(c.centroCustoId)}</select>`,'1','180')}
     </div>
     ${C('Observações',`<textarea id="echq-obs" rows="2">${esc(c.obs||'')}</textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -5722,6 +5893,12 @@ function htmlRelatorios(){
 // ══════════════════════════════════════════
 // RENDER — CADASTROS (Categorias / Centro de Custo / Usuários)
 // ══════════════════════════════════════════
+function badgePFPJ(tipoPFPJ){
+  const t = tipoPFPJ||'ambos';
+  const cor = t==='PF'?'az':t==='PJ'?'pur':'cz';
+  const label = t==='PF'?'PF':t==='PJ'?'PJ':'Ambos';
+  return T(label, cor);
+}
 let _abaCadastro = 'categorias';
 function irParaCadastro(sub){ _abaCadastro=sub; renderAba(); }
 function htmlCadastros(){
@@ -5737,53 +5914,53 @@ function htmlCadastros(){
   ];
   const tabsHtml = `<div class="row" style="margin-bottom:14px">${abas.map(a=>
     `<button type="button" class="tab${sub===a.id?' ativo':''}" style="background:${sub===a.id?'var(--acc)':'var(--sur)'};color:${sub===a.id?'#000':'var(--txt)'};padding:6px 14px" onclick="irParaCadastro('${a.id}')">${a.r}</button>`
-  ).join('')}</div>`;
+  ).join('')}<button type="button" class="tab" style="background:var(--pur);color:#fff;padding:6px 14px" onclick="abrirClassificacaoPFPJ()">🔀 Classificar PF/PJ</button></div>`;
 
   let corpo = '';
   if(sub==='categorias'){
     const receitas = (DB.categorias||[]).filter(c=>c.tipo==='receita');
     const despesas = (DB.categorias||[]).filter(c=>c.tipo==='despesa');
     const vinculoTxt = c => (c.centrosCustoIds||[]).length ? (c.centrosCustoIds||[]).map(id=>{const cc=centroCustoById(id); return cc?esc(cc.nome):'';}).filter(Boolean).join(', ') : '<span style="color:var(--mut)">Todos</span>';
-    const linha = c => `<tr><td>${esc(c.nome)}</td><td style="font-size:11px">${vinculoTxt(c)}</td><td>${B('✏','editarCategoria(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
+    const linha = c => `<tr><td>${esc(c.nome)}</td><td>${badgePFPJ(c.tipoPFPJ)}</td><td style="font-size:11px">${vinculoTxt(c)}</td><td>${B('✏','editarCategoria(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Nova Categoria','novaCategoria()','var(--acc)')}</div>
       <div class="row">
         <div class="card" style="flex:1;min-width:280px">
           <div style="font-weight:700;color:#3fb950;margin-bottom:8px">Receitas</div>
-          <table><thead><tr><th>Nome</th><th>Centro(s) de Custo</th><th></th></tr></thead><tbody>${receitas.map(linha).join('')||'<tr><td style="color:var(--mut)">Nenhuma</td></tr>'}</tbody></table>
+          <table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Centro(s) de Custo</th><th></th></tr></thead><tbody>${receitas.map(linha).join('')||'<tr><td style="color:var(--mut)">Nenhuma</td></tr>'}</tbody></table>
         </div>
         <div class="card" style="flex:1;min-width:280px">
           <div style="font-weight:700;color:#f85149;margin-bottom:8px">Despesas</div>
-          <table><thead><tr><th>Nome</th><th>Centro(s) de Custo</th><th></th></tr></thead><tbody>${despesas.map(linha).join('')||'<tr><td style="color:var(--mut)">Nenhuma</td></tr>'}</tbody></table>
+          <table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Centro(s) de Custo</th><th></th></tr></thead><tbody>${despesas.map(linha).join('')||'<tr><td style="color:var(--mut)">Nenhuma</td></tr>'}</tbody></table>
         </div>
       </div>`;
   } else if(sub==='centrocusto'){
-    const linhas = (DB.centrosCusto||[]).map(cc=>`<tr><td>${esc(cc.nome)}</td><td>${esc(cc.obs||'-')}</td><td>${B('✏','editarCentroCusto(\''+cc.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Nenhum centro de custo cadastrado</td></tr>';
+    const linhas = (DB.centrosCusto||[]).map(cc=>`<tr><td>${esc(cc.nome)}</td><td>${badgePFPJ(cc.tipoPFPJ)}</td><td>${esc(cc.obs||'-')}</td><td>${B('✏','editarCentroCusto(\''+cc.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum centro de custo cadastrado</td></tr>';
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Novo Centro de Custo','novoCentroCusto()','var(--acc)')}</div>
-      <div class="card"><table><thead><tr><th>Nome</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+      <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='direcionamentos'){
-    const linhas = (DB.direcionamentos||[]).slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(d=>`<tr><td>${esc(d.nome)}</td><td>${esc(d.obs||'-')}</td><td>${B('✏','editarDirecionamento(\''+d.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Nenhum direcionamento cadastrado</td></tr>';
+    const linhas = (DB.direcionamentos||[]).slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(d=>`<tr><td>${esc(d.nome)}</td><td>${badgePFPJ(d.tipoPFPJ)}</td><td>${esc(d.obs||'-')}</td><td>${B('✏','editarDirecionamento(\''+d.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum direcionamento cadastrado</td></tr>';
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Novo Direcionamento','novoDirecionamento()','var(--acc)')}</div>
       <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Direcionamentos cadastrados aqui aparecem como sugestão no campo "Direcionamento" dos Lançamentos (ex: Obra X, Setor Y).</div>
-      <div class="card"><table><thead><tr><th>Nome</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+      <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='fornecedores'){
     const linhas = (DB.fornecedores||[]).map(f=>`<tr>
-      <td>${esc(f.nome)}</td><td>${esc(f.cpfCnpj||'-')}</td><td>${esc(f.telefone||'-')}</td><td>${esc(f.email||'-')}</td>
-      <td>${B('✏','editarFornecedor(\''+f.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum fornecedor cadastrado</td></tr>';
+      <td>${esc(f.nome)}</td><td>${badgePFPJ(f.tipoPFPJ)}</td><td>${esc(f.cpfCnpj||'-')}</td><td>${esc(f.telefone||'-')}</td><td>${esc(f.email||'-')}</td>
+      <td>${B('✏','editarFornecedor(\''+f.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--mut)">Nenhum fornecedor cadastrado</td></tr>';
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Novo Fornecedor','novoFornecedor()','var(--acc)')}</div>
-      <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Fornecedores cadastrados aqui aparecem como sugestão automática no campo "Favorecido" das Contas a Pagar.</div>
-      <div class="card"><table><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+      <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Fornecedores cadastrados aqui aparecem como sugestão automática no campo "Favorecido" das Contas a Pagar — só para contas do mesmo PF/PJ (ou "Ambos").</div>
+      <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='clientes'){
     const linhas = (DB.clientes||[]).map(c=>`<tr>
-      <td>${esc(c.nome)}</td><td>${esc(c.cpfCnpj||'-')}</td><td>${esc(c.telefone||'-')}</td><td>${esc(c.email||'-')}</td>
-      <td>${B('✏','editarCliente(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum cliente cadastrado</td></tr>';
+      <td>${esc(c.nome)}</td><td>${badgePFPJ(c.tipoPFPJ)}</td><td>${esc(c.cpfCnpj||'-')}</td><td>${esc(c.telefone||'-')}</td><td>${esc(c.email||'-')}</td>
+      <td>${B('✏','editarCliente(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--mut)">Nenhum cliente cadastrado</td></tr>';
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Novo Cliente','novoCliente()','var(--acc)')}</div>
-      <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Clientes cadastrados aqui aparecem como sugestão automática no campo "Cliente/Fornecedor" dos Lançamentos.</div>
-      <div class="card"><table><thead><tr><th>Nome</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
+      <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Clientes cadastrados aqui aparecem como sugestão automática no campo "Cliente/Fornecedor" dos Lançamentos — só para contas do mesmo PF/PJ (ou "Ambos").</div>
+      <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='usuarios'){
     const linhas = (DB.usuarios||[]).map(u=>`<tr style="${u.ativo===false?'opacity:.5':''}">
       <td>${esc(u.nome)}</td><td>${esc(u.login)}</td><td>${T(LABELS_PERFIL[u.perfil]||u.perfil,u.perfil==='master'?'am':u.perfil==='operador'?'az':'cz')}</td>
