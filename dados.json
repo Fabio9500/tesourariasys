@@ -42508,7 +42508,7 @@
       "criadoEm": "2026-07-19T22:33:40.852Z"
     },
     {
-      "id": "mrtvxx73f0atq",
+      "id": "mrtvzvd8ci3fr",
       "contaId": "mrnty0gh9748t",
       "data": "2026-07-20",
       "tipo": "entrada",
@@ -42522,7 +42522,7 @@
       "chequeId": "CHQ0109",
       "boletoId": null,
       "contaPagarId": null,
-      "criadoEm": "2026-07-20T23:58:23.055Z"
+      "criadoEm": "2026-07-20T23:59:53.996Z"
     }
   ],
   "contasPagar": [
@@ -42872,7 +42872,7 @@
         "fingerprint": "entrada|2750|2026-07-17|Liquidação cheque 00000028 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000028 — Emitente: Arena Prime Eventos|CHQ0039|"
       },
       "mrtuxfemi18d": {
-        "lancId": "mrtvxx73f0atq",
+        "lancId": "mrtvzvd8ci3fr",
         "fingerprint": "entrada|20721|2026-07-20|Depósito — Cheque 00000127 — Emitente: HD Santos Filho — Venc: 20/07/2026|mrnty0gh9748t|Infinity Comercio  Atac.De Prod. LTD|recebimento_cheque|Cheque nº 00000127 — Emitente: HD Santos Filho|CHQ0109|"
       }
     }
