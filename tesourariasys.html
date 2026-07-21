@@ -1112,7 +1112,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.51';
+const VERSAO = 'v1.52';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1145,6 +1145,41 @@ function LE(id){ const el=document.getElementById(id); if(el)el.classList.remove
 // ══════════════════════════════════════════
 function contaById(id){ return (DB.contas||[]).find(c=>c.id===id); }
 function categoriaById(id){ return (DB.categorias||[]).find(c=>c.id===id); }
+// Nome completo hierárquico (ex: "Transporte: Combustível") — usado em selects e
+// relatórios pra dar contexto de qual categoria-mãe uma subcategoria pertence,
+// mesmo fora da árvore visual dos Cadastros.
+function nomeCompletoCategoria(cat){
+  if(!cat) return '-';
+  if(!cat.parentId) return cat.nome;
+  const pai = categoriaById(cat.parentId);
+  return pai ? `${pai.nome}: ${cat.nome}` : cat.nome;
+}
+// Lista de categorias-mãe elegíveis (só categorias de nível principal, sem
+// parentId) — limita a hierarquia a 2 níveis (mãe → subcategoria), igual ao
+// Money. excluirId serve pra não deixar uma categoria virar mãe dela mesma
+// ao editar.
+function opcoesCategoriasPaiParaSelect(selId, excluirId){
+  return (DB.categorias||[]).filter(c=>!c.parentId && c.id!==excluirId)
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))
+    .map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)} (${c.tipo==='receita'?'Receita':'Despesa'})</option>`).join('');
+}
+// Ao escolher uma categoria-mãe no formulário, tipo (receita/despesa) e PF/PJ
+// passam a ser herdados dela automaticamente (uma subcategoria não pode ter um
+// tipo diferente da mãe) — os campos ficam escondidos nesse caso.
+function aoMudarCategoriaPai(prefix){
+  const paiId = document.getElementById(prefix+'-pai')?.value||'';
+  const wrap = document.getElementById(prefix+'-tipo-pfpj-wrap');
+  if(paiId){
+    const pai = categoriaById(paiId);
+    if(pai){
+      const selTipo = document.getElementById(prefix+'-tipo'); if(selTipo) selTipo.value = pai.tipo;
+      const selPfpj = document.getElementById(prefix+'-pfpj'); if(selPfpj) selPfpj.value = pai.tipoPFPJ||'ambos';
+    }
+    if(wrap) wrap.style.display='none';
+  } else {
+    if(wrap) wrap.style.display='';
+  }
+}
 function centroCustoById(id){ return (DB.centrosCusto||[]).find(c=>c.id===id); }
 function fornecedorById(id){ return (DB.fornecedores||[]).find(f=>f.id===id); }
 function clienteById(id){ return (DB.clientes||[]).find(c=>c.id===id); }
@@ -2361,7 +2396,15 @@ function lerCCsMarcados(){
 function novaCategoria(){
   AM('➕ Nova Categoria',`
     ${EH('e-cat')}
-    <div class="row">
+    <div class="campo" style="margin-bottom:10px">
+      <label>Categoria-mãe (opcional)</label>
+      <div style="font-size:11px;color:var(--mut);margin-bottom:6px">Deixe em branco para criar uma categoria de nível principal. Escolha uma pra criar uma SUBCATEGORIA dela (ex: mãe "Transporte", subcategoria "Combustível").</div>
+      <select id="cat-pai" onchange="aoMudarCategoriaPai('cat')">
+        <option value="">— Nenhuma (categoria principal) —</option>
+        ${opcoesCategoriasPaiParaSelect()}
+      </select>
+    </div>
+    <div class="row" id="cat-tipo-pfpj-wrap">
       ${C('Tipo *',`<select id="cat-tipo"><option value="receita">Receita</option><option value="despesa">Despesa</option></select>`,'1','160')}
       ${C('PF ou PJ *',campoPFPJ('cat-pfpj'),'1','160')}
     </div>
@@ -2380,7 +2423,15 @@ function novaCategoria(){
 function salvarNovaCategoria(){
   const nome = document.getElementById('cat-nome').value.trim();
   if(!nome){ ME('e-cat','Informe o nome da categoria.'); return; }
-  const nova = {id:uid(), tipo:document.getElementById('cat-tipo').value, tipoPFPJ:document.getElementById('cat-pfpj').value, nome, centrosCustoIds:lerCCsMarcados()};
+  const parentId = document.getElementById('cat-pai')?.value||null;
+  const pai = parentId ? categoriaById(parentId) : null;
+  const nova = {
+    id:uid(), nome,
+    tipo: pai ? pai.tipo : document.getElementById('cat-tipo').value,
+    tipoPFPJ: pai ? (pai.tipoPFPJ||'ambos') : document.getElementById('cat-pfpj').value,
+    parentId: parentId||null,
+    centrosCustoIds:lerCCsMarcados()
+  };
   salvar({...DB, categorias:[...(DB.categorias||[]), nova]});
   FM();
 }
@@ -2388,7 +2439,15 @@ function editarCategoria(id){
   const c = categoriaById(id); if(!c) return;
   AM('✏ Editar Categoria',`
     ${EH('e-cat-ed')}
-    <div class="row">
+    <div class="campo" style="margin-bottom:10px">
+      <label>Categoria-mãe (opcional)</label>
+      <div style="font-size:11px;color:var(--mut);margin-bottom:6px">Deixe em branco pra ela ser uma categoria principal.</div>
+      <select id="ecat-pai" onchange="aoMudarCategoriaPai('ecat')">
+        <option value="">— Nenhuma (categoria principal) —</option>
+        ${opcoesCategoriasPaiParaSelect(c.parentId, id)}
+      </select>
+    </div>
+    <div class="row" id="ecat-tipo-pfpj-wrap" style="${c.parentId?'display:none':''}">
       ${C('Tipo *',`<select id="ecat-tipo"><option value="receita"${c.tipo==='receita'?' selected':''}>Receita</option><option value="despesa"${c.tipo==='despesa'?' selected':''}>Despesa</option></select>`,'1','160')}
       ${C('PF ou PJ *',campoPFPJ('ecat-pfpj', c.tipoPFPJ),'1','160')}
     </div>
@@ -2408,12 +2467,26 @@ function editarCategoria(id){
 function salvarEdicaoCategoria(id){
   const nome = document.getElementById('ecat-nome').value.trim();
   if(!nome){ ME('e-cat-ed','Informe o nome da categoria.'); return; }
-  salvar({...DB, categorias:(DB.categorias||[]).map(c=>c.id===id?{...c,nome,tipo:document.getElementById('ecat-tipo').value,tipoPFPJ:document.getElementById('ecat-pfpj').value,centrosCustoIds:lerCCsMarcados()}:c)});
+  const parentId = document.getElementById('ecat-pai')?.value||null;
+  if(parentId===id){ ME('e-cat-ed','Uma categoria não pode ser mãe dela mesma.'); return; }
+  // Não permite virar subcategoria se ela mesma já tiver subcategorias — manteria só 2 níveis
+  const temFilhas = (DB.categorias||[]).some(x=>x.parentId===id);
+  if(parentId && temFilhas){ ME('e-cat-ed','Esta categoria já tem subcategorias — não pode virar subcategoria de outra (só 2 níveis são suportados).'); return; }
+  const pai = parentId ? categoriaById(parentId) : null;
+  salvar({...DB, categorias:(DB.categorias||[]).map(c=>c.id===id?{
+    ...c, nome,
+    tipo: pai ? pai.tipo : document.getElementById('ecat-tipo').value,
+    tipoPFPJ: pai ? (pai.tipoPFPJ||'ambos') : document.getElementById('ecat-pfpj').value,
+    parentId: parentId||null,
+    centrosCustoIds:lerCCsMarcados()
+  }:c)});
   FM();
 }
 function excluirCategoria(id){
   const emUso = (DB.lancamentos||[]).some(l=>l.categoriaId===id) || (DB.contasPagar||[]).some(cp=>cp.categoriaId===id);
   if(emUso){ ME('e-cat-ed','Esta categoria já está em uso em lançamentos ou contas a pagar e não pode ser excluída.'); return; }
+  const temFilhas = (DB.categorias||[]).some(c=>c.parentId===id);
+  if(temFilhas){ ME('e-cat-ed','Esta categoria tem subcategorias — exclua ou mova as subcategorias primeiro.'); return; }
   CF('Excluir esta categoria?', ()=>{ salvar({...DB, categorias:(DB.categorias||[]).filter(c=>c.id!==id)}); FM(); });
 }
 
@@ -2873,7 +2946,24 @@ function opcoesContasFiltradas(selId){
   return contasFiltradasPFPJ().map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
 }
 function opcoesCategorias(tipo,selId,centroCustoId,tipoConta){
-  return (DB.categorias||[]).filter(c=>(!tipo||c.tipo===tipo)&&categoriaValidaParaCC(c,centroCustoId)&&itemValidoParaPFPJ(c,tipoConta)).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
+  const todas = (DB.categorias||[]).filter(c=>(!tipo||c.tipo===tipo)&&categoriaValidaParaCC(c,centroCustoId)&&itemValidoParaPFPJ(c,tipoConta));
+  const pais = todas.filter(c=>!c.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  const filhosDe = pid => todas.filter(c=>c.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  let html = '';
+  pais.forEach(p=>{
+    html += `<option value="${p.id}"${p.id===selId?' selected':''}>${esc(p.nome)}</option>`;
+    filhosDe(p.id).forEach(f=>{
+      html += `<option value="${f.id}"${f.id===selId?' selected':''}>&nbsp;&nbsp;— ${esc(f.nome)}</option>`;
+    });
+  });
+  // Subcategoria cuja mãe não passou nesse filtro específico (ex: vínculo de
+  // Centro de Custo diferente) — mostra solta no fim, com nome completo pra
+  // não perder o contexto de qual categoria-mãe ela pertence.
+  const idsPaisMostrados = new Set(pais.map(p=>p.id));
+  todas.filter(c=>c.parentId && !idsPaisMostrados.has(c.parentId)).forEach(f=>{
+    html += `<option value="${f.id}"${f.id===selId?' selected':''}>${esc(nomeCompletoCategoria(f))}</option>`;
+  });
+  return html;
 }
 function opcoesCC(selId,tipoConta){
   return (DB.centrosCusto||[]).filter(c=>itemValidoParaPFPJ(c,tipoConta)).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
@@ -4920,7 +5010,7 @@ function htmlLancamentos(){
       <td>${fmtD(l.data)}</td>
       <td>${esc(c?nomeConta(c):'-')}</td>
       <td>${T(l.tipo==='entrada'?'Entrada':'Saída', l.tipo==='entrada'?'vd':'vm')}${l.origem==='transferencia'?' '+T('🔀 Transf.','az'):''}</td>
-      <td>${esc(cat?cat.nome:'-')}</td>
+      <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
       <td>${esc(cc?cc.nome:'-')}</td>
       <td>${esc(l.contraparte||'-')}</td>
       <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}${l.origem==='pagamento'?' '+T('Pagamento','az'):''}${l.fitid?' <span title="Conferido com o extrato do banco" style="color:#3fb950">✅</span>':''}</td>
@@ -5031,7 +5121,7 @@ function _valoresLinhaFRF(l){
     data: fmtD(l.data),
     conta: c?nomeConta(c):'-',
     tipo: l.tipo==='entrada'?'Entrada':'Saída',
-    categoria: cat?cat.nome:'-',
+    categoria: cat?nomeCompletoCategoria(cat):'-',
     centroCusto: cc?cc.nome:'-',
     contraparte: l.contraparte||'-',
     descricao: l.descricao||'-',
@@ -5043,7 +5133,7 @@ function _valoresLinhaFRF(l){
 // mesmo espírito do "Classification"/agrupamento do Money: qualquer relatório
 // pode virar um resumo por Categoria, Direcionamento, Fornecedor, Mês, etc.
 function _chaveGrupoFRF(l, dimensao){
-  if(dimensao==='categoria'){ const c=categoriaById(l.categoriaId); return {chave:l.categoriaId||'(sem)', label:c?c.nome:'(sem categoria)'}; }
+  if(dimensao==='categoria'){ const c=categoriaById(l.categoriaId); return {chave:l.categoriaId||'(sem)', label:c?nomeCompletoCategoria(c):'(sem categoria)'}; }
   if(dimensao==='centroCusto'){ const c=centroCustoById(l.centroCustoId); return {chave:l.centroCustoId||'(sem)', label:c?c.nome:'(sem centro de custo)'}; }
   if(dimensao==='direcionamento'){ return {chave:l.direcionamento||'(sem)', label:l.direcionamento||'(sem direcionamento)'}; }
   if(dimensao==='contraparte'){ return {chave:l.contraparte||'(sem)', label:l.contraparte||'(sem fornecedor/cliente)'}; }
@@ -5354,7 +5444,7 @@ function htmlContasPagar(){
     return `<tr>
       <td>${fmtD(cp.vencimento)}</td>
       <td>${esc(cp.favorecido)}</td>
-      <td>${esc(cat?cat.nome:'-')}</td>
+      <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
       <td>${esc(cc?cc.nome:'-')}</td>
       <td>${esc(cta?cta.titular:'A definir')}</td>
       <td style="text-align:right;font-weight:700">R$ ${fmt(cp.status==='pago'?cp.valorPago:cp.valor)}</td>
@@ -5413,7 +5503,7 @@ function htmlContasReceber(){
     return `<tr>
       <td>${fmtD(cr.vencimento)}</td>
       <td>${esc(cr.cliente)}</td>
-      <td>${esc(cat?cat.nome:'-')}</td>
+      <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
       <td>${esc(cc?cc.nome:'-')}</td>
       <td>${esc(cta?cta.titular:'A definir')}</td>
       <td style="text-align:right;font-weight:700">R$ ${fmt(cr.status==='recebido'?cr.valorRecebido:cr.valor)}</td>
@@ -5471,7 +5561,7 @@ function htmlChequesEmitidos(){
       <td>${esc(c.numero||'-')}</td>
       <td>${esc(cta?cta.titular:'-')}</td>
       <td>${esc(c.favorecido)}</td>
-      <td>${esc(cat?cat.nome:'-')}</td>
+      <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
       <td>${fmtD(c.dataEmissao)}</td>
       <td>${fmtD(c.dataPrevista)}</td>
       <td style="text-align:right;font-weight:700">R$ ${fmt(c.valor)}</td>
@@ -6384,7 +6474,7 @@ function htmlRelatorios(){
             ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
             <td>${esc(l.contraparte||'-')}</td>
             <td>${esc(l.descricao||'-')} ${T('não editável aqui','cz')}</td>
-            <td>${esc(cat?cat.nome:'-')}</td>
+            <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
             <td>${esc(l.direcionamento||'-')}</td>
             <td>${l.tipo==='entrada'?'Entrada':'Saída'}</td>
             <td style="text-align:right">R$ ${fmt(l.valor)}</td>
@@ -6408,7 +6498,7 @@ function htmlRelatorios(){
         ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
         <td${l.contraparte?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este fornecedor/cliente" onclick="filtrarExtratoPorFornecedor('${esc(l.contraparte).replace(/'/g,"\\'")}')"`:''}>${esc(l.contraparte||'-')}</td>
         <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}</td>
-        <td${l.categoriaId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só esta categoria" onclick="filtrarExtratoPorCategoria('${l.categoriaId}')"`:''}>${esc(cat?cat.nome:'-')}</td>
+        <td${l.categoriaId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só esta categoria" onclick="filtrarExtratoPorCategoria('${l.categoriaId}')"`:''}>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
         <td${l.direcionamento?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este direcionamento" onclick="filtrarExtratoPorDirecionamento('${esc(l.direcionamento).replace(/'/g,"\\'")}')"`:''}>${esc(l.direcionamento||'-')}</td>
         <td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td>
         <td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td>
@@ -6742,17 +6832,23 @@ function htmlCadastros(){
     const receitas = (DB.categorias||[]).filter(c=>c.tipo==='receita');
     const despesas = (DB.categorias||[]).filter(c=>c.tipo==='despesa');
     const vinculoTxt = c => (c.centrosCustoIds||[]).length ? (c.centrosCustoIds||[]).map(id=>{const cc=centroCustoById(id); return cc?esc(cc.nome):'';}).filter(Boolean).join(', ') : '<span style="color:var(--mut)">Todos</span>';
-    const linha = c => `<tr><td>${esc(c.nome)}</td><td>${badgePFPJ(c.tipoPFPJ)}</td><td style="font-size:11px">${vinculoTxt(c)}</td><td>${B('✏','editarCategoria(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
+    const linha = (c, sub) => `<tr${sub?' style="background:var(--bg)"':''}><td>${sub?'&nbsp;&nbsp;— ':''}${esc(c.nome)}</td><td>${badgePFPJ(c.tipoPFPJ)}</td><td style="font-size:11px">${vinculoTxt(c)}</td><td>${B('✏','editarCategoria(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
+    const arvore = lista => {
+      const pais = lista.filter(c=>!c.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+      const filhosDe = pid => lista.filter(c=>c.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+      return pais.map(p=>linha(p,false)+filhosDe(p.id).map(f=>linha(f,true)).join('')).join('');
+    };
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Nova Categoria','novaCategoria()','var(--acc)')}</div>
+      <div style="font-size:11px;color:var(--mut);margin:-6px 0 12px">Categorias indentadas com "—" são subcategorias.</div>
       <div class="row">
         <div class="card" style="flex:1;min-width:280px">
           <div style="font-weight:700;color:#3fb950;margin-bottom:8px">Receitas</div>
-          <table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Centro(s) de Custo</th><th></th></tr></thead><tbody>${receitas.map(linha).join('')||'<tr><td style="color:var(--mut)">Nenhuma</td></tr>'}</tbody></table>
+          <table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Centro(s) de Custo</th><th></th></tr></thead><tbody>${arvore(receitas)||'<tr><td style="color:var(--mut)">Nenhuma</td></tr>'}</tbody></table>
         </div>
         <div class="card" style="flex:1;min-width:280px">
           <div style="font-weight:700;color:#f85149;margin-bottom:8px">Despesas</div>
-          <table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Centro(s) de Custo</th><th></th></tr></thead><tbody>${despesas.map(linha).join('')||'<tr><td style="color:var(--mut)">Nenhuma</td></tr>'}</tbody></table>
+          <table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Centro(s) de Custo</th><th></th></tr></thead><tbody>${arvore(despesas)||'<tr><td style="color:var(--mut)">Nenhuma</td></tr>'}</tbody></table>
         </div>
       </div>`;
   } else if(sub==='centrocusto'){
