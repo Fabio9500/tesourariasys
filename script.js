@@ -945,7 +945,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.56';
+const VERSAO = 'v1.57';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2243,7 +2243,7 @@ function checkboxesCC(idsSelecionados){
   const sel = new Set(idsSelecionados||[]);
   const itens = (DB.centrosCusto||[]).map(cc=>`
     <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;padding:4px 0;cursor:pointer">
-      <input type="checkbox" class="cat-cc-check" value="${cc.id}"${sel.has(cc.id)?' checked':''}> ${esc(cc.nome)}
+      <input type="checkbox" class="cat-cc-check" value="${cc.id}"${sel.has(cc.id)?' checked':''}> ${esc(nomeCompletoCentroCusto(cc))}
     </label>`).join('');
   return itens || '<div style="font-size:11px;color:var(--mut)">Nenhum Centro de Custo cadastrado ainda.</div>';
 }
@@ -5086,7 +5086,7 @@ function htmlLancamentos(){
 // RELATÓRIO DE FILTRAGEM (flexível) — usuário escolhe colunas e filtros
 // ══════════════════════════════════════════
 let FRF = {
-  colunas: {data:true, conta:true, tipo:true, categoria:true, centroCusto:true, contraparte:true, descricao:true, valor:true, origem:false},
+  colunas: {data:true, conta:true, tipo:true, categoria:true, centroCusto:true, direcionamento:false, contraparte:true, descricao:true, valor:true, origem:false},
   de:'', ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', direcionamento:'', busca:'', origem:'',
   agruparPor:'', gruposAbertos:{}
 };
@@ -5096,6 +5096,7 @@ const COLUNAS_FRF = [
   {id:'tipo', label:'Tipo'},
   {id:'categoria', label:'Categoria'},
   {id:'centroCusto', label:'Centro de Custo'},
+  {id:'direcionamento', label:'Direcionamento'},
   {id:'contraparte', label:'Fornecedor/Cliente'},
   {id:'descricao', label:'Descrição'},
   {id:'origem', label:'Origem'},
@@ -5119,6 +5120,7 @@ function aplicarFiltroFRF(){
   FRF.categoriaId = document.getElementById('frf-categoria')?.value||'';
   FRF.centroCustoId = document.getElementById('frf-cc')?.value||'';
   FRF.contraparte = document.getElementById('frf-contraparte')?.value||'';
+  FRF.direcionamento = document.getElementById('frf-direc')?.value||'';
   FRF.busca = document.getElementById('frf-busca')?.value||'';
   FRF.origem = document.getElementById('frf-origem')?.value||'';
   FRF.agruparPor = document.getElementById('frf-agrupar')?.value||'';
@@ -5160,6 +5162,7 @@ function _valoresLinhaFRF(l){
     tipo: l.tipo==='entrada'?'Entrada':'Saída',
     categoria: cat?nomeCompletoCategoria(cat):'-',
     centroCusto: cc?nomeCompletoCentroCusto(cc):'-',
+    direcionamento: l.direcionamento||'-',
     contraparte: l.contraparte||'-',
     descricao: l.descricao||'-',
     origem: l.origem||'-',
@@ -5259,8 +5262,6 @@ function htmlRelatorioFlex(){
   return `<div class="titulo acc">🔍 Relatório de Filtragem</div>
   <div style="font-size:11px;color:var(--mut);margin:-6px 0 14px;line-height:1.5">Escolha colunas, filtros e (se quiser) uma forma de agrupar — clique num grupo pra abrir os lançamentos dele. Emitente/Sacado/Vencimento do título aparecem dentro da Descrição — use a Busca Livre pra achar por esses termos.</div>
 
-  ${FRF.direcionamento ? `<div class="tag tag-az" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;padding:5px 10px">🧭 Direcionamento: ${esc(FRF.direcionamento)} <span style="cursor:pointer" onclick="FRF.direcionamento='';renderAba()" title="Remover este filtro">✕</span></div>` : ''}
-
   ${chipsFavoritos}
 
   <div class="card" style="margin-bottom:12px">
@@ -5282,6 +5283,7 @@ function htmlRelatorioFlex(){
     </div>
     <div class="row">
       ${C('Fornecedor/Cliente',`<input type="text" id="frf-contraparte" value="${esc(FRF.contraparte)}" placeholder="Buscar por nome..." onchange="aplicarFiltroFRF()">`,'1','200')}
+      ${C('Direcionamento',`<select id="frf-direc" onchange="aplicarFiltroFRF()"><option value="">Todos</option>${direcionamentosExistentes().map(d=>`<option value="${esc(d)}"${d===FRF.direcionamento?' selected':''}>${esc(d)}</option>`).join('')}</select>`,'1','180')}
       ${C('Origem',`<select id="frf-origem" onchange="aplicarFiltroFRF()"><option value="">Todas</option><option value="manual"${FRF.origem==='manual'?' selected':''}>Manual</option><option value="chequesys"${FRF.origem==='chequesys'?' selected':''}>ChequeSys</option><option value="pagamento"${FRF.origem==='pagamento'?' selected':''}>Pagamento Cartão</option><option value="ofx"${FRF.origem==='ofx'?' selected':''}>Importado OFX</option><option value="transferencia"${FRF.origem==='transferencia'?' selected':''}>Transferência</option></select>`,'1','170')}
       ${C('Busca Livre (descrição, emitente, sacado, nº do título...)',`<input type="text" id="frf-busca" value="${esc(FRF.busca)}" placeholder="Ex: nome do emitente, nº do cheque..." onchange="aplicarFiltroFRF()">`,'2','280')}
     </div>
@@ -5839,7 +5841,7 @@ let _impReceberTotal = 0, _impReceberLinhas = '';
 function imprimirPagarPeriodo(){
   const partes = [];
   if(RelPagarF.de||RelPagarF.ate) partes.push('Período: '+(RelPagarF.de?fmtD(RelPagarF.de):'início')+' até '+(RelPagarF.ate?fmtD(RelPagarF.ate):'hoje'));
-  if(RelPagarF.centroCustoId){ const cc=centroCustoById(RelPagarF.centroCustoId); if(cc) partes.push('Centro de Custo: '+cc.nome); }
+  if(RelPagarF.centroCustoId){ const cc=centroCustoById(RelPagarF.centroCustoId); if(cc) partes.push('Centro de Custo: '+nomeCompletoCentroCusto(cc)); }
   if(RelPagarF.texto) partes.push('Fornecedor: '+RelPagarF.texto);
   const kpis = `<div class="kpi-print"><div>Total Pago no Filtro<b style="color:#b3261e">R$ ${fmt(_impPagarTotal)}</b></div></div>`;
   imprimirRelatorio('Contas a Pagar — Pagamentos por Período', partes.join(' · ')||'Todos os pagamentos', kpis+`<table><thead><tr><th>Data Pagamento</th><th>Favorecido</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Pago</th></tr></thead><tbody>${_impPagarLinhas}</tbody></table>`);
@@ -5847,7 +5849,7 @@ function imprimirPagarPeriodo(){
 function imprimirReceberPeriodo(){
   const partes = [];
   if(RelReceberF.de||RelReceberF.ate) partes.push('Período: '+(RelReceberF.de?fmtD(RelReceberF.de):'início')+' até '+(RelReceberF.ate?fmtD(RelReceberF.ate):'hoje'));
-  if(RelReceberF.centroCustoId){ const cc=centroCustoById(RelReceberF.centroCustoId); if(cc) partes.push('Centro de Custo: '+cc.nome); }
+  if(RelReceberF.centroCustoId){ const cc=centroCustoById(RelReceberF.centroCustoId); if(cc) partes.push('Centro de Custo: '+nomeCompletoCentroCusto(cc)); }
   if(RelReceberF.texto) partes.push('Cliente: '+RelReceberF.texto);
   const kpis = `<div class="kpi-print"><div>Total Recebido no Filtro<b style="color:#0a7d33">R$ ${fmt(_impReceberTotal)}</b></div></div>`;
   imprimirRelatorio('Contas a Receber — Recebimentos por Período', partes.join(' · ')||'Todos os recebimentos', kpis+`<table><thead><tr><th>Data Recebimento</th><th>Cliente</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Recebido</th></tr></thead><tbody>${_impReceberLinhas}</tbody></table>`);
@@ -6265,7 +6267,7 @@ function htmlRelatorios(){
   const porCategoria = {};
   (DB.lancamentos||[]).forEach(l=>{
     const cat = categoriaById(l.categoriaId);
-    const nome = cat?cat.nome:'(sem categoria)';
+    const nome = cat?nomeCompletoCategoria(cat):'(sem categoria)';
     if(!porCategoria[nome]) porCategoria[nome]={entrada:0,saida:0};
     porCategoria[nome][l.tipo==='entrada'?'entrada':'saida'] += l.valor;
   });
@@ -6292,7 +6294,7 @@ function htmlRelatorios(){
   const porCC = {};
   contasPagarPendentes().forEach(cp=>{
     const cc = centroCustoById(cp.centroCustoId);
-    const nome = cc?cc.nome:'(sem centro de custo)';
+    const nome = cc?nomeCompletoCentroCusto(cc):'(sem centro de custo)';
     porCC[nome] = (porCC[nome]||0) + cp.valor;
   });
   const linhasCC = Object.keys(porCC).sort().map(nome=>
@@ -6328,7 +6330,7 @@ function htmlRelatorios(){
   const porCCReceber = {};
   contasReceberPendentes().forEach(cr=>{
     const cc = centroCustoById(cr.centroCustoId);
-    const nome = cc?cc.nome:'(sem centro de custo)';
+    const nome = cc?nomeCompletoCentroCusto(cc):'(sem centro de custo)';
     porCCReceber[nome] = (porCCReceber[nome]||0) + cr.valor;
   });
   const linhasCCReceber = Object.keys(porCCReceber).sort().map(nome=>
@@ -6546,7 +6548,7 @@ function htmlRelatorios(){
           <td>${BPerm('excluir','🗑','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1,'Excluir este lançamento')}</td>
         </tr>`;
       }
-      return `<tr>
+      return `<tr style="cursor:pointer" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
         <td>${fmtD(l.data)}</td>
         ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
         <td${l.contraparte?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este fornecedor/cliente" onclick="filtrarExtratoPorFornecedor('${esc(l.contraparte).replace(/'/g,"\\'")}')"`:''}>${esc(l.contraparte||'-')}</td>
@@ -6575,7 +6577,7 @@ function htmlRelatorios(){
       const cta = contaById(l.contaId);
       const cat = categoriaById(l.categoriaId);
       if(_saldoImp!==null) _saldoImp += (l.tipo==='entrada'?l.valor:-l.valor);
-      impRows.push({tipo:'lancamento', data:l.data, conta:cta?cta.titular:'-', contraparte:l.contraparte||'-', descricao:l.descricao||'-', categoria:cat?cat.nome:'-', direcionamento:l.direcionamento||'-', valorEntrada:l.tipo==='entrada'?l.valor:null, valorSaida:l.tipo==='saida'?l.valor:null});
+      impRows.push({tipo:'lancamento', data:l.data, conta:cta?cta.titular:'-', contraparte:l.contraparte||'-', descricao:l.descricao||'-', categoria:cat?nomeCompletoCategoria(cat):'-', direcionamento:l.direcionamento||'-', valorEntrada:l.tipo==='entrada'?l.valor:null, valorSaida:l.tipo==='saida'?l.valor:null});
     });
     if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo do dia — '+fmtD(dia), valor:_saldoImp});
   });
@@ -6887,7 +6889,7 @@ function htmlCadastros(){
   if(sub==='categorias'){
     const receitas = (DB.categorias||[]).filter(c=>c.tipo==='receita');
     const despesas = (DB.categorias||[]).filter(c=>c.tipo==='despesa');
-    const vinculoTxt = c => (c.centrosCustoIds||[]).length ? (c.centrosCustoIds||[]).map(id=>{const cc=centroCustoById(id); return cc?esc(cc.nome):'';}).filter(Boolean).join(', ') : '<span style="color:var(--mut)">Todos</span>';
+    const vinculoTxt = c => (c.centrosCustoIds||[]).length ? (c.centrosCustoIds||[]).map(id=>{const cc=centroCustoById(id); return cc?esc(nomeCompletoCentroCusto(cc)):'';}).filter(Boolean).join(', ') : '<span style="color:var(--mut)">Todos</span>';
     const linha = (c, sub) => `<tr${sub?' style="background:var(--bg)"':''}><td>${sub?'&nbsp;&nbsp;— ':''}${esc(c.nome)}</td><td>${badgePFPJ(c.tipoPFPJ)}</td><td style="font-size:11px">${vinculoTxt(c)}</td><td>${B('✏','editarCategoria(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
     const arvore = lista => {
       const pais = lista.filter(c=>!c.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
