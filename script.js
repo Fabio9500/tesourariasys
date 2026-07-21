@@ -943,6 +943,7 @@ function desconectar(){
   document.getElementById('tela-token').style.display='flex';
 }
 function renderAba(){
+  migrarDirecionamentosParaId();
   const m=document.getElementById('main');
   const mp={dashboard:htmlDashboard,contas:htmlContas,lancamentos:htmlLancamentos,contaspagar:htmlContasPagar,contasreceber:htmlContasReceber,chequesemitidos:htmlChequesEmitidos,investimentos:htmlInvestimentosSeguros,relatorios:htmlRelatorios,fechamento:htmlFechamentoDiario,relatorio_flex:htmlRelatorioFlex,patrimonio_evol:htmlPatrimonioEvolucao,cadastros:htmlCadastros};
   m.innerHTML=(mp[ABA]||htmlDashboard)();
@@ -951,7 +952,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.59';
+const VERSAO = 'v1.60';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2489,10 +2490,49 @@ function excluirCC(id){
 }
 
 function direcionamentoById(id){ return (DB.direcionamentos||[]).find(d=>d.id===id); }
-// Direcionamento é campo de TEXTO LIVRE nos lançamentos (nunca foi por ID) — pra
-// dar hierarquia sem migrar dado nenhum, o que fica gravado no lançamento passa a
-// ser o NOME COMPLETO ("Telasul: Obra X"), sugerido pelo datalist. Continua
-// aceitando texto livre digitado à mão normalmente, como sempre aceitou.
+// Acha um Direcionamento cadastrado pelo nome (mãe + sub opcional); cria o que
+// faltar. Usado pela migração abaixo, que transforma o texto livre que os
+// lançamentos antigos tinham em referência de verdade (direcionamentoId),
+// igual já funciona com Categoria e Centro de Custo.
+function acharOuCriarDirecionamento(listaAtual, nomeMae, nomeSub){
+  let lista = listaAtual;
+  let mae = lista.find(d=>!d.parentId && d.nome===nomeMae);
+  if(!mae){ mae = {id:uid(), nome:nomeMae, parentId:null, tipoPFPJ:'ambos', obs:''}; lista = [...lista, mae]; }
+  if(!nomeSub) return {id:mae.id, lista};
+  let sub = lista.find(d=>d.parentId===mae.id && d.nome===nomeSub);
+  if(!sub){ sub = {id:uid(), nome:nomeSub, parentId:mae.id, tipoPFPJ:mae.tipoPFPJ||'ambos', obs:''}; lista = [...lista, sub]; }
+  return {id:sub.id, lista};
+}
+let _direcMigrado = false;
+// Roda uma única vez por sessão: todo lançamento com texto em `direcionamento`
+// mas sem `direcionamentoId` ganha o vínculo de verdade (criando o cadastro
+// correspondente se ainda não existir). O campo de texto continua sendo
+// atualizado igual antes, então relatórios/filtros antigos não quebram.
+function migrarDirecionamentosParaId(){
+  if(_direcMigrado) return;
+  _direcMigrado = true;
+  let direcionamentos = DB.direcionamentos||[];
+  let mudou = false;
+  const lancamentos = (DB.lancamentos||[]).map(l=>{
+    if(l.direcionamentoId || !l.direcionamento) return l;
+    const partes = l.direcionamento.split(':').map(s=>s.trim());
+    const nomeMae = partes[0], nomeSub = partes[1]||'';
+    if(!nomeMae) return l;
+    const r = acharOuCriarDirecionamento(direcionamentos, nomeMae, nomeSub);
+    direcionamentos = r.lista;
+    mudou = true;
+    return {...l, direcionamentoId: r.id};
+  });
+  if(mudou){
+    DB = {...DB, lancamentos, direcionamentos};
+    ghSalvar(DB);
+  }
+}
+// Direcionamento tinha campo de TEXTO LIVRE nos lançamentos, sem ID — desde a
+// migração acima, todo lançamento novo/editado grava direcionamentoId de
+// verdade (igual Categoria/Centro de Custo); o texto continua preenchido
+// automaticamente a partir do ID, só por compatibilidade com relatórios
+// antigos que ainda leem a string.
 function nomeCompletoDirecionamento(d){
   if(!d) return '-';
   if(!d.parentId) return d.nome;
@@ -2779,9 +2819,15 @@ function sugerirPorContraparteLC(prefix){
       aplicouAlgo = true;
     }
   }
-  const campoDirec = document.getElementById(prefix+'-direcionamento');
-  if(match.direcionamento && campoDirec && !campoDirec.value){
-    campoDirec.value = match.direcionamento; aplicouAlgo = true;
+  if(match.direcionamentoId){
+    const {maeId,subId} = idsMaeSub(direcionamentoById(match.direcionamentoId));
+    const selMae = document.getElementById(prefix+'-direc-mae');
+    if(selMae && [...selMae.options].some(o=>o.value===maeId)){
+      selMae.value = maeId;
+      const selSub = document.getElementById(prefix+'-direc-sub');
+      if(selSub) selSub.innerHTML = opcoesSubDirecionamento(maeId, subId);
+      aplicouAlgo = true;
+    }
   }
   if(dica) dica.style.display = aplicouAlgo ? 'block' : 'none';
 }
@@ -2829,7 +2875,7 @@ function construirDicionarioAprendizado(contaId){
     if(!dic[chave] || l.criadoEm > dic[chave].ultimaData){
       dic[chave] = {
         contraparte: l.contraparte, categoriaId: l.categoriaId||'', direcionamento: l.direcionamento||'',
-        centroCustoId: l.centroCustoId||'', ultimaData: l.criadoEm||l.data,
+        direcionamentoId: l.direcionamentoId||'', centroCustoId: l.centroCustoId||'', ultimaData: l.criadoEm||l.data,
       };
     }
   });
@@ -2955,20 +3001,30 @@ function confirmarImportacaoOFX(){
   const selecionados = _ofxPendente.filter(t=>t.incluir);
   const paraConciliar = _ofxPendente.filter(t=>!t.incluir && t.parecidoId && !t.jaExiste);
   if(!selecionados.length && !paraConciliar.length){ _ofxPendente=[]; _ofxContaId=''; FM(); return; }
-  const novos = selecionados.map(t=>({
-    id: uid(), contaId: _ofxContaId, data: t.data, tipo: t.tipo, valor: t.valor,
-    categoriaId: t.categoriaId||'', centroCustoId: t.centroCustoId||'',
-    contraparte: t.contraparte, direcionamento: t.direcionamento||'',
-    descricao: t.memoOriginal, origem: 'ofx', fitid: t.fitid||null, contaPagarId: null,
-    criadoEm: new Date().toISOString(),
-  }));
+  let direcionamentosAtuais = DB.direcionamentos||[];
+  const novos = selecionados.map(t=>{
+    let direcionamentoId = null;
+    if(t.direcionamento){
+      const partes = t.direcionamento.split(':').map(s=>s.trim());
+      const r = acharOuCriarDirecionamento(direcionamentosAtuais, partes[0], partes[1]||'');
+      direcionamentosAtuais = r.lista;
+      direcionamentoId = r.id;
+    }
+    return {
+      id: uid(), contaId: _ofxContaId, data: t.data, tipo: t.tipo, valor: t.valor,
+      categoriaId: t.categoriaId||'', centroCustoId: t.centroCustoId||'',
+      contraparte: t.contraparte, direcionamento: t.direcionamento||'', direcionamentoId,
+      descricao: t.memoOriginal, origem: 'ofx', fitid: t.fitid||null, contaPagarId: null,
+      criadoEm: new Date().toISOString(),
+    };
+  });
   let lancamentos = [...(DB.lancamentos||[]), ...novos];
   // Concilia: em vez de criar um segundo lançamento igual, marca o que você já
   // tinha digitado manualmente como "conferido com o banco" (ganha um fitid).
   paraConciliar.forEach(t=>{
     lancamentos = lancamentos.map(l=> (l.id===t.parecidoId && !l.fitid) ? {...l, fitid: t.fitid||('conc_'+uid())} : l);
   });
-  salvar({...DB, lancamentos});
+  salvar({...DB, lancamentos, direcionamentos: direcionamentosAtuais});
   _ofxPendente = []; _ofxContaId = '';
   FM();
   const msgConc = paraConciliar.length ? ` · ${paraConciliar.length} conciliado(s) com lançamentos já digitados` : '';
@@ -3070,33 +3126,20 @@ function valorFinalCascata(prefixo, campo){
   if(sub) return sub;
   return document.getElementById(`${prefixo}-${campo}-mae`)?.value||'';
 }
-// Direcionamento é texto livre no lançamento — monta "Mãe: Sub" (ou só "Mãe")
-// a partir dos IDs escolhidos nos dropdowns, do jeito que já é salvo hoje.
-function valorFinalDirecionamentoCascata(prefixo){
-  const maeId = document.getElementById(`${prefixo}-direc-mae`)?.value||'';
-  const subId = document.getElementById(`${prefixo}-direc-sub`)?.value||'';
-  if(!maeId) return '';
-  const mae = direcionamentoById(maeId); if(!mae) return '';
-  if(subId){ const sub = direcionamentoById(subId); if(sub) return `${mae.nome}: ${sub.nome}`; }
-  return mae.nome;
+// Resolve o Direcionamento final pros dois campos que o lançamento salva:
+// o ID de verdade (novo) e o texto (mantido só por compatibilidade com
+// relatórios/filtros que ainda leem a string).
+function direcionamentoFinal(prefixo){
+  const id = valorFinalCascata(prefixo,'direc');
+  return { direcionamentoId: id||null, direcionamento: id?nomeCompletoDirecionamento(direcionamentoById(id)):'' };
 }
-// Dado um item com parentId (categoria ou centro de custo), resolve o par
-// {maeId, subId} pra pré-selecionar os dois dropdowns em cascata ao editar.
+// Dado um item com parentId (categoria, centro de custo ou direcionamento),
+// resolve o par {maeId, subId} pra pré-selecionar os dois dropdowns em
+// cascata ao editar.
 function idsMaeSub(item){
   if(!item) return {maeId:'', subId:''};
   if(item.parentId) return {maeId:item.parentId, subId:item.id};
   return {maeId:item.id, subId:''};
-}
-// ("Mãe: Sub" ou só "Mãe") — usado ao abrir a Edição de um lançamento.
-function _direcIdsPorTexto(texto){
-  if(!texto) return {maeId:'', subId:''};
-  const partes = texto.split(':').map(s=>s.trim());
-  const nomeMae = partes[0], nomeSub = partes[1];
-  const mae = (DB.direcionamentos||[]).find(d=>!d.parentId && d.nome===nomeMae);
-  if(!mae) return {maeId:'', subId:''};
-  if(!nomeSub) return {maeId:mae.id, subId:''};
-  const sub = (DB.direcionamentos||[]).find(d=>d.parentId===mae.id && d.nome===nomeSub);
-  return {maeId:mae.id, subId:sub?sub.id:''};
 }
 // Uma categoria sem centrosCustoIds (ou array vazio) é "genérica" e aparece
 // em qualquer Centro de Custo. Se tiver centrosCustoIds preenchido, só
@@ -3137,11 +3180,9 @@ function novoLancamento(contaIdPre){
       <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
     <div id="lc-dica-contraparte" style="display:none;font-size:11px;color:var(--acc);margin:-6px 0 8px">🔁 Categoria/direcionamento sugeridos com base no histórico desse beneficiário — pode trocar à vontade.</div>
     <div class="row">
-      ${C('Direcionamento',`<select id="lc-direc-mae" onchange="aoMudarDirecMae('lc')">${opcoesDirecionamentoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
-      ${C('Sub-Direcionamento',`<select id="lc-direc-sub" onchange="syncDirecTexto('lc')">${opcoesSubDirecionamento('', '')}</select>`,'1','160')}
+      ${C('Direcionamento',`<select id="lc-direc-mae" onchange="aoMudarMaeCascata('lc','direc')">${opcoesDirecionamentoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
+      ${C('Sub-Direcionamento',`<select id="lc-direc-sub">${opcoesSubDirecionamento('', '')}</select>`,'1','160')}
     </div>
-    ${C('Direcionamento — texto livre (opcional, escolher acima já preenche aqui)',`<input id="lc-direcionamento" list="dl-direcionamentos" placeholder="Ex: Obra X, Setor Y...">
-      <datalist id="dl-direcionamentos">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="lc-desc" list="dl-descricoes" placeholder="Ex: recebimento cliente X">
       <datalist id="dl-descricoes">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     <div id="lc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
@@ -3240,8 +3281,6 @@ function atualizarSugestoesConta(prefixo){
   const tipoConta = tipoDaConta(contaEl?.value);
   const dl = document.getElementById(prefixo==='elc' ? 'dl-contrapartes-ed' : 'dl-contrapartes');
   if(dl) dl.innerHTML = opcoesDatalist(contrapartesPorTipoConta(tipoConta));
-  const dlDirec = document.getElementById(prefixo==='elc' ? 'dl-direcionamentos-ed' : 'dl-direcionamentos');
-  if(dlDirec) dlDirec.innerHTML = direcionamentosExistentes(tipoConta).map(d=>`<option value="${esc(d)}">`).join('');
 
   const tipoLancEl = document.getElementById(prefixo+'-tipo');
   const tipoLanc = tipoLancEl ? (tipoLancEl.value==='entrada'?'receita':'despesa') : null;
@@ -3298,8 +3337,8 @@ function salvarNovaTransferencia(){
   const valor = parseValor(document.getElementById('lc-valor').value);
   const data = document.getElementById('lc-data').value||hoje();
   const descricao = document.getElementById('lc-desc').value.trim();
-  const direcionamento = document.getElementById('lc-direcionamento').value.trim();
   const centroCustoId = valorFinalCascata('lc','cc');
+  const direc = direcionamentoFinal('lc');
   if(!contaOrigemId){ ME('e-lanc','Selecione a conta de origem.'); return; }
   if(!contaDestinoId){ ME('e-lanc','Selecione a conta de destino.'); return; }
   if(contaOrigemId===contaDestinoId){ ME('e-lanc','A conta de origem e a conta de destino não podem ser a mesma.'); return; }
@@ -3311,7 +3350,7 @@ function salvarNovaTransferencia(){
   const saida = {
     id:uid(), contaId:contaOrigemId, data, tipo:'saida', valor,
     categoriaId:'', centroCustoId,
-    contraparte:'', direcionamento,
+    contraparte:'', ...direc,
     descricao: descricao || `Transferência para ${nomeDestino}`,
     origem:'transferencia', transferenciaId, contaVinculadaId:contaDestinoId, contaPagarId:null,
     criadoEm: agora
@@ -3319,7 +3358,7 @@ function salvarNovaTransferencia(){
   const entrada = {
     id:uid(), contaId:contaDestinoId, data, tipo:'entrada', valor,
     categoriaId:'', centroCustoId,
-    contraparte:'', direcionamento,
+    contraparte:'', ...direc,
     descricao: descricao || `Transferência de ${nomeOrigem}`,
     origem:'transferencia', transferenciaId, contaVinculadaId:contaOrigemId, contaPagarId:null,
     criadoEm: agora
@@ -3343,7 +3382,7 @@ function salvarNovoLancamento(){
     categoriaId: valorFinalCascata('lc','categoria'),
     centroCustoId: valorFinalCascata('lc','cc'),
     contraparte: document.getElementById('lc-contraparte').value.trim(),
-    direcionamento: document.getElementById('lc-direcionamento').value.trim(),
+    ...direcionamentoFinal('lc'),
     descricao: document.getElementById('lc-desc').value.trim(),
     origem:'manual', contaPagarId:null,
     criadoEm: new Date().toISOString()
@@ -3500,11 +3539,9 @@ function editarLancamento(id){
     ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
       <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
     <div class="row">
-      ${C('Direcionamento',`<select id="elc-direc-mae" onchange="aoMudarDirecMae('elc')">${opcoesDirecionamentoMae(tipoDaConta(l.contaId), _direcIdsPorTexto(l.direcionamento).maeId)}</select>`,'1','160')}
-      ${C('Sub-Direcionamento',`<select id="elc-direc-sub" onchange="syncDirecTexto('elc')">${opcoesSubDirecionamento(_direcIdsPorTexto(l.direcionamento).maeId, _direcIdsPorTexto(l.direcionamento).subId)}</select>`,'1','160')}
+      ${C('Direcionamento',`<select id="elc-direc-mae" onchange="aoMudarMaeCascata('elc','direc')">${opcoesDirecionamentoMae(tipoDaConta(l.contaId), idsMaeSub(direcionamentoById(l.direcionamentoId)).maeId)}</select>`,'1','160')}
+      ${C('Sub-Direcionamento',`<select id="elc-direc-sub">${opcoesSubDirecionamento(idsMaeSub(direcionamentoById(l.direcionamentoId)).maeId, idsMaeSub(direcionamentoById(l.direcionamentoId)).subId)}</select>`,'1','160')}
     </div>
-    ${C('Direcionamento — texto livre (opcional, escolher acima já preenche aqui)',`<input id="elc-direcionamento" list="dl-direcionamentos-ed" value="${esc(l.direcionamento||'')}">
-      <datalist id="dl-direcionamentos-ed">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="elc-desc" list="dl-descricoes-ed" value="${esc(l.descricao||'')}">
       <datalist id="dl-descricoes-ed">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     <div id="elc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
@@ -3533,17 +3570,6 @@ function editarLancamento(id){
   atualizarLabelRecorrencia('elc');
   atualizarUITipoLancamento('elc');
 }
-// Ao mudar o Direcionamento-mãe: repopula o Sub-Direcionamento e já escreve
-// o texto final no campo livre (que é o que de fato é salvo no lançamento).
-function aoMudarDirecMae(prefixo){
-  aoMudarMaeCascata(prefixo,'direc');
-  syncDirecTexto(prefixo);
-}
-function syncDirecTexto(prefixo){
-  const valor = valorFinalDirecionamentoCascata(prefixo);
-  const campo = document.getElementById(prefixo+'-direcionamento');
-  if(campo && valor) campo.value = valor;
-}
 function salvarEdicaoLancamento(id){
   const tipoSel = document.getElementById('elc-tipo').value;
   if(tipoSel==='transferencia'){ salvarConversaoParaTransferencia(id); return; }
@@ -3557,7 +3583,7 @@ function salvarEdicaoLancamento(id){
     categoriaId: valorFinalCascata('elc','categoria'),
     centroCustoId: valorFinalCascata('elc','cc'),
     contraparte: document.getElementById('elc-contraparte').value.trim(),
-    direcionamento: document.getElementById('elc-direcionamento').value.trim(),
+    ...direcionamentoFinal('elc'),
     descricao: document.getElementById('elc-desc').value.trim()
   };
   let novoDB = {...DB, lancamentos:(DB.lancamentos||[]).map(l=>l.id===id?{...l,...patch}:l)};
@@ -3601,8 +3627,8 @@ function salvarConversaoParaTransferencia(id){
   const valor = parseValor(document.getElementById('elc-valor').value);
   const data = document.getElementById('elc-data').value||hoje();
   const descricao = document.getElementById('elc-desc').value.trim();
-  const direcionamento = document.getElementById('elc-direcionamento').value.trim();
   const centroCustoId = valorFinalCascata('elc','cc');
+  const direc = direcionamentoFinal('elc');
   if(!contaOrigemId){ ME('e-lanc-ed','Selecione a conta de origem.'); return; }
   if(!contaDestinoId){ ME('e-lanc-ed','Selecione a conta de destino.'); return; }
   if(contaOrigemId===contaDestinoId){ ME('e-lanc-ed','A conta de origem e a conta de destino não podem ser a mesma.'); return; }
@@ -3614,7 +3640,7 @@ function salvarConversaoParaTransferencia(id){
   const saida = {
     id:uid(), contaId:contaOrigemId, data, tipo:'saida', valor,
     categoriaId:'', centroCustoId,
-    contraparte:'', direcionamento,
+    contraparte:'', ...direc,
     descricao: descricao || `Transferência para ${nomeDestino}`,
     origem:'transferencia', transferenciaId, contaVinculadaId:contaDestinoId, contaPagarId:null,
     criadoEm: agora
@@ -3622,7 +3648,7 @@ function salvarConversaoParaTransferencia(id){
   const entrada = {
     id:uid(), contaId:contaDestinoId, data, tipo:'entrada', valor,
     categoriaId:'', centroCustoId,
-    contraparte:'', direcionamento,
+    contraparte:'', ...direc,
     descricao: descricao || `Transferência de ${nomeOrigem}`,
     origem:'transferencia', transferenciaId, contaVinculadaId:contaOrigemId, contaPagarId:null,
     criadoEm: agora
