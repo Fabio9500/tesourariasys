@@ -1,12 +1,21 @@
 // TesourariaSys — Service Worker
-// Estratégia: cache-first com stale-while-revalidate.
-// O GitHub Pages serve os arquivos com Cache-Control: max-age=600 (10 min),
-// então o cache-first garante funcionamento offline e o revalidate em segundo
-// plano mantém o app atualizado sem travar o carregamento.
+// Estratégia: NETWORK-FIRST para os arquivos principais do app (html/css/js/
+// manifest) — sempre tenta buscar a versão mais nova na rede primeiro, e só
+// usa o cache como reserva se estiver offline. Isso evita o problema de o
+// app ficar "preso" numa versão antiga depois de um deploy (o que já
+// aconteceu antes com o Service Worker do ChequeSys).
+//
+// IMPORTANTE: sempre que este arquivo for reimplantado, o navegador detecta
+// a mudança de bytes, reinstala o Service Worker e limpa o cache antigo
+// automaticamente (activate abaixo apaga qualquer CACHE_NAME diferente do
+// atual). Se um dia parar de atualizar de novo, aumente o número da
+// CACHE_NAME (ex: v2 -> v3) pra forçar a troca.
 
-const CACHE_NAME = 'tesourariasys-v1';
+const CACHE_NAME = 'tesourariasys-v2';
 const ARQUIVOS_CACHE = [
   './tesourariasys.html',
+  './styles.css',
+  './script.js',
   './manifest.json'
 ];
 
@@ -35,20 +44,18 @@ self.addEventListener('fetch', (event) => {
   if (req.url.includes('api.github.com')) return;
 
   event.respondWith(
-    caches.match(req).then((cachedResponse) => {
-      const fetchPromise = fetch(req)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      // cache-first: responde do cache imediatamente se existir,
-      // e atualiza o cache em segundo plano (stale-while-revalidate).
-      return cachedResponse || fetchPromise;
-    })
+    fetch(req)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(req))
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
