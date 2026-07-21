@@ -106,6 +106,7 @@
 <!-- ====== SEÇÃO: MODAL_CONFIRMACAO - INÍCIO ====== -->
 <div class="overlay" id="ov-cf">
   <div class="card" style="max-width:360px;width:100%;text-align:center;padding:24px;position:relative">
+    <div class="cf-drag" title="Arraste para mover" style="position:absolute;top:0;left:0;right:0;height:22px;cursor:move"></div>
     <button type="button" onclick="FCF()" title="Fechar" style="position:absolute;top:10px;right:10px;background:var(--bor);color:var(--txt);padding:3px 9px;font-size:11px">✕</button>
     <div style="font-size:14px;font-weight:700;margin-bottom:20px" id="cf-msg"></div>
     <div class="row" style="justify-content:center;gap:10px">
@@ -115,6 +116,17 @@
   </div>
 </div>
 <!-- ====== SEÇÃO: MODAL_CONFIRMACAO - FIM ====== -->
+
+<!-- ====== SEÇÃO: MODAL_CALENDARIO_DIA - INÍCIO ====== -->
+<div class="overlay" id="ov-cal-dia">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-head"><span id="caldia-titulo">Transações agendadas</span>
+      <button type="button" onclick="fecharCalDia()" style="background:var(--bor);color:var(--txt);padding:3px 9px;font-size:11px">✕</button>
+    </div>
+    <div class="modal-body" id="caldia-corpo"></div>
+  </div>
+</div>
+<!-- ====== SEÇÃO: MODAL_CALENDARIO_DIA - FIM ====== -->
 
 <!-- ====== SEÇÃO: MENU_CONTEXTO_LANCAMENTO - INÍCIO ====== -->
 <div id="ctx-menu-lanc" class="no-print"></div>

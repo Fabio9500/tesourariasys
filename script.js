@@ -951,17 +951,63 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.58';
+const VERSAO = 'v1.59';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.textContent = VERSAO;
   });
+  tornarArrastavel(document.querySelector('#ov .modal-head'), document.querySelector('#ov .modal'));
+  tornarArrastavel(document.querySelector('#ov-cf .cf-drag'), document.querySelector('#ov-cf .card'));
+  tornarArrastavel(document.querySelector('#ov-cal-dia .modal-head'), document.querySelector('#ov-cal-dia .modal'));
 });
-function AM(titulo,corpo){ document.getElementById('m-titulo').textContent=titulo; document.getElementById('m-corpo').innerHTML=corpo; document.getElementById('ov').classList.add('vis'); }
+// ── Janelas arrastáveis (estilo Money): segura no cabeçalho e arrasta pra
+// qualquer lugar da tela. Só ativa position:fixed no primeiro arraste — até
+// lá a janela continua centralizada normalmente via flex do .overlay.
+function tornarArrastavel(handle, alvo){
+  if(!handle || !alvo) return;
+  let arrastando=false, offX=0, offY=0;
+  handle.style.cursor='move';
+  handle.addEventListener('mousedown',(e)=>{
+    if(e.target.closest('button')) return; // não arrasta ao clicar no X
+    arrastando=true;
+    const rect = alvo.getBoundingClientRect();
+    offX = e.clientX-rect.left; offY = e.clientY-rect.top;
+    alvo.style.position='fixed';
+    alvo.style.left=rect.left+'px'; alvo.style.top=rect.top+'px';
+    alvo.style.margin='0';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',(e)=>{
+    if(!arrastando) return;
+    const maxX = window.innerWidth - 40, maxY = window.innerHeight - 30;
+    alvo.style.left = Math.min(Math.max(0,e.clientX-offX),maxX)+'px';
+    alvo.style.top = Math.min(Math.max(0,e.clientY-offY),maxY)+'px';
+  });
+  document.addEventListener('mouseup',()=>{ arrastando=false; });
+  // Suporte a toque (tablet/celular)
+  handle.addEventListener('touchstart',(e)=>{
+    if(e.target.closest('button')) return;
+    const t = e.touches[0]; arrastando=true;
+    const rect = alvo.getBoundingClientRect();
+    offX = t.clientX-rect.left; offY = t.clientY-rect.top;
+    alvo.style.position='fixed'; alvo.style.left=rect.left+'px'; alvo.style.top=rect.top+'px'; alvo.style.margin='0';
+  },{passive:true});
+  document.addEventListener('touchmove',(e)=>{
+    if(!arrastando) return;
+    const t = e.touches[0];
+    alvo.style.left=(t.clientX-offX)+'px'; alvo.style.top=(t.clientY-offY)+'px';
+  },{passive:true});
+  document.addEventListener('touchend',()=>{ arrastando=false; });
+}
+function _resetPosicaoJanela(alvo){
+  if(!alvo) return;
+  alvo.style.position=''; alvo.style.left=''; alvo.style.top=''; alvo.style.margin='';
+}
+function AM(titulo,corpo){ document.getElementById('m-titulo').textContent=titulo; document.getElementById('m-corpo').innerHTML=corpo; document.getElementById('ov').classList.add('vis'); _resetPosicaoJanela(document.querySelector('#ov .modal')); }
 function FM(){ document.getElementById('ov').classList.remove('vis'); }
 let _cfCb=null;
-function CF(msg,cb){ document.getElementById('cf-msg').textContent=msg; document.getElementById('ov-cf').classList.add('vis'); _cfCb=cb; document.getElementById('cf-sim').onclick=()=>{const fn=_cfCb; FCF(); if(fn)fn();}; }
+function CF(msg,cb){ document.getElementById('cf-msg').textContent=msg; document.getElementById('ov-cf').classList.add('vis'); _cfCb=cb; document.getElementById('cf-sim').onclick=()=>{const fn=_cfCb; FCF(); if(fn)fn();}; _resetPosicaoJanela(document.querySelector('#ov-cf .card')); }
 function FCF(){ document.getElementById('ov-cf').classList.remove('vis'); _cfCb=null; }
 const TIP_ICONES = {
   '👁':'Ver detalhes', '🖨':'Imprimir', '🗑':'Excluir', '✏':'Editar', '✏️':'Editar',
@@ -2712,16 +2758,28 @@ function sugerirPorContraparteLC(prefix){
   const dic = construirDicionarioAprendizado();
   const match = casarComHistorico(nome, dic);
   if(!match){ if(dica) dica.style.display='none'; return; }
-  const selCat = document.getElementById(prefix+'-categoria');
-  const selCC = document.getElementById(prefix+'-cc');
-  const campoDirec = document.getElementById(prefix+'-direcionamento');
   let aplicouAlgo = false;
-  if(match.categoriaId && selCat && [...selCat.options].some(o=>o.value===match.categoriaId)){
-    selCat.value = match.categoriaId; aplicouAlgo = true;
+  if(match.categoriaId){
+    const {maeId,subId} = idsMaeSub(categoriaById(match.categoriaId));
+    const selMae = document.getElementById(prefix+'-categoria-mae');
+    if(selMae && [...selMae.options].some(o=>o.value===maeId)){
+      selMae.value = maeId;
+      const selSub = document.getElementById(prefix+'-categoria-sub');
+      if(selSub) selSub.innerHTML = opcoesSubcategoria(maeId, subId);
+      aplicouAlgo = true;
+    }
   }
-  if(match.centroCustoId && selCC && [...selCC.options].some(o=>o.value===match.centroCustoId)){
-    selCC.value = match.centroCustoId; aplicouAlgo = true;
+  if(match.centroCustoId){
+    const {maeId,subId} = idsMaeSub(centroCustoById(match.centroCustoId));
+    const selMae = document.getElementById(prefix+'-cc-mae');
+    if(selMae && [...selMae.options].some(o=>o.value===maeId)){
+      selMae.value = maeId;
+      const selSub = document.getElementById(prefix+'-cc-sub');
+      if(selSub) selSub.innerHTML = opcoesSubCentroCusto(maeId, subId);
+      aplicouAlgo = true;
+    }
   }
+  const campoDirec = document.getElementById(prefix+'-direcionamento');
   if(match.direcionamento && campoDirec && !campoDirec.value){
     campoDirec.value = match.direcionamento; aplicouAlgo = true;
   }
@@ -2957,6 +3015,89 @@ function opcoesCC(selId,tipoConta){
   });
   return html;
 }
+// ══════════════════════════════════════════
+// SELETORES EM CASCATA (Mãe → Sub) — estilo Microsoft Money: um dropdown
+// pra escolher a Categoria/Centro de Custo/Direcionamento "mãe" e outro,
+// dependente, só com as SUBdivisões daquela mãe. A pedido do Fabio, usado
+// no Novo Lançamento e na Edição de Lançamento (referência: imagem do Money
+// mostrando Categoria/Centro de Custo/Direcionamento cada um com 2 campos).
+// ══════════════════════════════════════════
+function opcoesCategoriaMae(tipoReceitaDespesa, tipoConta, centroCustoId, selMaeId){
+  const maes = categoriasPorTipoConta(tipoReceitaDespesa, tipoConta, centroCustoId).filter(c=>!c.parentId)
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  return '<option value="">— Selecione —</option>' + maes.map(c=>`<option value="${c.id}"${c.id===selMaeId?' selected':''}>${esc(c.nome)}</option>`).join('');
+}
+function opcoesSubcategoria(maeId, selSubId){
+  if(!maeId) return '<option value="">—</option>';
+  const filhos = (DB.categorias||[]).filter(c=>c.parentId===maeId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  if(!filhos.length) return '<option value="">— Nenhuma —</option>';
+  return '<option value="">— Nenhuma (usar a categoria-mãe) —</option>' + filhos.map(c=>`<option value="${c.id}"${c.id===selSubId?' selected':''}>${esc(c.nome)}</option>`).join('');
+}
+function opcoesCentroCustoMae(tipoConta, selMaeId){
+  const maes = (DB.centrosCusto||[]).filter(c=>!c.parentId && itemValidoParaPFPJ(c,tipoConta)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  return '<option value="">-</option>' + maes.map(c=>`<option value="${c.id}"${c.id===selMaeId?' selected':''}>${esc(c.nome)}</option>`).join('');
+}
+function opcoesSubCentroCusto(maeId, selSubId){
+  if(!maeId) return '<option value="">—</option>';
+  const filhos = (DB.centrosCusto||[]).filter(c=>c.parentId===maeId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  if(!filhos.length) return '<option value="">— Nenhum —</option>';
+  return '<option value="">— Nenhum (usar o centro-mãe) —</option>' + filhos.map(c=>`<option value="${c.id}"${c.id===selSubId?' selected':''}>${esc(c.nome)}</option>`).join('');
+}
+function opcoesDirecionamentoMae(tipoConta, selMaeId){
+  const maes = (DB.direcionamentos||[]).filter(d=>!d.parentId && itemValidoParaPFPJ(d,tipoConta)).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  return '<option value="">-</option>' + maes.map(d=>`<option value="${d.id}"${d.id===selMaeId?' selected':''}>${esc(d.nome)}</option>`).join('');
+}
+function opcoesSubDirecionamento(maeId, selSubId){
+  if(!maeId) return '<option value="">—</option>';
+  const filhos = (DB.direcionamentos||[]).filter(d=>d.parentId===maeId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  if(!filhos.length) return '<option value="">— Nenhum —</option>';
+  return '<option value="">— Nenhum (usar o direcionamento-mãe) —</option>' + filhos.map(d=>`<option value="${d.id}"${d.id===selSubId?' selected':''}>${esc(d.nome)}</option>`).join('');
+}
+// Ao trocar a mãe, repopula o select de sub (limpo) — mesmo padrão pras 3 dimensões.
+function aoMudarMaeCascata(prefixo, campo){
+  const maeSel = document.getElementById(`${prefixo}-${campo}-mae`);
+  const subSel = document.getElementById(`${prefixo}-${campo}-sub`);
+  if(!maeSel || !subSel) return;
+  const maeId = maeSel.value;
+  if(campo==='categoria') subSel.innerHTML = opcoesSubcategoria(maeId, '');
+  else if(campo==='cc') subSel.innerHTML = opcoesSubCentroCusto(maeId, '');
+  else if(campo==='direc') subSel.innerHTML = opcoesSubDirecionamento(maeId, '');
+  if(campo==='categoria' || campo==='cc') atualizarSugestoesConta(prefixo);
+}
+// Resolve o ID final (sub, se escolhida; senão a mãe) — usado ao salvar.
+function valorFinalCascata(prefixo, campo){
+  const sub = document.getElementById(`${prefixo}-${campo}-sub`)?.value||'';
+  if(sub) return sub;
+  return document.getElementById(`${prefixo}-${campo}-mae`)?.value||'';
+}
+// Direcionamento é texto livre no lançamento — monta "Mãe: Sub" (ou só "Mãe")
+// a partir dos IDs escolhidos nos dropdowns, do jeito que já é salvo hoje.
+function valorFinalDirecionamentoCascata(prefixo){
+  const maeId = document.getElementById(`${prefixo}-direc-mae`)?.value||'';
+  const subId = document.getElementById(`${prefixo}-direc-sub`)?.value||'';
+  if(!maeId) return '';
+  const mae = direcionamentoById(maeId); if(!mae) return '';
+  if(subId){ const sub = direcionamentoById(subId); if(sub) return `${mae.nome}: ${sub.nome}`; }
+  return mae.nome;
+}
+// Dado um item com parentId (categoria ou centro de custo), resolve o par
+// {maeId, subId} pra pré-selecionar os dois dropdowns em cascata ao editar.
+function idsMaeSub(item){
+  if(!item) return {maeId:'', subId:''};
+  if(item.parentId) return {maeId:item.parentId, subId:item.id};
+  return {maeId:item.id, subId:''};
+}
+// ("Mãe: Sub" ou só "Mãe") — usado ao abrir a Edição de um lançamento.
+function _direcIdsPorTexto(texto){
+  if(!texto) return {maeId:'', subId:''};
+  const partes = texto.split(':').map(s=>s.trim());
+  const nomeMae = partes[0], nomeSub = partes[1];
+  const mae = (DB.direcionamentos||[]).find(d=>!d.parentId && d.nome===nomeMae);
+  if(!mae) return {maeId:'', subId:''};
+  if(!nomeSub) return {maeId:mae.id, subId:''};
+  const sub = (DB.direcionamentos||[]).find(d=>d.parentId===mae.id && d.nome===nomeSub);
+  return {maeId:mae.id, subId:sub?sub.id:''};
+}
 // Uma categoria sem centrosCustoIds (ou array vazio) é "genérica" e aparece
 // em qualquer Centro de Custo. Se tiver centrosCustoIds preenchido, só
 // aparece quando o Centro de Custo selecionado estiver na lista dela.
@@ -2984,17 +3125,22 @@ function novoLancamento(contaIdPre){
       ${C('Tipo *',`<select id="lc-tipo" onchange="atualizarSugestoesConta('lc');atualizarLabelRecorrencia();atualizarUITipoLancamento('lc')"><option value="entrada">Entrada</option><option value="saida">Saída</option><option value="transferencia">Transferência</option></select>`,'1','140')}
       ${C('Valor (R$) *',`<input id="lc-valor" placeholder="0,00">`,'1','150')}
     </div>
+    <div class="row" id="lc-categoria-wrap">
+      ${C('Categoria',`<select id="lc-categoria-mae" onchange="aoMudarMaeCascata('lc','categoria')">${opcoesCategoriaMae('receita', tipoDaConta(contaIdPre), '', '')}</select>`,'1','160')}
+      ${C('Subcategoria',`<select id="lc-categoria-sub">${opcoesSubcategoria('', '')}</select>`,'1','160')}
+    </div>
     <div class="row">
-      <div class="campo" id="lc-categoria-wrap" style="flex:1;min-width:180px;margin-bottom:10px">
-        <label>Categoria</label>
-        <select id="lc-categoria">${opcoesCategorias('receita')}</select>
-      </div>
-      ${C('Centro de Custo',`<select id="lc-cc" onchange="atualizarSugestoesConta('lc')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="lc-cc-mae" onchange="aoMudarMaeCascata('lc','cc')">${opcoesCentroCustoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
+      ${C('Sub-Centro de Custo',`<select id="lc-cc-sub">${opcoesSubCentroCusto('', '')}</select>`,'1','160')}
     </div>
     ${C('Cliente / Fornecedor (opcional)',`<input id="lc-contraparte" list="dl-contrapartes" placeholder="Quem pagou ou recebeu" oninput="sugerirPorContraparteLC('lc')">
       <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
     <div id="lc-dica-contraparte" style="display:none;font-size:11px;color:var(--acc);margin:-6px 0 8px">🔁 Categoria/direcionamento sugeridos com base no histórico desse beneficiário — pode trocar à vontade.</div>
-    ${C('Direcionamento (opcional)',`<input id="lc-direcionamento" list="dl-direcionamentos" placeholder="Ex: Obra X, Setor Y...">
+    <div class="row">
+      ${C('Direcionamento',`<select id="lc-direc-mae" onchange="aoMudarDirecMae('lc')">${opcoesDirecionamentoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
+      ${C('Sub-Direcionamento',`<select id="lc-direc-sub" onchange="syncDirecTexto('lc')">${opcoesSubDirecionamento('', '')}</select>`,'1','160')}
+    </div>
+    ${C('Direcionamento — texto livre (opcional, escolher acima já preenche aqui)',`<input id="lc-direcionamento" list="dl-direcionamentos" placeholder="Ex: Obra X, Setor Y...">
       <datalist id="dl-direcionamentos">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="lc-desc" list="dl-descricoes" placeholder="Ex: recebimento cliente X">
       <datalist id="dl-descricoes">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
@@ -3096,23 +3242,41 @@ function atualizarSugestoesConta(prefixo){
   if(dl) dl.innerHTML = opcoesDatalist(contrapartesPorTipoConta(tipoConta));
   const dlDirec = document.getElementById(prefixo==='elc' ? 'dl-direcionamentos-ed' : 'dl-direcionamentos');
   if(dlDirec) dlDirec.innerHTML = direcionamentosExistentes(tipoConta).map(d=>`<option value="${esc(d)}">`).join('');
+
   const tipoLancEl = document.getElementById(prefixo+'-tipo');
   const tipoLanc = tipoLancEl ? (tipoLancEl.value==='entrada'?'receita':'despesa') : null;
-  const ccEl = document.getElementById(prefixo+'-cc');
-  if(ccEl){
-    const ccAtual = ccEl.value;
-    const opcoesCCFiltradas = opcoesCC(ccAtual, tipoConta);
-    ccEl.innerHTML = '<option value="">-</option>'+opcoesCCFiltradas;
-    if(![...ccEl.options].some(o=>o.value===ccAtual)) ccEl.value='';
+
+  // Centro de Custo (mãe → sub) — refiltra pelo tipo de conta
+  const ccMaeEl = document.getElementById(prefixo+'-cc-mae');
+  if(ccMaeEl){
+    const ccAtual = ccMaeEl.value;
+    ccMaeEl.innerHTML = opcoesCentroCustoMae(tipoConta, ccAtual);
+    if(![...ccMaeEl.options].some(o=>o.value===ccAtual)) ccMaeEl.value='';
+    const ccSubEl = document.getElementById(prefixo+'-cc-sub');
+    if(ccSubEl) ccSubEl.innerHTML = opcoesSubCentroCusto(ccMaeEl.value, ccSubEl.value);
   }
-  const centroCustoId = ccEl ? ccEl.value : '';
-  const catSel = document.getElementById(prefixo+'-categoria');
-  if(catSel){
-    const catAtual = catSel.value;
-    const opcoes = categoriasPorTipoConta(tipoLanc, tipoConta, centroCustoId);
-    catSel.innerHTML = opcoes.map(c=>`<option value="${c.id}"${c.id===catAtual?' selected':''}>${esc(c.nome)}</option>`).join('');
-    if(!opcoes.some(c=>c.id===catAtual)) catSel.value = '';
+  const centroCustoId = valorFinalCascata(prefixo,'cc');
+
+  // Categoria (mãe → sub) — refiltra por tipo receita/despesa, tipo de conta e CC
+  const catMaeEl = document.getElementById(prefixo+'-categoria-mae');
+  if(catMaeEl){
+    const catAtual = catMaeEl.value;
+    catMaeEl.innerHTML = opcoesCategoriaMae(tipoLanc, tipoConta, centroCustoId, catAtual);
+    if(![...catMaeEl.options].some(o=>o.value===catAtual)) catMaeEl.value='';
+    const catSubEl = document.getElementById(prefixo+'-categoria-sub');
+    if(catSubEl) catSubEl.innerHTML = opcoesSubcategoria(catMaeEl.value, catSubEl.value);
   }
+
+  // Direcionamento (mãe → sub) — refiltra pelo tipo de conta
+  const direcMaeEl = document.getElementById(prefixo+'-direc-mae');
+  if(direcMaeEl){
+    const direcAtual = direcMaeEl.value;
+    direcMaeEl.innerHTML = opcoesDirecionamentoMae(tipoConta, direcAtual);
+    if(![...direcMaeEl.options].some(o=>o.value===direcAtual)) direcMaeEl.value='';
+    const direcSubEl = document.getElementById(prefixo+'-direc-sub');
+    if(direcSubEl) direcSubEl.innerHTML = opcoesSubDirecionamento(direcMaeEl.value, direcSubEl.value);
+  }
+
   const info = document.getElementById(prefixo+'-tipo-info');
   if(info){
     const partesInfo = [];
@@ -3120,10 +3284,6 @@ function atualizarSugestoesConta(prefixo){
     if(centroCustoId) partesInfo.push('categorias vinculadas ao Centro de Custo selecionado');
     info.textContent = partesInfo.length ? `Sugestões filtradas por: ${partesInfo.join(' e ')}.` : '';
   }
-}
-function atualizarCatsLancamento(){
-  const tipo = document.getElementById('lc-tipo').value==='entrada'?'receita':'despesa';
-  document.getElementById('lc-categoria').innerHTML = opcoesCategorias(tipo);
 }
 function proximaDataRecorrencia(data, periodo){
   const d = new Date(data+'T12:00:00');
@@ -3139,7 +3299,7 @@ function salvarNovaTransferencia(){
   const data = document.getElementById('lc-data').value||hoje();
   const descricao = document.getElementById('lc-desc').value.trim();
   const direcionamento = document.getElementById('lc-direcionamento').value.trim();
-  const centroCustoId = document.getElementById('lc-cc').value||'';
+  const centroCustoId = valorFinalCascata('lc','cc');
   if(!contaOrigemId){ ME('e-lanc','Selecione a conta de origem.'); return; }
   if(!contaDestinoId){ ME('e-lanc','Selecione a conta de destino.'); return; }
   if(contaOrigemId===contaDestinoId){ ME('e-lanc','A conta de origem e a conta de destino não podem ser a mesma.'); return; }
@@ -3180,8 +3340,8 @@ function salvarNovoLancamento(){
     data: document.getElementById('lc-data').value||hoje(),
     tipo: document.getElementById('lc-tipo').value,
     valor,
-    categoriaId: document.getElementById('lc-categoria').value||'',
-    centroCustoId: document.getElementById('lc-cc').value||'',
+    categoriaId: valorFinalCascata('lc','categoria'),
+    centroCustoId: valorFinalCascata('lc','cc'),
     contraparte: document.getElementById('lc-contraparte').value.trim(),
     direcionamento: document.getElementById('lc-direcionamento').value.trim(),
     descricao: document.getElementById('lc-desc').value.trim(),
@@ -3329,13 +3489,21 @@ function editarLancamento(id){
       ${C('Valor (R$) *',`<input id="elc-valor" value="${fmt(l.valor)}">`,'1','150')}
     </div>
     <div class="row" id="elc-categoria-wrap">
-      ${C('Categoria',`<select id="elc-categoria">${opcoesCategorias(l.tipo==='entrada'?'receita':'despesa',l.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="elc-cc" onchange="atualizarSugestoesConta('elc')"><option value="">-</option>${opcoesCC(l.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<select id="elc-categoria-mae" onchange="aoMudarMaeCascata('elc','categoria')">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa', tipoDaConta(l.contaId), l.centroCustoId, idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select>`,'1','160')}
+      ${C('Subcategoria',`<select id="elc-categoria-sub">${opcoesSubcategoria(idsMaeSub(categoriaById(l.categoriaId)).maeId, idsMaeSub(categoriaById(l.categoriaId)).subId)}</select>`,'1','160')}
+    </div>
+    <div class="row">
+      ${C('Centro de Custo',`<select id="elc-cc-mae" onchange="aoMudarMaeCascata('elc','cc')">${opcoesCentroCustoMae(tipoDaConta(l.contaId), idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</select>`,'1','160')}
+      ${C('Sub-Centro de Custo',`<select id="elc-cc-sub">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(l.centroCustoId)).maeId, idsMaeSub(centroCustoById(l.centroCustoId)).subId)}</select>`,'1','160')}
     </div>
     <div style="font-size:11px;color:var(--mut);margin:-6px 0 10px">Escolher "🔀 Transferência" aqui substitui este lançamento por um par de Transferência entre as contas escolhidas (remove o lançamento único, cria origem + destino vinculados).</div>
     ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
       <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
-    ${C('Direcionamento (opcional)',`<input id="elc-direcionamento" list="dl-direcionamentos-ed" value="${esc(l.direcionamento||'')}">
+    <div class="row">
+      ${C('Direcionamento',`<select id="elc-direc-mae" onchange="aoMudarDirecMae('elc')">${opcoesDirecionamentoMae(tipoDaConta(l.contaId), _direcIdsPorTexto(l.direcionamento).maeId)}</select>`,'1','160')}
+      ${C('Sub-Direcionamento',`<select id="elc-direc-sub" onchange="syncDirecTexto('elc')">${opcoesSubDirecionamento(_direcIdsPorTexto(l.direcionamento).maeId, _direcIdsPorTexto(l.direcionamento).subId)}</select>`,'1','160')}
+    </div>
+    ${C('Direcionamento — texto livre (opcional, escolher acima já preenche aqui)',`<input id="elc-direcionamento" list="dl-direcionamentos-ed" value="${esc(l.direcionamento||'')}">
       <datalist id="dl-direcionamentos-ed">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="elc-desc" list="dl-descricoes-ed" value="${esc(l.descricao||'')}">
       <datalist id="dl-descricoes-ed">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
@@ -3365,9 +3533,16 @@ function editarLancamento(id){
   atualizarLabelRecorrencia('elc');
   atualizarUITipoLancamento('elc');
 }
-function atualizarCatsLancamentoEd(){
-  const tipo = document.getElementById('elc-tipo').value==='entrada'?'receita':'despesa';
-  document.getElementById('elc-categoria').innerHTML = opcoesCategorias(tipo);
+// Ao mudar o Direcionamento-mãe: repopula o Sub-Direcionamento e já escreve
+// o texto final no campo livre (que é o que de fato é salvo no lançamento).
+function aoMudarDirecMae(prefixo){
+  aoMudarMaeCascata(prefixo,'direc');
+  syncDirecTexto(prefixo);
+}
+function syncDirecTexto(prefixo){
+  const valor = valorFinalDirecionamentoCascata(prefixo);
+  const campo = document.getElementById(prefixo+'-direcionamento');
+  if(campo && valor) campo.value = valor;
 }
 function salvarEdicaoLancamento(id){
   const tipoSel = document.getElementById('elc-tipo').value;
@@ -3379,8 +3554,8 @@ function salvarEdicaoLancamento(id){
     data: document.getElementById('elc-data').value||hoje(),
     tipo: document.getElementById('elc-tipo').value,
     valor,
-    categoriaId: document.getElementById('elc-categoria').value||'',
-    centroCustoId: document.getElementById('elc-cc').value||'',
+    categoriaId: valorFinalCascata('elc','categoria'),
+    centroCustoId: valorFinalCascata('elc','cc'),
     contraparte: document.getElementById('elc-contraparte').value.trim(),
     direcionamento: document.getElementById('elc-direcionamento').value.trim(),
     descricao: document.getElementById('elc-desc').value.trim()
@@ -3427,7 +3602,7 @@ function salvarConversaoParaTransferencia(id){
   const data = document.getElementById('elc-data').value||hoje();
   const descricao = document.getElementById('elc-desc').value.trim();
   const direcionamento = document.getElementById('elc-direcionamento').value.trim();
-  const centroCustoId = document.getElementById('elc-cc').value||'';
+  const centroCustoId = valorFinalCascata('elc','cc');
   if(!contaOrigemId){ ME('e-lanc-ed','Selecione a conta de origem.'); return; }
   if(!contaDestinoId){ ME('e-lanc-ed','Selecione a conta de destino.'); return; }
   if(contaOrigemId===contaDestinoId){ ME('e-lanc-ed','A conta de origem e a conta de destino não podem ser a mesma.'); return; }
@@ -3532,7 +3707,7 @@ function excluirLancamento(id){
 // ══════════════════════════════════════════
 // CRUD — CONTAS A PAGAR (integrado aos Lançamentos)
 // ══════════════════════════════════════════
-function novaContaPagar(){
+function novaContaPagar(vencimentoPre){
   AM('➕ Nova Conta a Pagar',`
     ${EH('e-cp')}
     <div class="row">
@@ -3543,7 +3718,7 @@ function novaContaPagar(){
     <div style="font-size:11px;color:var(--mut);margin:-6px 0 10px">Fornecedor não está na lista? Digite o nome normalmente — depois é só cadastrar os dados completos (CPF/CNPJ, contato) em <strong>Cadastros → Fornecedores</strong>.</div>
     ${C('Conta bancária de pagamento (opcional — escolher já filtra Categoria/Fornecedor por PF/PJ)',`<select id="cp-conta" onchange="atualizarSugestoesContaPagar('cp')"><option value="">A definir no momento do pagamento</option>${opcoesContas()}</select>`)}
     <div class="row">
-      ${C('Vencimento *',`<input type="date" id="cp-venc" value="${hoje()}">`,'1','150')}
+      ${C('Vencimento *',`<input type="date" id="cp-venc" value="${vencimentoPre||hoje()}">`,'1','150')}
       ${C('Categoria',`<select id="cp-categoria" onchange="atualizarSugestoesContaPagar('cp')">${opcoesCategorias('despesa')}</select>`,'1','180')}
       ${C('Centro de Custo',`<select id="cp-cc" onchange="atualizarSugestoesContaPagar('cp')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
     </div>
@@ -5520,6 +5695,100 @@ function htmlPatrimonioEvolucao(){
 // ══════════════════════════════════════════
 let _filtroCPStatus = 'pendente';
 function filtrarCP(st){ _filtroCPStatus = st; renderAba(); }
+// ── Calendário de Contas a Pagar (estilo Money: grade do mês, clique no dia
+// abre as transações agendadas daquele dia numa janela à parte) ──
+let _cpModoView = 'lista';
+function toggleModoViewCP(modo){ _cpModoView = modo; renderAba(); }
+let _calPagarMes = hoje().slice(0,7); // 'AAAA-MM'
+function calPagarMudarMes(delta){
+  const [y,m] = _calPagarMes.split('-').map(Number);
+  const d = new Date(y, m-1+delta, 1);
+  _calPagarMes = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  renderAba();
+}
+function calPagarIrHoje(){ _calPagarMes = hoje().slice(0,7); renderAba(); }
+function _dataStrLocal(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function htmlCalendarioContasPagar(){
+  const [ano, mes] = _calPagarMes.split('-').map(Number);
+  const primeiroDia = new Date(ano, mes-1, 1);
+  const inicioGrid = new Date(primeiroDia);
+  inicioGrid.setDate(inicioGrid.getDate() - primeiroDia.getDay());
+  const dias = [];
+  for(let i=0;i<42;i++){ const d=new Date(inicioGrid); d.setDate(inicioGrid.getDate()+i); dias.push(d); }
+
+  const porDia = {};
+  (DB.contasPagar||[]).filter(cp=>contaTipoOk(cp.contaId)).forEach(cp=>{
+    (porDia[cp.vencimento]=porDia[cp.vencimento]||[]).push(cp);
+  });
+
+  const nomesMes = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  const diasSemana = ['domingo','segunda-feira','terça-feira','quarta-feira','quinta-feira','sexta-feira','sábado'];
+  const cabecalhoDias = diasSemana.map(d=>`<th style="padding:6px;font-size:10.5px;text-transform:capitalize;text-align:left">${d}</th>`).join('');
+
+  const hojeStr = hoje();
+  let linhasSemanas = '';
+  for(let semana=0; semana<6; semana++){
+    let cel = '';
+    for(let diaSem=0; diaSem<7; diaSem++){
+      const d = dias[semana*7+diaSem];
+      const dataStr = _dataStrLocal(d);
+      const foraDoMes = (d.getMonth()+1)!==mes;
+      const itens = (porDia[dataStr]||[]).slice().sort((a,b)=>a.favorecido.localeCompare(b.favorecido,'pt-BR'));
+      const ehHoje = dataStr===hojeStr;
+      cel += `<td onclick="abrirDiaCalendarioPagar('${dataStr}')" title="Ver transações de ${fmtD(dataStr)}"
+        style="vertical-align:top;padding:5px;cursor:pointer;min-width:110px;height:72px;border:1px solid var(--bor);${foraDoMes?'opacity:.35':''}${ehHoje?'background:#2f81f722;box-shadow:inset 0 0 0 2px var(--acc)':''}">
+        <div style="font-weight:800;font-size:11px;margin-bottom:2px">${d.getDate()}</div>
+        ${itens.slice(0,3).map(cp=>`<div style="font-size:9.5px;color:${cp.status==='pago'?'var(--mut)':'var(--txt)'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cp.status==='pago'?'✓ ':''}${esc(cp.favorecido)}</div>`).join('')}
+        ${itens.length>3?`<div style="font-size:9px;color:var(--acc)">+${itens.length-3} mais</div>`:''}
+      </td>`;
+    }
+    linhasSemanas += `<tr>${cel}</tr>`;
+  }
+
+  return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      ${B('◀','calPagarMudarMes(-1)','var(--sur)','var(--txt)')}
+      <div style="font-weight:800;font-size:15px;min-width:170px;text-align:center">${nomesMes[mes-1]} ${ano}</div>
+      ${B('▶','calPagarMudarMes(1)','var(--sur)','var(--txt)')}
+      ${B('Hoje','calPagarIrHoje()','var(--sur)','var(--txt)')}
+    </div>
+    <div class="card" style="overflow-x:auto;padding:8px">
+      <table style="min-width:760px"><thead><tr>${cabecalhoDias}</tr></thead><tbody>${linhasSemanas}</tbody></table>
+    </div>
+  `;
+}
+function abrirDiaCalendarioPagar(dataStr){
+  const itens = (DB.contasPagar||[]).filter(cp=>cp.vencimento===dataStr && contaTipoOk(cp.contaId))
+    .sort((a,b)=>a.favorecido.localeCompare(b.favorecido,'pt-BR'));
+  const linhas = itens.map(cp=>{
+    const cta = contaById(cp.contaId);
+    const sv = statusVisualContaPagar(cp);
+    return `<tr>
+      <td>${fmtD(cp.vencimento)}</td>
+      <td>${esc(cp.favorecido)}</td>
+      <td>${esc(cta?cta.titular:'A definir')}</td>
+      <td style="text-align:right;font-weight:700">R$ ${fmt(cp.status==='pago'?cp.valorPago:cp.valor)}</td>
+      <td>${T(sv.label,sv.tag)}</td>
+      <td style="white-space:nowrap">
+        ${cp.status==='pendente'?B('💵 Registrar pagto...',`fecharCalDia();abrirPagamento('${cp.id}')`,'var(--grn)','#fff',1):''}
+        ${B('✏ Editar detalhes...',`fecharCalDia();editarContaPagar('${cp.id}')`,'var(--sur)','var(--txt)',1)}
+      </td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="6" style="text-align:center;color:var(--mut);padding:16px">Nenhuma transação agendada para este dia</td></tr>`;
+  document.getElementById('caldia-titulo').textContent = 'Transações agendadas para '+fmtD(dataStr);
+  document.getElementById('caldia-corpo').innerHTML = `
+    <div style="overflow-x:auto"><table><thead><tr><th>Data</th><th>Favorecido</th><th>Conta</th><th style="text-align:right">Montante</th><th>Status</th><th>Ações</th></tr></thead><tbody>${linhas}</tbody></table></div>
+    <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+      ${BPerm('lancamentos','➕ Nova conta a pagar/depósito...',`fecharCalDia();novaContaPagar('${dataStr}')`,'var(--acc)')}
+      ${B('Fechar','fecharCalDia()','var(--sur)','var(--txt)')}
+    </div>
+  `;
+  document.getElementById('ov-cal-dia').classList.add('vis');
+  _resetPosicaoJanela(document.querySelector('#ov-cal-dia .modal'));
+}
+function fecharCalDia(){ document.getElementById('ov-cal-dia').classList.remove('vis'); }
 function htmlContasPagar(){
   let lista = (DB.contasPagar||[]).slice();
   lista = lista.filter(cp=>contaTipoOk(cp.contaId));
@@ -5562,6 +5831,11 @@ function htmlContasPagar(){
     ${barraFiltroPFPJGlobal()}
     <div class="row" style="margin-bottom:12px">
       ${BPerm('lancamentos','➕ Nova Conta a Pagar','novaContaPagar()','var(--acc)')}
+      <button type="button" class="tab${_cpModoView==='lista'?' ativo':''}" style="background:${_cpModoView==='lista'?'var(--acc)':'var(--sur)'};color:${_cpModoView==='lista'?'#000':'var(--txt)'};padding:6px 14px" onclick="toggleModoViewCP('lista')">📋 Lista</button>
+      <button type="button" class="tab${_cpModoView==='calendario'?' ativo':''}" style="background:${_cpModoView==='calendario'?'var(--acc)':'var(--sur)'};color:${_cpModoView==='calendario'?'#000':'var(--txt)'};padding:6px 14px" onclick="toggleModoViewCP('calendario')">📅 Calendário</button>
+    </div>
+    ${_cpModoView==='calendario' ? htmlCalendarioContasPagar() : `
+    <div class="row" style="margin-bottom:12px">
       ${filtros.map(f=>`<button type="button" class="tab${_filtroCPStatus===f.id?' ativo':''}" style="background:${_filtroCPStatus===f.id?'var(--acc)':'var(--sur)'};color:${_filtroCPStatus===f.id?'#000':'var(--txt)'};padding:6px 14px" onclick="filtrarCP('${f.id}')">${f.label}</button>`).join('')}
     </div>
     <div class="card" style="margin-bottom:12px">
@@ -5570,7 +5844,7 @@ function htmlContasPagar(){
     </div>
     <div class="card">
       <table><thead><tr><th>Vencimento</th><th>Favorecido</th><th>Categoria</th><th>C. Custo</th><th>Conta Direcionada</th><th style="text-align:right">Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody>${linhas}</tbody></table>
-    </div>
+    </div>`}
   `;
 }
 
