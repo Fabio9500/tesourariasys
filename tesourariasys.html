@@ -1111,7 +1111,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.49';
+const VERSAO = 'v1.50';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2742,6 +2742,22 @@ function casarComHistorico(memoOriginal, dicionario){
   });
   return melhor;
 }
+// ══════════════════════════════════════════
+// CONCILIAÇÃO — acha um lançamento MANUAL (digitado por você, sem fitid ainda)
+// que provavelmente é a MESMA transação real que veio no extrato do banco:
+// mesma conta, mesmo tipo, mesmo valor (exato) e data próxima (até 3 dias de
+// diferença — cobre o caso do Pix compensar num dia e você ter digitado no outro).
+// Impede duplicar o lançamento; em vez disso, na hora de confirmar a importação,
+// o lançamento manual existente é marcado como conferido com o banco (ganha um
+// fitid), ao invés de criar um segundo lançamento igual.
+// ══════════════════════════════════════════
+function encontrarLancamentoManualParecido(t, contaId, jaUsados){
+  return (DB.lancamentos||[]).find(l=>
+    l.contaId===contaId && !l.fitid && l.origem==='manual' && !jaUsados.has(l.id) &&
+    l.tipo===t.tipo && Math.abs(Number(l.valor)-Number(t.valor))<0.01 &&
+    Math.abs(diasEntreDatas(l.data,t.data))<=3
+  );
+}
 let _ofxPendente = [];
 let _ofxContaId = '';
 function abrirImportarOFX(contaIdPre){
@@ -2778,15 +2794,20 @@ function processarArquivoOFX(){
     if(!transacoes.length){ ME('e-ofx','Nenhum lançamento encontrado neste arquivo.'); return; }
     const idsExistentes = new Set((DB.lancamentos||[]).filter(l=>l.contaId===contaId && l.fitid).map(l=>l.fitid));
     const dicionario = construirDicionarioAprendizado(contaId);
+    const jaUsadosConciliacao = new Set();
     _ofxContaId = contaId;
     _ofxPendente = transacoes.map(t=>{
       const jaExiste = t.fitid && idsExistentes.has(t.fitid);
       const match = casarComHistorico(t.memoOriginal, dicionario);
+      const parecido = !jaExiste ? encontrarLancamentoManualParecido(t, contaId, jaUsadosConciliacao) : null;
+      if(parecido) jaUsadosConciliacao.add(parecido.id);
       return {
-        ...t, incluir: !jaExiste, jaExiste,
+        ...t, incluir: !jaExiste && !parecido, jaExiste,
         contraparte: match?match.contraparte:t.memoOriginal,
         categoriaId: match?match.categoriaId:'', direcionamento: match?match.direcionamento:'',
         centroCustoId: match?match.centroCustoId:'', reconhecido: !!match,
+        parecidoId: parecido?parecido.id:null,
+        parecidoInfo: parecido?`Já lançado em ${fmtD(parecido.data)} — ${esc(parecido.contraparte||parecido.descricao||'sem nome')} — R$ ${fmt(parecido.valor)}`:null,
       };
     });
     mostrarRevisaoOFX();
@@ -2799,8 +2820,9 @@ function mostrarRevisaoOFX(){
   const tipoConta = conta ? conta.tipo : null;
   const reconhecidos = _ofxPendente.filter(t=>t.reconhecido).length;
   const duplicados = _ofxPendente.filter(t=>t.jaExiste).length;
+  const conciliaveis = _ofxPendente.filter(t=>t.parecidoId && !t.jaExiste).length;
   const linhas = _ofxPendente.map((t,i)=>`<tr style="${t.jaExiste?'opacity:.5':''}">
-    <td><input type="checkbox" ${t.incluir?'checked':''} onchange="_ofxPendente[${i}].incluir=this.checked">${t.jaExiste?' <span style=\"font-size:10px;color:var(--mut)\">(já importado)</span>':''}</td>
+    <td><input type="checkbox" ${t.incluir?'checked':''} onchange="_ofxPendente[${i}].incluir=this.checked">${t.jaExiste?' <span style="font-size:10px;color:var(--mut)">(já importado)</span>':''}${t.parecidoId&&!t.jaExiste?` <span style="font-size:10px;color:#f0a500" title="${esc(t.parecidoInfo||'')}">🔗 conciliar</span>`:''}</td>
     <td>${fmtD(t.data)}</td>
     <td><input type="text" value="${esc(t.contraparte)}" style="width:100%;font-size:11px" onchange="_ofxPendente[${i}].contraparte=this.value">${t.reconhecido?' <span title="Reconhecido pelo histórico">✓</span>':''}</td>
     <td><select style="font-size:11px" onchange="_ofxPendente[${i}].categoriaId=this.value">${opcoesCategorias(t.tipo==='entrada'?'receita':'despesa',t.categoriaId,'',tipoConta)}</select></td>
@@ -2813,6 +2835,7 @@ function mostrarRevisaoOFX(){
       Conta: <strong>${esc(conta?conta.titular:'-')}</strong> · ${_ofxPendente.length} lançamento(s) encontrado(s) ·
       <span style="color:#3fb950">${reconhecidos} reconhecido(s) pelo histórico</span>
       ${duplicados?` · <span style="color:#f0a500">${duplicados} já importado(s) antes (desmarcados)</span>`:''}
+      ${conciliaveis?` · <span style="color:#f0a500">${conciliaveis} parece(m) já ter sido digitado(s) manualmente — desmarcados, vão ser conciliados com o que já existe em vez de duplicar</span>`:''}
     </div>
     <div style="overflow-x:auto"><table><thead><tr><th></th><th>Data</th><th>Fornecedor/Cliente</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table></div>
     <div style="display:flex;gap:8px;margin-top:14px">
@@ -2823,7 +2846,8 @@ function mostrarRevisaoOFX(){
 }
 function confirmarImportacaoOFX(){
   const selecionados = _ofxPendente.filter(t=>t.incluir);
-  if(!selecionados.length){ FM(); return; }
+  const paraConciliar = _ofxPendente.filter(t=>!t.incluir && t.parecidoId && !t.jaExiste);
+  if(!selecionados.length && !paraConciliar.length){ _ofxPendente=[]; _ofxContaId=''; FM(); return; }
   const novos = selecionados.map(t=>({
     id: uid(), contaId: _ofxContaId, data: t.data, tipo: t.tipo, valor: t.valor,
     categoriaId: t.categoriaId||'', centroCustoId: t.centroCustoId||'',
@@ -2831,11 +2855,18 @@ function confirmarImportacaoOFX(){
     descricao: t.memoOriginal, origem: 'ofx', fitid: t.fitid||null, contaPagarId: null,
     criadoEm: new Date().toISOString(),
   }));
-  salvar({...DB, lancamentos:[...(DB.lancamentos||[]), ...novos]});
+  let lancamentos = [...(DB.lancamentos||[]), ...novos];
+  // Concilia: em vez de criar um segundo lançamento igual, marca o que você já
+  // tinha digitado manualmente como "conferido com o banco" (ganha um fitid).
+  paraConciliar.forEach(t=>{
+    lancamentos = lancamentos.map(l=> (l.id===t.parecidoId && !l.fitid) ? {...l, fitid: t.fitid||('conc_'+uid())} : l);
+  });
+  salvar({...DB, lancamentos});
   _ofxPendente = []; _ofxContaId = '';
   FM();
-  setStatus('ok', `✅ ${novos.length} lançamento(s) importado(s)`);
-  setTimeout(()=>{document.getElementById('status').style.display='none';},4000);
+  const msgConc = paraConciliar.length ? ` · ${paraConciliar.length} conciliado(s) com lançamentos já digitados` : '';
+  setStatus('ok', `✅ ${novos.length} lançamento(s) importado(s)${msgConc}`);
+  setTimeout(()=>{document.getElementById('status').style.display='none';},4500);
 }
 function opcoesContasFiltradas(selId){
   return contasFiltradasPFPJ().map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
@@ -4891,7 +4922,7 @@ function htmlLancamentos(){
       <td>${esc(cat?cat.nome:'-')}</td>
       <td>${esc(cc?cc.nome:'-')}</td>
       <td>${esc(l.contraparte||'-')}</td>
-      <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}${l.origem==='pagamento'?' '+T('Pagamento','az'):''}</td>
+      <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}${l.origem==='pagamento'?' '+T('Pagamento','az'):''}${l.fitid?' <span title="Conferido com o extrato do banco" style="color:#3fb950">✅</span>':''}</td>
       <td style="text-align:right;font-weight:700;color:${l.tipo==='entrada'?'#3fb950':'#f85149'}">${l.tipo==='entrada'?'+':'-'} R$ ${fmt(l.valor)}</td>
       <td>${B('✏','editarLancamento(\''+l.id+'\')','var(--sur)','var(--txt)',1)}</td>
     </tr>`;
