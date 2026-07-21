@@ -1112,7 +1112,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.52';
+const VERSAO = 'v1.53';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1181,6 +1181,30 @@ function aoMudarCategoriaPai(prefix){
   }
 }
 function centroCustoById(id){ return (DB.centrosCusto||[]).find(c=>c.id===id); }
+function nomeCompletoCentroCusto(cc){
+  if(!cc) return '-';
+  if(!cc.parentId) return cc.nome;
+  const pai = centroCustoById(cc.parentId);
+  return pai ? `${pai.nome}: ${cc.nome}` : cc.nome;
+}
+function opcoesCentroCustoPaiParaSelect(selId, excluirId){
+  return (DB.centrosCusto||[]).filter(c=>!c.parentId && c.id!==excluirId)
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))
+    .map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
+}
+function aoMudarCentroCustoPai(prefix){
+  const paiId = document.getElementById(prefix+'-pai')?.value||'';
+  const wrap = document.getElementById(prefix+'-pfpj-wrap');
+  if(paiId){
+    const pai = centroCustoById(paiId);
+    if(pai){
+      const selPfpj = document.getElementById(prefix+'-pfpj'); if(selPfpj) selPfpj.value = pai.tipoPFPJ||'ambos';
+    }
+    if(wrap) wrap.style.display='none';
+  } else {
+    if(wrap) wrap.style.display='';
+  }
+}
 function fornecedorById(id){ return (DB.fornecedores||[]).find(f=>f.id===id); }
 function clienteById(id){ return (DB.clientes||[]).find(c=>c.id===id); }
 function chequeById(id){ return (DB.chequesEmitidos||[]).find(c=>c.id===id); }
@@ -2493,9 +2517,20 @@ function excluirCategoria(id){
 function novoCentroCusto(){
   AM('➕ Novo Centro de Custo',`
     ${EH('e-cc')}
+    <div class="campo" style="margin-bottom:10px">
+      <label>Centro de Custo-mãe (opcional)</label>
+      <div style="font-size:11px;color:var(--mut);margin-bottom:6px">Deixe em branco pra um centro de custo principal. Escolha um pra criar um SUB-centro dele (ex: mãe "Telasul", sub "Telasul: Produção").</div>
+      <select id="cc-pai" onchange="aoMudarCentroCustoPai('cc')">
+        <option value="">— Nenhum (centro de custo principal) —</option>
+        ${opcoesCentroCustoPaiParaSelect()}
+      </select>
+    </div>
     <div class="row">
       ${C('Nome *',`<input id="cc-nome" placeholder="Ex: Telasul">`,'2','200')}
-      ${C('PF ou PJ *',campoPFPJ('cc-pfpj'),'1','160')}
+      <div class="campo" id="cc-pfpj-wrap" style="flex:1;min-width:160px;margin-bottom:10px">
+        <label>PF ou PJ *</label>
+        ${campoPFPJ('cc-pfpj')}
+      </div>
     </div>
     ${C('Observações',`<input id="cc-obs" placeholder="Opcional">`,'2','200')}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -2507,7 +2542,14 @@ function novoCentroCusto(){
 function salvarNovoCC(){
   const nome = document.getElementById('cc-nome').value.trim();
   if(!nome){ ME('e-cc','Informe o nome do centro de custo.'); return; }
-  const novo = {id:uid(), nome, tipoPFPJ:document.getElementById('cc-pfpj').value, obs:document.getElementById('cc-obs').value.trim()};
+  const parentId = document.getElementById('cc-pai')?.value||null;
+  const pai = parentId ? centroCustoById(parentId) : null;
+  const novo = {
+    id:uid(), nome,
+    tipoPFPJ: pai ? (pai.tipoPFPJ||'ambos') : document.getElementById('cc-pfpj').value,
+    parentId: parentId||null,
+    obs:document.getElementById('cc-obs').value.trim()
+  };
   salvar({...DB, centrosCusto:[...(DB.centrosCusto||[]), novo]});
   FM();
 }
@@ -2515,9 +2557,19 @@ function editarCentroCusto(id){
   const cc = centroCustoById(id); if(!cc) return;
   AM('✏ Editar Centro de Custo',`
     ${EH('e-cc-ed')}
+    <div class="campo" style="margin-bottom:10px">
+      <label>Centro de Custo-mãe (opcional)</label>
+      <select id="ecc-pai" onchange="aoMudarCentroCustoPai('ecc')">
+        <option value="">— Nenhum (centro de custo principal) —</option>
+        ${opcoesCentroCustoPaiParaSelect(cc.parentId, id)}
+      </select>
+    </div>
     <div class="row">
       ${C('Nome *',`<input id="ecc-nome" value="${esc(cc.nome)}">`,'2','200')}
-      ${C('PF ou PJ *',campoPFPJ('ecc-pfpj', cc.tipoPFPJ),'1','160')}
+      <div class="campo" id="ecc-pfpj-wrap" style="flex:1;min-width:160px;margin-bottom:10px;${cc.parentId?'display:none':''}">
+        <label>PF ou PJ *</label>
+        ${campoPFPJ('ecc-pfpj', cc.tipoPFPJ)}
+      </div>
     </div>
     ${C('Observações',`<input id="ecc-obs" value="${esc(cc.obs||'')}">`,'2','200')}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -2530,12 +2582,24 @@ function editarCentroCusto(id){
 function salvarEdicaoCC(id){
   const nome = document.getElementById('ecc-nome').value.trim();
   if(!nome){ ME('e-cc-ed','Informe o nome.'); return; }
-  salvar({...DB, centrosCusto:(DB.centrosCusto||[]).map(c=>c.id===id?{...c,nome,tipoPFPJ:document.getElementById('ecc-pfpj').value,obs:document.getElementById('ecc-obs').value.trim()}:c)});
+  const parentId = document.getElementById('ecc-pai')?.value||null;
+  if(parentId===id){ ME('e-cc-ed','Um centro de custo não pode ser mãe dele mesmo.'); return; }
+  const temFilhos = (DB.centrosCusto||[]).some(x=>x.parentId===id);
+  if(parentId && temFilhos){ ME('e-cc-ed','Este centro de custo já tem sub-centros — não pode virar sub-centro de outro (só 2 níveis são suportados).'); return; }
+  const pai = parentId ? centroCustoById(parentId) : null;
+  salvar({...DB, centrosCusto:(DB.centrosCusto||[]).map(c=>c.id===id?{
+    ...c, nome,
+    tipoPFPJ: pai ? (pai.tipoPFPJ||'ambos') : document.getElementById('ecc-pfpj').value,
+    parentId: parentId||null,
+    obs:document.getElementById('ecc-obs').value.trim()
+  }:c)});
   FM();
 }
 function excluirCC(id){
   const emUso = (DB.lancamentos||[]).some(l=>l.centroCustoId===id) || (DB.contasPagar||[]).some(cp=>cp.centroCustoId===id);
   if(emUso){ ME('e-cc-ed','Este centro de custo já está em uso e não pode ser excluído.'); return; }
+  const temFilhos = (DB.centrosCusto||[]).some(c=>c.parentId===id);
+  if(temFilhos){ ME('e-cc-ed','Este centro de custo tem sub-centros — exclua ou mova os sub-centros primeiro.'); return; }
   CF('Excluir este centro de custo?', ()=>{ salvar({...DB, centrosCusto:(DB.centrosCusto||[]).filter(c=>c.id!==id)}); FM(); });
 }
 
@@ -2966,7 +3030,21 @@ function opcoesCategorias(tipo,selId,centroCustoId,tipoConta){
   return html;
 }
 function opcoesCC(selId,tipoConta){
-  return (DB.centrosCusto||[]).filter(c=>itemValidoParaPFPJ(c,tipoConta)).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(c.nome)}</option>`).join('');
+  const todos = (DB.centrosCusto||[]).filter(c=>itemValidoParaPFPJ(c,tipoConta));
+  const pais = todos.filter(c=>!c.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  const filhosDe = pid => todos.filter(c=>c.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  let html = '';
+  pais.forEach(p=>{
+    html += `<option value="${p.id}"${p.id===selId?' selected':''}>${esc(p.nome)}</option>`;
+    filhosDe(p.id).forEach(f=>{
+      html += `<option value="${f.id}"${f.id===selId?' selected':''}>&nbsp;&nbsp;— ${esc(f.nome)}</option>`;
+    });
+  });
+  const idsPaisMostrados = new Set(pais.map(p=>p.id));
+  todos.filter(c=>c.parentId && !idsPaisMostrados.has(c.parentId)).forEach(f=>{
+    html += `<option value="${f.id}"${f.id===selId?' selected':''}>${esc(nomeCompletoCentroCusto(f))}</option>`;
+  });
+  return html;
 }
 // Uma categoria sem centrosCustoIds (ou array vazio) é "genérica" e aparece
 // em qualquer Centro de Custo. Se tiver centrosCustoIds preenchido, só
@@ -5011,7 +5089,7 @@ function htmlLancamentos(){
       <td>${esc(c?nomeConta(c):'-')}</td>
       <td>${T(l.tipo==='entrada'?'Entrada':'Saída', l.tipo==='entrada'?'vd':'vm')}${l.origem==='transferencia'?' '+T('🔀 Transf.','az'):''}</td>
       <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
-      <td>${esc(cc?cc.nome:'-')}</td>
+      <td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
       <td>${esc(l.contraparte||'-')}</td>
       <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}${l.origem==='pagamento'?' '+T('Pagamento','az'):''}${l.fitid?' <span title="Conferido com o extrato do banco" style="color:#3fb950">✅</span>':''}</td>
       <td style="text-align:right;font-weight:700;color:${l.tipo==='entrada'?'#3fb950':'#f85149'}">${l.tipo==='entrada'?'+':'-'} R$ ${fmt(l.valor)}</td>
@@ -5122,7 +5200,7 @@ function _valoresLinhaFRF(l){
     conta: c?nomeConta(c):'-',
     tipo: l.tipo==='entrada'?'Entrada':'Saída',
     categoria: cat?nomeCompletoCategoria(cat):'-',
-    centroCusto: cc?cc.nome:'-',
+    centroCusto: cc?nomeCompletoCentroCusto(cc):'-',
     contraparte: l.contraparte||'-',
     descricao: l.descricao||'-',
     origem: l.origem||'-',
@@ -5134,7 +5212,7 @@ function _valoresLinhaFRF(l){
 // pode virar um resumo por Categoria, Direcionamento, Fornecedor, Mês, etc.
 function _chaveGrupoFRF(l, dimensao){
   if(dimensao==='categoria'){ const c=categoriaById(l.categoriaId); return {chave:l.categoriaId||'(sem)', label:c?nomeCompletoCategoria(c):'(sem categoria)'}; }
-  if(dimensao==='centroCusto'){ const c=centroCustoById(l.centroCustoId); return {chave:l.centroCustoId||'(sem)', label:c?c.nome:'(sem centro de custo)'}; }
+  if(dimensao==='centroCusto'){ const c=centroCustoById(l.centroCustoId); return {chave:l.centroCustoId||'(sem)', label:c?nomeCompletoCentroCusto(c):'(sem centro de custo)'}; }
   if(dimensao==='direcionamento'){ return {chave:l.direcionamento||'(sem)', label:l.direcionamento||'(sem direcionamento)'}; }
   if(dimensao==='contraparte'){ return {chave:l.contraparte||'(sem)', label:l.contraparte||'(sem fornecedor/cliente)'}; }
   if(dimensao==='conta'){ const c=contaById(l.contaId); return {chave:l.contaId||'(sem)', label:c?nomeConta(c):'(sem conta)'}; }
@@ -5445,7 +5523,7 @@ function htmlContasPagar(){
       <td>${fmtD(cp.vencimento)}</td>
       <td>${esc(cp.favorecido)}</td>
       <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
-      <td>${esc(cc?cc.nome:'-')}</td>
+      <td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
       <td>${esc(cta?cta.titular:'A definir')}</td>
       <td style="text-align:right;font-weight:700">R$ ${fmt(cp.status==='pago'?cp.valorPago:cp.valor)}</td>
       <td>${T(sv.label,sv.tag)}</td>
@@ -5504,7 +5582,7 @@ function htmlContasReceber(){
       <td>${fmtD(cr.vencimento)}</td>
       <td>${esc(cr.cliente)}</td>
       <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
-      <td>${esc(cc?cc.nome:'-')}</td>
+      <td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
       <td>${esc(cta?cta.titular:'A definir')}</td>
       <td style="text-align:right;font-weight:700">R$ ${fmt(cr.status==='recebido'?cr.valorRecebido:cr.valor)}</td>
       <td>${T(sv.label,sv.tag)}</td>
@@ -6566,7 +6644,7 @@ function htmlRelatorios(){
   const linhasPagarPeriodo = pagarLista.map(cp=>{
     const cc = centroCustoById(cp.centroCustoId);
     const cta = contaById(cp.contaId);
-    return `<tr><td>${fmtD(cp.dataPagamento||cp.vencimento)}</td><td>${esc(cp.favorecido)}</td><td>${esc(cc?cc.nome:'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cp.valorPago)}</td></tr>`;
+    return `<tr><td>${fmtD(cp.dataPagamento||cp.vencimento)}</td><td>${esc(cp.favorecido)}</td><td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cp.valorPago)}</td></tr>`;
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum pagamento com esses filtros</td></tr>';
   const filtroPagarHtml = `
     <div class="row" style="margin-bottom:10px">
@@ -6589,7 +6667,7 @@ function htmlRelatorios(){
   const linhasReceberPeriodo = receberLista.map(cr=>{
     const cc = centroCustoById(cr.centroCustoId);
     const cta = contaById(cr.contaId);
-    return `<tr><td>${fmtD(cr.dataRecebimento||cr.vencimento)}</td><td>${esc(cr.cliente)}</td><td>${esc(cc?cc.nome:'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cr.valorRecebido)}</td></tr>`;
+    return `<tr><td>${fmtD(cr.dataRecebimento||cr.vencimento)}</td><td>${esc(cr.cliente)}</td><td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cr.valorRecebido)}</td></tr>`;
   }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum recebimento com esses filtros</td></tr>';
   const filtroReceberHtml = `
     <div class="row" style="margin-bottom:10px">
@@ -6852,9 +6930,13 @@ function htmlCadastros(){
         </div>
       </div>`;
   } else if(sub==='centrocusto'){
-    const linhas = (DB.centrosCusto||[]).map(cc=>`<tr><td>${esc(cc.nome)}</td><td>${badgePFPJ(cc.tipoPFPJ)}</td><td>${esc(cc.obs||'-')}</td><td>${B('✏','editarCentroCusto(\''+cc.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum centro de custo cadastrado</td></tr>';
+    const linhaCC = (cc, subN) => `<tr${subN?' style="background:var(--bg)"':''}><td>${subN?'&nbsp;&nbsp;— ':''}${esc(cc.nome)}</td><td>${badgePFPJ(cc.tipoPFPJ)}</td><td>${esc(cc.obs||'-')}</td><td>${B('✏','editarCentroCusto(\''+cc.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
+    const paisCC = (DB.centrosCusto||[]).filter(c=>!c.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    const filhosDeCC = pid => (DB.centrosCusto||[]).filter(c=>c.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    const linhas = paisCC.map(p=>linhaCC(p,false)+filhosDeCC(p.id).map(f=>linhaCC(f,true)).join('')).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum centro de custo cadastrado</td></tr>';
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Novo Centro de Custo','novoCentroCusto()','var(--acc)')}</div>
+      <div style="font-size:11px;color:var(--mut);margin:-6px 0 12px">Centros indentados com "—" são sub-centros.</div>
       <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='direcionamentos'){
     const linhas = (DB.direcionamentos||[]).slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(d=>`<tr><td>${esc(d.nome)}</td><td>${badgePFPJ(d.tipoPFPJ)}</td><td>${esc(d.obs||'-')}</td><td>${B('✏','editarDirecionamento(\''+d.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum direcionamento cadastrado</td></tr>';
