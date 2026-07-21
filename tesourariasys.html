@@ -1084,6 +1084,7 @@ function initNav(){
     {id:'relatorios',   r:'📊 Relatórios'},
     {id:'fechamento',   r:'📋 Fechamento Diário'},
     {id:'relatorio_flex', r:'🔍 Relatório de Filtragem'},
+    {id:'patrimonio_evol', r:'📈 Patrimônio Evolução'},
     ...(temPerm('config') ? [{id:'cadastros',r:'🗂 Cadastros'}] : []),
   ];
   document.getElementById('tabs').innerHTML = abasVis.map(a=>
@@ -1103,14 +1104,14 @@ function desconectar(){
 }
 function renderAba(){
   const m=document.getElementById('main');
-  const mp={dashboard:htmlDashboard,contas:htmlContas,lancamentos:htmlLancamentos,contaspagar:htmlContasPagar,contasreceber:htmlContasReceber,chequesemitidos:htmlChequesEmitidos,investimentos:htmlInvestimentosSeguros,relatorios:htmlRelatorios,fechamento:htmlFechamentoDiario,relatorio_flex:htmlRelatorioFlex,cadastros:htmlCadastros};
+  const mp={dashboard:htmlDashboard,contas:htmlContas,lancamentos:htmlLancamentos,contaspagar:htmlContasPagar,contasreceber:htmlContasReceber,chequesemitidos:htmlChequesEmitidos,investimentos:htmlInvestimentosSeguros,relatorios:htmlRelatorios,fechamento:htmlFechamentoDiario,relatorio_flex:htmlRelatorioFlex,patrimonio_evol:htmlPatrimonioEvolucao,cadastros:htmlCadastros};
   m.innerHTML=(mp[ABA]||htmlDashboard)();
 }
 
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.48';
+const VERSAO = 'v1.49';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1239,6 +1240,20 @@ function saldoConta(contaId){
   let saldo = Number(c.saldoInicial||0);
   movs.forEach(l=>{ saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
   return saldo;
+}
+// Reconstrução histórica: saldo da conta como ele ERA no fim de uma data passada
+// (mesmo princípio de "cálculo sempre ao vivo" usado no resto do sistema — nunca
+// fica um valor histórico gravado à parte, sempre recalcula a partir dos lançamentos
+// reais até aquela data).
+function saldoContaAteData(contaId, dataLimite){
+  const c = contaById(contaId); if(!c) return 0;
+  const movs = lancamentosDaConta(contaId).filter(l=>l.data<=dataLimite);
+  let saldo = Number(c.saldoInicial||0);
+  movs.forEach(l=>{ saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
+  return saldo;
+}
+function saldoTotalGeralAteData(dataLimite){
+  return (DB.contas||[]).filter(c=>c.ativa!==false).reduce((s,c)=>s+saldoContaAteData(c.id,dataLimite),0);
 }
 function saldoTotalPorTipo(tipo){
   return (DB.contas||[]).filter(c=>c.tipo===tipo&&c.ativa!==false).reduce((s,c)=>s+saldoConta(c.id),0);
@@ -4702,6 +4717,7 @@ function htmlDashboard(){
     ${B('🏢 Somente PJ','mudarFiltroDashPFPJ(\'PJ\')',filtro==='PJ'?'var(--pur)':'var(--sur)',filtro==='PJ'?'#fff':'var(--txt)')}
     <span style="width:1px;background:var(--bor);margin:2px 4px"></span>
     ${B('🔍 Relatório de Filtragem','irParaRelatorioFlex()','var(--sur)','var(--acc)',0,'Monte um relatório sob medida escolhendo colunas e filtros')}
+    ${B('📈 Patrimônio Evolução','irPara(\'patrimonio_evol\')','var(--sur)','var(--acc)',0,'Veja a evolução do saldo em contas ao longo do tempo')}
     <span style="width:1px;background:var(--bor);margin:2px 4px"></span>
     ${B('💳 Cartões PF ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPF.html\',\'tsr_janela_cartoespf\')','var(--sur)','var(--blu)',0,'Abrir o sistema CartõesPF (reaproveita a mesma aba)')}
     ${B('💳 Cartões PJ ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPJ.html\',\'tsr_janela_cartoespj\')','var(--sur)','var(--pur)',0,'Abrir o sistema CartõesPJ (reaproveita a mesma aba)')}
@@ -5092,6 +5108,73 @@ function exportarCSVRelatorioFlex(){
   a.href = url; a.download = `relatorio_filtragem_${hoje()}.csv`;
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════
+// PATRIMÔNIO — EVOLUÇÃO HISTÓRICA (gráfico simples em SVG, sem dependência
+// externa — mantém o sistema 100% offline-first, sem precisar carregar
+// biblioteca de gráfico nenhuma de fora)
+// ══════════════════════════════════════════
+let _pfEvolPeriodo = 90; // em dias: 30, 90 ou 365
+function mudarPeriodoEvolPatrimonio(dias){ _pfEvolPeriodo = dias; renderAba(); }
+function _serieEvolucaoPatrimonio(diasTotal){
+  const hj = hoje();
+  let passoDias, qtdPontos;
+  if(diasTotal<=30){ passoDias=1; qtdPontos=diasTotal; }
+  else if(diasTotal<=90){ passoDias=7; qtdPontos=Math.ceil(diasTotal/7); }
+  else { passoDias=30; qtdPontos=Math.ceil(diasTotal/30); }
+  const pontos = [];
+  for(let i=qtdPontos;i>=0;i--){
+    const d = addDiasStr(hj, -i*passoDias);
+    pontos.push({ data:d, label:fmtD(d), valor: saldoTotalGeralAteData(d) });
+  }
+  return pontos;
+}
+function _svgLinhaEvolucao(pontos){
+  if(pontos.length<2) return '<div style="text-align:center;color:var(--mut);padding:30px">Não há histórico suficiente ainda para desenhar o gráfico.</div>';
+  const w=700, h=220, pad=38;
+  const valores = pontos.map(p=>p.valor);
+  const minV = Math.min(...valores,0), maxV = Math.max(...valores,0);
+  const rangeV = (maxV-minV)||1;
+  const stepX = (w-2*pad)/(pontos.length-1);
+  const cx = i => pad + i*stepX;
+  const cy = v => h-pad - ((v-minV)/rangeV)*(h-2*pad);
+  const pathD = pontos.map((p,i)=>`${i===0?'M':'L'}${cx(i).toFixed(1)},${cy(p.valor).toFixed(1)}`).join(' ');
+  const zeroY = cy(0);
+  const subiu = valores[valores.length-1] >= valores[0];
+  const cor = subiu ? '#3fb950' : '#f85149';
+  const areaD = `${pathD} L${cx(pontos.length-1).toFixed(1)},${zeroY.toFixed(1)} L${cx(0).toFixed(1)},${zeroY.toFixed(1)} Z`;
+  const idxLabels = [0, Math.floor((pontos.length-1)/2), pontos.length-1];
+  const labels = idxLabels.map(i=>`<text x="${cx(i).toFixed(1)}" y="${h-10}" font-size="9" fill="#8b949e" text-anchor="middle">${pontos[i].label}</text>`).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;max-height:240px;display:block">
+    <line x1="${pad}" y1="${zeroY.toFixed(1)}" x2="${w-pad}" y2="${zeroY.toFixed(1)}" stroke="#30363d" stroke-dasharray="3,3"/>
+    <path d="${areaD}" fill="${cor}" fill-opacity="0.12" stroke="none"/>
+    <path d="${pathD}" fill="none" stroke="${cor}" stroke-width="2.2"/>
+    ${labels}
+  </svg>`;
+}
+function htmlPatrimonioEvolucao(){
+  const pontos = _serieEvolucaoPatrimonio(_pfEvolPeriodo);
+  const inicio = pontos.length ? pontos[0].valor : 0;
+  const atual = pontos.length ? pontos[pontos.length-1].valor : 0;
+  const diff = atual - inicio;
+  const pct = inicio!==0 ? (diff/Math.abs(inicio)*100) : 0;
+  const opcoes = [{d:30,l:'30 dias'},{d:90,l:'90 dias'},{d:365,l:'12 meses'}];
+  return `<div class="titulo acc">📈 Patrimônio — Evolução</div>
+  <div style="font-size:11px;color:var(--mut);margin:-6px 0 14px;line-height:1.5">Mostra a evolução do Saldo em Contas (soma de todas as contas ativas da Tesouraria) ao longo do tempo, reconstruído a partir dos lançamentos reais — nunca um valor gravado à parte. Não inclui patrimônio investido, contas a pagar/receber pendentes nem saldo do ChequeSys (esses só têm o valor de HOJE, disponíveis no Dashboard) — reconstruir esses retroativamente ainda não é confiável com os dados que temos hoje.</div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div class="row" style="margin-bottom:10px">
+      ${opcoes.map(o=>B(o.l,'mudarPeriodoEvolPatrimonio('+o.d+')', _pfEvolPeriodo===o.d?'var(--acc)':'var(--sur)', _pfEvolPeriodo===o.d?'#000':'var(--txt)')).join('')}
+    </div>
+    ${_svgLinhaEvolucao(pontos)}
+  </div>
+
+  <div class="kpis">
+    <div class="card kpi"><div class="kpi-l">Início do período</div><div class="kpi-v">R$ ${fmt(inicio)}</div></div>
+    <div class="card kpi"><div class="kpi-l">Hoje</div><div class="kpi-v" style="color:var(--acc)">R$ ${fmt(atual)}</div></div>
+    <div class="card kpi"><div class="kpi-l">Variação no período</div><div class="kpi-v" style="color:${diff>=0?'#3fb950':'#f85149'}">${diff>=0?'+':''}R$ ${fmt(diff)} (${pct>=0?'+':''}${pct.toFixed(1)}%)</div></div>
+  </div>`;
 }
 
 // ══════════════════════════════════════════
