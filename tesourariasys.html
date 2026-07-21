@@ -1083,6 +1083,7 @@ function initNav(){
     {id:'investimentos', r:'📈 Investimentos & Seguros'},
     {id:'relatorios',   r:'📊 Relatórios'},
     {id:'fechamento',   r:'📋 Fechamento Diário'},
+    {id:'relatorio_flex', r:'🔍 Relatório de Filtragem'},
     ...(temPerm('config') ? [{id:'cadastros',r:'🗂 Cadastros'}] : []),
   ];
   document.getElementById('tabs').innerHTML = abasVis.map(a=>
@@ -1102,14 +1103,14 @@ function desconectar(){
 }
 function renderAba(){
   const m=document.getElementById('main');
-  const mp={dashboard:htmlDashboard,contas:htmlContas,lancamentos:htmlLancamentos,contaspagar:htmlContasPagar,contasreceber:htmlContasReceber,chequesemitidos:htmlChequesEmitidos,investimentos:htmlInvestimentosSeguros,relatorios:htmlRelatorios,fechamento:htmlFechamentoDiario,cadastros:htmlCadastros};
+  const mp={dashboard:htmlDashboard,contas:htmlContas,lancamentos:htmlLancamentos,contaspagar:htmlContasPagar,contasreceber:htmlContasReceber,chequesemitidos:htmlChequesEmitidos,investimentos:htmlInvestimentosSeguros,relatorios:htmlRelatorios,fechamento:htmlFechamentoDiario,relatorio_flex:htmlRelatorioFlex,cadastros:htmlCadastros};
   m.innerHTML=(mp[ABA]||htmlDashboard)();
 }
 
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.46';
+const VERSAO = 'v1.47';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -4672,6 +4673,8 @@ function htmlDashboard(){
     ${B('👤 Somente PF','mudarFiltroDashPFPJ(\'PF\')',filtro==='PF'?'var(--blu)':'var(--sur)',filtro==='PF'?'#fff':'var(--txt)')}
     ${B('🏢 Somente PJ','mudarFiltroDashPFPJ(\'PJ\')',filtro==='PJ'?'var(--pur)':'var(--sur)',filtro==='PJ'?'#fff':'var(--txt)')}
     <span style="width:1px;background:var(--bor);margin:2px 4px"></span>
+    ${B('🔍 Relatório de Filtragem','irParaRelatorioFlex()','var(--sur)','var(--acc)',0,'Monte um relatório sob medida escolhendo colunas e filtros')}
+    <span style="width:1px;background:var(--bor);margin:2px 4px"></span>
     ${B('💳 Cartões PF ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPF.html\',\'tsr_janela_cartoespf\')','var(--sur)','var(--blu)',0,'Abrir o sistema CartõesPF (reaproveita a mesma aba)')}
     ${B('💳 Cartões PJ ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPJ.html\',\'tsr_janela_cartoespj\')','var(--sur)','var(--pur)',0,'Abrir o sistema CartõesPJ (reaproveita a mesma aba)')}
     ${B('🧾 ChequeSys ↗','window.open(\'https://fabio9500.github.io/chequesys/chequesys.html\',\'tsr_janela_chequesys\')','var(--sur)','#f0a500',0,'Abrir o ChequeSys (reaproveita a mesma aba)')}
@@ -4875,6 +4878,192 @@ function htmlLancamentos(){
       <table><thead><tr><th>Data</th><th>Conta</th><th>Tipo</th><th>Categoria</th><th>C. Custo</th><th>Cliente/Fornecedor</th><th>Descrição</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${linhas}</tbody></table>
     </div>
   `;
+}
+
+// ══════════════════════════════════════════
+// RELATÓRIO DE FILTRAGEM (flexível) — usuário escolhe colunas e filtros
+// ══════════════════════════════════════════
+let FRF = {
+  colunas: {data:true, conta:true, tipo:true, categoria:true, centroCusto:true, contraparte:true, descricao:true, valor:true, origem:false},
+  de:'', ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', busca:'', origem:''
+};
+const COLUNAS_FRF = [
+  {id:'data', label:'Data'},
+  {id:'conta', label:'Conta'},
+  {id:'tipo', label:'Tipo'},
+  {id:'categoria', label:'Categoria'},
+  {id:'centroCusto', label:'Centro de Custo'},
+  {id:'contraparte', label:'Fornecedor/Cliente'},
+  {id:'descricao', label:'Descrição'},
+  {id:'origem', label:'Origem'},
+  {id:'valor', label:'Valor'},
+];
+function toggleColunaFRF(col){ FRF.colunas[col] = !FRF.colunas[col]; renderAba(); }
+function aplicarFiltroFRF(){
+  FRF.de = document.getElementById('frf-de')?.value||'';
+  FRF.ate = document.getElementById('frf-ate')?.value||'';
+  FRF.tipo = document.getElementById('frf-tipo')?.value||'';
+  FRF.contaId = document.getElementById('frf-conta')?.value||'';
+  FRF.categoriaId = document.getElementById('frf-categoria')?.value||'';
+  FRF.centroCustoId = document.getElementById('frf-cc')?.value||'';
+  FRF.contraparte = document.getElementById('frf-contraparte')?.value||'';
+  FRF.busca = document.getElementById('frf-busca')?.value||'';
+  FRF.origem = document.getElementById('frf-origem')?.value||'';
+  renderAba();
+}
+function limparFiltroFRF(){
+  FRF = {...FRF, de:'',ate:'',tipo:'',contaId:'',categoriaId:'',centroCustoId:'',contraparte:'',busca:'',origem:''};
+  renderAba();
+}
+function irParaRelatorioFlex(){ irPara('relatorio_flex'); }
+// Emitente/Sacado/Vencimento do título não existem como campo próprio aqui na
+// Tesouraria (isso é modelo de dados do ChequeSys) — só aparecem dentro do texto
+// da descrição de lançamentos espelhados de lá. Por isso a Busca Livre varre
+// descrição + contraparte, o que cobre a maioria dos casos de busca por esses termos.
+function _lancamentosFiltradosFRF(){
+  let lista = (DB.lancamentos||[]).slice();
+  lista = lista.filter(l=>contaTipoOk(l.contaId));
+  if(FRF.de) lista = lista.filter(l=>l.data>=FRF.de);
+  if(FRF.ate) lista = lista.filter(l=>l.data<=FRF.ate);
+  if(FRF.tipo) lista = lista.filter(l=>l.tipo===FRF.tipo);
+  if(FRF.contaId) lista = lista.filter(l=>l.contaId===FRF.contaId);
+  if(FRF.categoriaId) lista = lista.filter(l=>l.categoriaId===FRF.categoriaId);
+  if(FRF.centroCustoId) lista = lista.filter(l=>l.centroCustoId===FRF.centroCustoId);
+  if(FRF.origem) lista = lista.filter(l=>l.origem===FRF.origem);
+  if(FRF.contraparte) lista = lista.filter(l=>(l.contraparte||'').toLowerCase().includes(FRF.contraparte.toLowerCase()));
+  if(FRF.busca) lista = lista.filter(l=>(l.descricao||'').toLowerCase().includes(FRF.busca.toLowerCase()) || (l.contraparte||'').toLowerCase().includes(FRF.busca.toLowerCase()));
+  lista.sort((a,b)=>b.data.localeCompare(a.data)||(b.criadoEm||'').localeCompare(a.criadoEm||''));
+  return lista;
+}
+function _valoresLinhaFRF(l){
+  const c = contaById(l.contaId);
+  const cat = categoriaById(l.categoriaId);
+  const cc = centroCustoById(l.centroCustoId);
+  return {
+    data: fmtD(l.data),
+    conta: c?nomeConta(c):'-',
+    tipo: l.tipo==='entrada'?'Entrada':'Saída',
+    categoria: cat?cat.nome:'-',
+    centroCusto: cc?cc.nome:'-',
+    contraparte: l.contraparte||'-',
+    descricao: l.descricao||'-',
+    origem: l.origem||'-',
+    valor: (l.tipo==='entrada'?'+':'-')+' R$ '+fmt(l.valor)
+  };
+}
+function htmlRelatorioFlex(){
+  const lista = _lancamentosFiltradosFRF();
+  const totalEntradas = lista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor),0);
+  const totalSaidas = lista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+Number(l.valor),0);
+
+  const checksColunas = COLUNAS_FRF.map(c=>`
+    <label style="display:flex;align-items:center;gap:5px;font-size:12px;background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:5px 10px;cursor:pointer">
+      <input type="checkbox" ${FRF.colunas[c.id]?'checked':''} onchange="toggleColunaFRF('${c.id}')"> ${c.label}
+    </label>`).join('');
+
+  const colsAtivas = COLUNAS_FRF.filter(c=>FRF.colunas[c.id]);
+  const cabecalho = colsAtivas.map(c=>`<th${c.id==='valor'?' style="text-align:right"':''}>${c.label}</th>`).join('');
+  const linhas = lista.map(l=>{
+    const v = _valoresLinhaFRF(l);
+    return `<tr>${colsAtivas.map(c=>{
+      let conteudo = esc(v[c.id]);
+      if(c.id==='tipo') conteudo = T(v.tipo, l.tipo==='entrada'?'vd':'vm');
+      if(c.id==='valor') conteudo = `<span style="font-weight:700;color:${l.tipo==='entrada'?'#3fb950':'#f85149'}">${esc(v.valor)}</span>`;
+      return `<td${c.id==='valor'?' style="text-align:right"':''}>${conteudo}</td>`;
+    }).join('')}</tr>`;
+  }).join('') || `<tr><td colspan="${colsAtivas.length||1}" style="text-align:center;color:var(--mut);padding:20px">Nenhum lançamento encontrado com esses filtros.</td></tr>`;
+
+  return `<div class="titulo acc">🔍 Relatório de Filtragem</div>
+  <div style="font-size:11px;color:var(--mut);margin:-6px 0 14px;line-height:1.5">Escolha as colunas e os filtros abaixo pra montar um relatório sob medida. Emitente/Sacado/Vencimento do título (quando existirem) aparecem dentro da Descrição — use a Busca Livre pra encontrar por esses termos.</div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-weight:700;margin-bottom:8px">Colunas do Relatório</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">${checksColunas}</div>
+  </div>
+
+  <div class="card" style="margin-bottom:12px">
+    <div style="font-weight:700;margin-bottom:8px">Filtros</div>
+    <div class="row">
+      ${C('Período — De',`<input type="date" id="frf-de" value="${FRF.de}" onchange="aplicarFiltroFRF()">`,'1','150')}
+      ${C('Período — Até',`<input type="date" id="frf-ate" value="${FRF.ate}" onchange="aplicarFiltroFRF()">`,'1','150')}
+      ${C('Tipo',`<select id="frf-tipo" onchange="aplicarFiltroFRF()"><option value="">Todos</option><option value="entrada"${FRF.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${FRF.tipo==='saida'?' selected':''}>Saída</option></select>`,'1','130')}
+    </div>
+    <div class="row">
+      ${C('Conta',`<select id="frf-conta" onchange="aplicarFiltroFRF()"><option value="">Todas</option>${opcoesContasFiltradas(FRF.contaId)}</select>`,'1','200')}
+      ${C('Categoria',`<select id="frf-categoria" onchange="aplicarFiltroFRF()"><option value="">Todas</option>${opcoesCategorias('',FRF.categoriaId)}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="frf-cc" onchange="aplicarFiltroFRF()"><option value="">Todos</option>${opcoesCC(FRF.centroCustoId)}</select>`,'1','180')}
+    </div>
+    <div class="row">
+      ${C('Fornecedor/Cliente',`<input type="text" id="frf-contraparte" value="${esc(FRF.contraparte)}" placeholder="Buscar por nome..." onchange="aplicarFiltroFRF()">`,'1','200')}
+      ${C('Origem',`<select id="frf-origem" onchange="aplicarFiltroFRF()"><option value="">Todas</option><option value="manual"${FRF.origem==='manual'?' selected':''}>Manual</option><option value="chequesys"${FRF.origem==='chequesys'?' selected':''}>ChequeSys</option><option value="pagamento"${FRF.origem==='pagamento'?' selected':''}>Pagamento Cartão</option><option value="ofx"${FRF.origem==='ofx'?' selected':''}>Importado OFX</option><option value="transferencia"${FRF.origem==='transferencia'?' selected':''}>Transferência</option></select>`,'1','170')}
+      ${C('Busca Livre (descrição, emitente, sacado, nº do título...)',`<input type="text" id="frf-busca" value="${esc(FRF.busca)}" placeholder="Ex: nome do emitente, nº do cheque..." onchange="aplicarFiltroFRF()">`,'2','280')}
+    </div>
+    <div class="row">${B('✕ Limpar Filtros','limparFiltroFRF()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirRelatorioFlex()','var(--acc)')}${B('📥 Exportar CSV','exportarCSVRelatorioFlex()','var(--sur)','var(--txt)')}</div>
+  </div>
+
+  <div class="kpis">
+    <div class="card kpi"><div class="kpi-l">Entradas no filtro</div><div class="kpi-v" style="color:#3fb950">R$ ${fmt(totalEntradas)}</div></div>
+    <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" style="color:#f85149">R$ ${fmt(totalSaidas)}</div></div>
+    <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:${(totalEntradas-totalSaidas)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(totalEntradas-totalSaidas)}</div></div>
+    <div class="card kpi"><div class="kpi-l">Lançamentos</div><div class="kpi-v">${lista.length}</div></div>
+  </div>
+
+  <div class="card"><div class="tabela-mobile-cards" style="overflow-x:auto"><table><thead><tr>${cabecalho}</tr></thead><tbody>${linhas}</tbody></table></div></div>`;
+}
+function imprimirRelatorioFlex(){
+  const lista = _lancamentosFiltradosFRF();
+  const colsAtivas = COLUNAS_FRF.filter(c=>FRF.colunas[c.id]);
+  const totalEntradas = lista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor),0);
+  const totalSaidas = lista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+Number(l.valor),0);
+  const cabecalho = colsAtivas.map(c=>`<th>${c.label}</th>`).join('');
+  const linhas = lista.map(l=>{
+    const v = _valoresLinhaFRF(l);
+    return `<tr>${colsAtivas.map(c=>`<td${c.id==='valor'?' align=right':''}>${esc(v[c.id])}</td>`).join('')}</tr>`;
+  }).join('');
+  const filtroResumo = [
+    FRF.de?`De ${fmtD(FRF.de)}`:'', FRF.ate?`Até ${fmtD(FRF.ate)}`:'', FRF.tipo?`Tipo: ${FRF.tipo==='entrada'?'Entrada':'Saída'}`:'',
+    FRF.contraparte?`Contraparte: ${FRF.contraparte}`:'', FRF.busca?`Busca: ${FRF.busca}`:''
+  ].filter(Boolean).join(' | ') || 'Sem filtros aplicados';
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório de Filtragem</title>
+  <style>
+    @page{size:A4 landscape;margin:12mm}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}
+    body{font-family:Arial;font-size:11px;color:#111;margin:0}
+    h2{margin:0 0 4px}
+    .filtros{font-size:10px;color:#555;margin-bottom:10px}
+    table{border-collapse:collapse;width:100%}
+    th{background:#1a1a2e;color:#fff;padding:5px 7px;font-size:10px;text-align:left;text-transform:uppercase}
+    td{padding:4px 7px;border-bottom:1px solid #ddd}
+    tfoot td{font-weight:bold;background:#f0f0f0}
+  </style></head><body>
+  <h2>Relatório de Filtragem — TesourariaSys</h2>
+  <div class="filtros">${esc(filtroResumo)} — Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+  <table><thead><tr>${cabecalho}</tr></thead><tbody>${linhas}</tbody>
+  <tfoot><tr><td colspan="${colsAtivas.length}">Entradas: R$ ${fmt(totalEntradas)} — Saídas: R$ ${fmt(totalSaidas)} — Resultado: R$ ${fmt(totalEntradas-totalSaidas)} — ${lista.length} lançamento(s)</td></tr></tfoot>
+  </table>
+  </body></html>`;
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  w.print();
+}
+function exportarCSVRelatorioFlex(){
+  const lista = _lancamentosFiltradosFRF();
+  const colsAtivas = COLUNAS_FRF.filter(c=>FRF.colunas[c.id]);
+  if(!lista.length){ alert('Nenhum lançamento encontrado para exportar.'); return; }
+  const linhasCsv = [colsAtivas.map(c=>c.label).join(',')];
+  lista.forEach(l=>{
+    const v = _valoresLinhaFRF(l);
+    const linha = colsAtivas.map(c=>`"${String(v[c.id]||'').replace(/"/g,'""')}"`).join(',');
+    linhasCsv.push(linha);
+  });
+  const csv = '\uFEFF'+linhasCsv.join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `relatorio_filtragem_${hoje()}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 // ══════════════════════════════════════════
