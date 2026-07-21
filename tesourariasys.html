@@ -526,9 +526,10 @@ async function seedInicial(){
   if(!DB.previdencias) DB.previdencias = [];
   if(!DB.capitalizacoes) DB.capitalizacoes = [];
   if(!DB.seguros) DB.seguros = [];
+  if(!DB.relatoriosFavoritos) DB.relatoriosFavoritos = [];
 }
 
-function dbVazio(){ return {usuarios:[],contas:[],categorias:[],centrosCusto:[],direcionamentos:[],lancamentos:[],contasPagar:[],contasReceber:[],fornecedores:[],clientes:[],chequesEmitidos:[],investimentos:[],previdencias:[],capitalizacoes:[],seguros:[],integracaoChequeSys:{mapaContas:{},contaPadrao:null,sincronizados:{}},alertas:[]}; }
+function dbVazio(){ return {usuarios:[],contas:[],categorias:[],centrosCusto:[],direcionamentos:[],lancamentos:[],contasPagar:[],contasReceber:[],fornecedores:[],clientes:[],chequesEmitidos:[],investimentos:[],previdencias:[],capitalizacoes:[],seguros:[],relatoriosFavoritos:[],integracaoChequeSys:{mapaContas:{},contaPadrao:null,sincronizados:{}},alertas:[]}; }
 
 // ══════════════════════════════════════════
 // BIOMETRIA (WebAuthn / Face ID / Touch ID)
@@ -1111,7 +1112,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.50';
+const VERSAO = 'v1.51';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -4960,7 +4961,8 @@ function htmlLancamentos(){
 // ══════════════════════════════════════════
 let FRF = {
   colunas: {data:true, conta:true, tipo:true, categoria:true, centroCusto:true, contraparte:true, descricao:true, valor:true, origem:false},
-  de:'', ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', busca:'', origem:''
+  de:'', ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', busca:'', origem:'',
+  agruparPor:'', gruposAbertos:{}
 };
 const COLUNAS_FRF = [
   {id:'data', label:'Data'},
@@ -4973,6 +4975,15 @@ const COLUNAS_FRF = [
   {id:'origem', label:'Origem'},
   {id:'valor', label:'Valor'},
 ];
+const DIMENSOES_AGRUPAMENTO_FRF = [
+  {id:'', label:'Nenhum (lista simples)'},
+  {id:'categoria', label:'Categoria'},
+  {id:'centroCusto', label:'Centro de Custo'},
+  {id:'direcionamento', label:'Direcionamento'},
+  {id:'contraparte', label:'Fornecedor/Cliente'},
+  {id:'conta', label:'Conta'},
+  {id:'mes', label:'Mês'},
+];
 function toggleColunaFRF(col){ FRF.colunas[col] = !FRF.colunas[col]; renderAba(); }
 function aplicarFiltroFRF(){
   FRF.de = document.getElementById('frf-de')?.value||'';
@@ -4984,13 +4995,15 @@ function aplicarFiltroFRF(){
   FRF.contraparte = document.getElementById('frf-contraparte')?.value||'';
   FRF.busca = document.getElementById('frf-busca')?.value||'';
   FRF.origem = document.getElementById('frf-origem')?.value||'';
+  FRF.agruparPor = document.getElementById('frf-agrupar')?.value||'';
   renderAba();
 }
 function limparFiltroFRF(){
-  FRF = {...FRF, de:'',ate:'',tipo:'',contaId:'',categoriaId:'',centroCustoId:'',contraparte:'',busca:'',origem:''};
+  FRF = {...FRF, de:'',ate:'',tipo:'',contaId:'',categoriaId:'',centroCustoId:'',contraparte:'',busca:'',origem:'',agruparPor:'',gruposAbertos:{}};
   renderAba();
 }
 function irParaRelatorioFlex(){ irPara('relatorio_flex'); }
+function toggleGrupoFRF(chave){ FRF.gruposAbertos[chave] = !FRF.gruposAbertos[chave]; renderAba(); }
 // Emitente/Sacado/Vencimento do título não existem como campo próprio aqui na
 // Tesouraria (isso é modelo de dados do ChequeSys) — só aparecem dentro do texto
 // da descrição de lançamentos espelhados de lá. Por isso a Busca Livre varre
@@ -5026,6 +5039,44 @@ function _valoresLinhaFRF(l){
     valor: (l.tipo==='entrada'?'+':'-')+' R$ '+fmt(l.valor)
   };
 }
+// Chave+rótulo de agrupamento pra um lançamento, conforme a dimensão escolhida —
+// mesmo espírito do "Classification"/agrupamento do Money: qualquer relatório
+// pode virar um resumo por Categoria, Direcionamento, Fornecedor, Mês, etc.
+function _chaveGrupoFRF(l, dimensao){
+  if(dimensao==='categoria'){ const c=categoriaById(l.categoriaId); return {chave:l.categoriaId||'(sem)', label:c?c.nome:'(sem categoria)'}; }
+  if(dimensao==='centroCusto'){ const c=centroCustoById(l.centroCustoId); return {chave:l.centroCustoId||'(sem)', label:c?c.nome:'(sem centro de custo)'}; }
+  if(dimensao==='direcionamento'){ return {chave:l.direcionamento||'(sem)', label:l.direcionamento||'(sem direcionamento)'}; }
+  if(dimensao==='contraparte'){ return {chave:l.contraparte||'(sem)', label:l.contraparte||'(sem fornecedor/cliente)'}; }
+  if(dimensao==='conta'){ const c=contaById(l.contaId); return {chave:l.contaId||'(sem)', label:c?nomeConta(c):'(sem conta)'}; }
+  if(dimensao==='mes'){ const m=(l.data||'').slice(0,7); return {chave:m, label:m?`${m.slice(5,7)}/${m.slice(0,4)}`:'(sem data)'}; }
+  return {chave:'', label:''};
+}
+function _agruparLancamentosFRF(lista, dimensao){
+  const mapa = {};
+  lista.forEach(l=>{
+    const {chave, label} = _chaveGrupoFRF(l, dimensao);
+    if(!mapa[chave]) mapa[chave] = {chave, label, itens:[], totalEntrada:0, totalSaida:0};
+    mapa[chave].itens.push(l);
+    if(l.tipo==='entrada') mapa[chave].totalEntrada += Number(l.valor); else mapa[chave].totalSaida += Number(l.valor);
+  });
+  return Object.values(mapa).map(g=>({...g, total:g.totalEntrada-g.totalSaida}))
+    .sort((a,b)=>Math.abs(b.total)-Math.abs(a.total));
+}
+function _svgBarrasGrupos(grupos){
+  if(!grupos.length) return '';
+  const top = grupos.slice(0,10);
+  const w=700, alturaLinha=26, h = top.length*alturaLinha + 20, padEsq=170, padDir=90;
+  const maxAbs = Math.max(...top.map(g=>Math.abs(g.total)), 1);
+  const barras = top.map((g,i)=>{
+    const y = 10 + i*alturaLinha;
+    const largura = Math.abs(g.total)/maxAbs * (w-padEsq-padDir);
+    const cor = g.total>=0 ? '#3fb950' : '#f85149';
+    return `<text x="${padEsq-8}" y="${y+14}" font-size="10" fill="#c9d1d9" text-anchor="end">${esc(g.label.length>26?g.label.slice(0,25)+'…':g.label)}</text>
+      <rect x="${padEsq}" y="${y+3}" width="${Math.max(largura,2).toFixed(1)}" height="16" rx="3" fill="${cor}"/>
+      <text x="${(padEsq+largura+6).toFixed(1)}" y="${y+14}" font-size="10" fill="#c9d1d9">R$ ${fmt(g.total)}</text>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${w} ${h}" style="width:100%;height:auto">${barras}</svg>`;
+}
 function htmlRelatorioFlex(){
   const lista = _lancamentosFiltradosFRF();
   const totalEntradas = lista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor),0);
@@ -5038,18 +5089,50 @@ function htmlRelatorioFlex(){
 
   const colsAtivas = COLUNAS_FRF.filter(c=>FRF.colunas[c.id]);
   const cabecalho = colsAtivas.map(c=>`<th${c.id==='valor'?' style="text-align:right"':''}>${c.label}</th>`).join('');
-  const linhas = lista.map(l=>{
-    const v = _valoresLinhaFRF(l);
-    return `<tr>${colsAtivas.map(c=>{
-      let conteudo = esc(v[c.id]);
-      if(c.id==='tipo') conteudo = T(v.tipo, l.tipo==='entrada'?'vd':'vm');
-      if(c.id==='valor') conteudo = `<span style="font-weight:700;color:${l.tipo==='entrada'?'#3fb950':'#f85149'}">${esc(v.valor)}</span>`;
-      return `<td${c.id==='valor'?' style="text-align:right"':''}>${conteudo}</td>`;
-    }).join('')}</tr>`;
-  }).join('') || `<tr><td colspan="${colsAtivas.length||1}" style="text-align:center;color:var(--mut);padding:20px">Nenhum lançamento encontrado com esses filtros.</td></tr>`;
+
+  function linhasDe(itens){
+    return itens.map(l=>{
+      const v = _valoresLinhaFRF(l);
+      return `<tr>${colsAtivas.map(c=>{
+        let conteudo = esc(v[c.id]);
+        if(c.id==='tipo') conteudo = T(v.tipo, l.tipo==='entrada'?'vd':'vm');
+        if(c.id==='valor') conteudo = `<span style="font-weight:700;color:${l.tipo==='entrada'?'#3fb950':'#f85149'}">${esc(v.valor)}</span>`;
+        return `<td${c.id==='valor'?' style="text-align:right"':''}>${conteudo}</td>`;
+      }).join('')}</tr>`;
+    }).join('');
+  }
+
+  let corpoTabela;
+  if(FRF.agruparPor){
+    const grupos = _agruparLancamentosFRF(lista, FRF.agruparPor);
+    corpoTabela = grupos.map(g=>{
+      const aberto = !!FRF.gruposAbertos[g.chave];
+      const linhaGrupo = `<tr onclick="toggleGrupoFRF('${esc(g.chave).replace(/'/g,"\\'")}')" style="cursor:pointer;background:var(--sur);font-weight:700">
+        <td colspan="${colsAtivas.length}">
+          <span style="display:inline-block;width:14px">${aberto?'▾':'▸'}</span>
+          ${esc(g.label)} <span style="font-weight:400;color:var(--mut);font-size:11px">(${g.itens.length} lançamento${g.itens.length>1?'s':''})</span>
+          <span style="float:right;color:${g.total>=0?'#3fb950':'#f85149'}">R$ ${fmt(g.total)}</span>
+        </td>
+      </tr>`;
+      return linhaGrupo + (aberto ? linhasDe(g.itens) : '');
+    }).join('') || `<tr><td colspan="${colsAtivas.length||1}" style="text-align:center;color:var(--mut);padding:20px">Nenhum lançamento encontrado com esses filtros.</td></tr>`;
+  } else {
+    corpoTabela = linhasDe(lista) || `<tr><td colspan="${colsAtivas.length||1}" style="text-align:center;color:var(--mut);padding:20px">Nenhum lançamento encontrado com esses filtros.</td></tr>`;
+  }
+
+  const grupoChart = FRF.agruparPor ? _agruparLancamentosFRF(lista, FRF.agruparPor) : [];
+  const favoritos = DB.relatoriosFavoritos||[];
+  const chipsFavoritos = favoritos.length ? `<div class="row" style="margin-bottom:8px;gap:6px;flex-wrap:wrap">
+    ${favoritos.map(f=>`<span style="display:inline-flex;align-items:center;gap:4px;background:var(--sur);border:1px solid var(--bor);border-radius:14px;padding:4px 6px 4px 12px;font-size:11px">
+      <span style="cursor:pointer" onclick="carregarRelatorioFavoritoFRF('${f.id}')" title="Carregar este relatório">⭐ ${esc(f.nome)}</span>
+      <span style="cursor:pointer;color:var(--mut);padding:0 4px" onclick="excluirRelatorioFavoritoFRF('${f.id}')" title="Excluir favorito">✕</span>
+    </span>`).join('')}
+  </div>` : '';
 
   return `<div class="titulo acc">🔍 Relatório de Filtragem</div>
-  <div style="font-size:11px;color:var(--mut);margin:-6px 0 14px;line-height:1.5">Escolha as colunas e os filtros abaixo pra montar um relatório sob medida. Emitente/Sacado/Vencimento do título (quando existirem) aparecem dentro da Descrição — use a Busca Livre pra encontrar por esses termos.</div>
+  <div style="font-size:11px;color:var(--mut);margin:-6px 0 14px;line-height:1.5">Escolha colunas, filtros e (se quiser) uma forma de agrupar — clique num grupo pra abrir os lançamentos dele. Emitente/Sacado/Vencimento do título aparecem dentro da Descrição — use a Busca Livre pra achar por esses termos.</div>
+
+  ${chipsFavoritos}
 
   <div class="card" style="margin-bottom:12px">
     <div style="font-weight:700;margin-bottom:8px">Colunas do Relatório</div>
@@ -5073,7 +5156,10 @@ function htmlRelatorioFlex(){
       ${C('Origem',`<select id="frf-origem" onchange="aplicarFiltroFRF()"><option value="">Todas</option><option value="manual"${FRF.origem==='manual'?' selected':''}>Manual</option><option value="chequesys"${FRF.origem==='chequesys'?' selected':''}>ChequeSys</option><option value="pagamento"${FRF.origem==='pagamento'?' selected':''}>Pagamento Cartão</option><option value="ofx"${FRF.origem==='ofx'?' selected':''}>Importado OFX</option><option value="transferencia"${FRF.origem==='transferencia'?' selected':''}>Transferência</option></select>`,'1','170')}
       ${C('Busca Livre (descrição, emitente, sacado, nº do título...)',`<input type="text" id="frf-busca" value="${esc(FRF.busca)}" placeholder="Ex: nome do emitente, nº do cheque..." onchange="aplicarFiltroFRF()">`,'2','280')}
     </div>
-    <div class="row">${B('✕ Limpar Filtros','limparFiltroFRF()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirRelatorioFlex()','var(--acc)')}${B('📥 Exportar CSV','exportarCSVRelatorioFlex()','var(--sur)','var(--txt)')}</div>
+    <div class="row">
+      ${C('Agrupar por',`<select id="frf-agrupar" onchange="aplicarFiltroFRF()">${DIMENSOES_AGRUPAMENTO_FRF.map(d=>`<option value="${d.id}"${FRF.agruparPor===d.id?' selected':''}>${d.label}</option>`).join('')}</select>`,'1','220')}
+    </div>
+    <div class="row">${B('✕ Limpar Filtros','limparFiltroFRF()','var(--sur)','var(--txt)')}${B('⭐ Salvar como Favorito','salvarRelatorioFavoritoFRF()','var(--sur)','var(--acc)')}${B('🖨 Imprimir','imprimirRelatorioFlex()','var(--acc)')}${B('📥 Exportar CSV','exportarCSVRelatorioFlex()','var(--sur)','var(--txt)')}</div>
   </div>
 
   <div class="kpis">
@@ -5083,7 +5169,34 @@ function htmlRelatorioFlex(){
     <div class="card kpi"><div class="kpi-l">Lançamentos</div><div class="kpi-v">${lista.length}</div></div>
   </div>
 
-  <div class="card"><div class="tabela-mobile-cards" style="overflow-x:auto"><table><thead><tr>${cabecalho}</tr></thead><tbody>${linhas}</tbody></table></div></div>`;
+  ${FRF.agruparPor && grupoChart.length ? `<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:8px">Gráfico — Top 10 por ${DIMENSOES_AGRUPAMENTO_FRF.find(d=>d.id===FRF.agruparPor).label}</div>${_svgBarrasGrupos(grupoChart)}</div>` : ''}
+
+  <div class="card"><div class="tabela-mobile-cards" style="overflow-x:auto"><table><thead><tr>${cabecalho}</tr></thead><tbody>${corpoTabela}</tbody></table></div></div>`;
+}
+function salvarRelatorioFavoritoFRF(){
+  const nome = prompt('Nome deste relatório favorito (ex: "Despesas Telasul por Categoria"):');
+  if(!nome || !nome.trim()) return;
+  const novo = {
+    id: uid(), nome: nome.trim(),
+    config: { colunas:{...FRF.colunas}, de:FRF.de, ate:FRF.ate, tipo:FRF.tipo, contaId:FRF.contaId, categoriaId:FRF.categoriaId, centroCustoId:FRF.centroCustoId, contraparte:FRF.contraparte, busca:FRF.busca, origem:FRF.origem, agruparPor:FRF.agruparPor },
+    criadoEm: new Date().toISOString()
+  };
+  salvar({...DB, relatoriosFavoritos:[...(DB.relatoriosFavoritos||[]), novo]});
+  setStatus('ok', `⭐ Relatório "${novo.nome}" salvo nos favoritos`);
+  setTimeout(()=>{document.getElementById('status').style.display='none';},3000);
+}
+function carregarRelatorioFavoritoFRF(id){
+  const f = (DB.relatoriosFavoritos||[]).find(x=>x.id===id);
+  if(!f) return;
+  FRF = {...FRF, ...f.config, colunas:{...f.config.colunas}, gruposAbertos:{}};
+  renderAba();
+}
+function excluirRelatorioFavoritoFRF(id){
+  const f = (DB.relatoriosFavoritos||[]).find(x=>x.id===id);
+  if(!f) return;
+  CF(`Excluir o relatório favorito "${f.nome}"?`, ()=>{
+    salvar({...DB, relatoriosFavoritos:(DB.relatoriosFavoritos||[]).filter(x=>x.id!==id)});
+  });
 }
 function imprimirRelatorioFlex(){
   const lista = _lancamentosFiltradosFRF();
@@ -5091,13 +5204,23 @@ function imprimirRelatorioFlex(){
   const totalEntradas = lista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor),0);
   const totalSaidas = lista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+Number(l.valor),0);
   const cabecalho = colsAtivas.map(c=>`<th>${c.label}</th>`).join('');
-  const linhas = lista.map(l=>{
-    const v = _valoresLinhaFRF(l);
-    return `<tr>${colsAtivas.map(c=>`<td${c.id==='valor'?' align=right':''}>${esc(v[c.id])}</td>`).join('')}</tr>`;
-  }).join('');
+  function linhasDe(itens){
+    return itens.map(l=>{
+      const v = _valoresLinhaFRF(l);
+      return `<tr>${colsAtivas.map(c=>`<td${c.id==='valor'?' align=right':''}>${esc(v[c.id])}</td>`).join('')}</tr>`;
+    }).join('');
+  }
+  let corpo;
+  if(FRF.agruparPor){
+    const grupos = _agruparLancamentosFRF(lista, FRF.agruparPor);
+    corpo = grupos.map(g=>`<tr style="background:#eee;font-weight:bold"><td colspan="${colsAtivas.length}">${esc(g.label)} (${g.itens.length}) — R$ ${fmt(g.total)}</td></tr>${linhasDe(g.itens)}`).join('');
+  } else {
+    corpo = linhasDe(lista);
+  }
   const filtroResumo = [
     FRF.de?`De ${fmtD(FRF.de)}`:'', FRF.ate?`Até ${fmtD(FRF.ate)}`:'', FRF.tipo?`Tipo: ${FRF.tipo==='entrada'?'Entrada':'Saída'}`:'',
-    FRF.contraparte?`Contraparte: ${FRF.contraparte}`:'', FRF.busca?`Busca: ${FRF.busca}`:''
+    FRF.contraparte?`Contraparte: ${FRF.contraparte}`:'', FRF.busca?`Busca: ${FRF.busca}`:'',
+    FRF.agruparPor?`Agrupado por: ${DIMENSOES_AGRUPAMENTO_FRF.find(d=>d.id===FRF.agruparPor).label}`:''
   ].filter(Boolean).join(' | ') || 'Sem filtros aplicados';
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório de Filtragem</title>
   <style>
@@ -5113,7 +5236,7 @@ function imprimirRelatorioFlex(){
   </style></head><body>
   <h2>Relatório de Filtragem — TesourariaSys</h2>
   <div class="filtros">${esc(filtroResumo)} — Gerado em ${new Date().toLocaleDateString('pt-BR')} ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
-  <table><thead><tr>${cabecalho}</tr></thead><tbody>${linhas}</tbody>
+  <table><thead><tr>${cabecalho}</tr></thead><tbody>${corpo}</tbody>
   <tfoot><tr><td colspan="${colsAtivas.length}">Entradas: R$ ${fmt(totalEntradas)} — Saídas: R$ ${fmt(totalSaidas)} — Resultado: R$ ${fmt(totalEntradas-totalSaidas)} — ${lista.length} lançamento(s)</td></tr></tfoot>
   </table>
   </body></html>`;
