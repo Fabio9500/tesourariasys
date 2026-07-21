@@ -42530,7 +42530,7 @@
       "criadoEm": "2026-07-21T10:18:55.560Z"
     },
     {
-      "id": "mruqgytnwhrju",
+      "id": "mruqh3rc9yklb",
       "contaId": "mrnty0gh0cojz",
       "data": "2026-07-21",
       "tipo": "entrada",
@@ -42544,7 +42544,7 @@
       "chequeId": "mqv1kfwsmh5a",
       "boletoId": null,
       "contaPagarId": null,
-      "criadoEm": "2026-07-21T14:13:00.107Z"
+      "criadoEm": "2026-07-21T14:13:06.504Z"
     }
   ],
   "contasPagar": [
@@ -42898,7 +42898,7 @@
         "fingerprint": "entrada|20721|2026-07-20|Depósito — Cheque 00000127 — Emitente: HD Santos Filho — Venc: 20/07/2026|mrnty0gh9748t|Infinity Comercio  Atac.De Prod. LTD|recebimento_cheque|Cheque nº 00000127 — Emitente: HD Santos Filho|CHQ0109|"
       },
       "mruqe8zmi2uv": {
-        "lancId": "mruqgytnwhrju",
+        "lancId": "mruqh3rc9yklb",
         "fingerprint": "entrada|110|2026-07-21|Juros renovação cheque 123 — Philison|mrnty0gh0cojz|Philison|recebimento_cheque|Cheque nº 123 — Emitente: Alex Santos de Oliveira|mqv1kfwsmh5a|",
         "ausenteDesde": null
       }
