@@ -1082,6 +1082,7 @@ function initNav(){
     {id:'chequesemitidos', r:'✍️ Cheques Emitidos'},
     {id:'investimentos', r:'📈 Investimentos & Seguros'},
     {id:'relatorios',   r:'📊 Relatórios'},
+    {id:'fechamento',   r:'📋 Fechamento Diário'},
     ...(temPerm('config') ? [{id:'cadastros',r:'🗂 Cadastros'}] : []),
   ];
   document.getElementById('tabs').innerHTML = abasVis.map(a=>
@@ -1101,14 +1102,14 @@ function desconectar(){
 }
 function renderAba(){
   const m=document.getElementById('main');
-  const mp={dashboard:htmlDashboard,contas:htmlContas,lancamentos:htmlLancamentos,contaspagar:htmlContasPagar,contasreceber:htmlContasReceber,chequesemitidos:htmlChequesEmitidos,investimentos:htmlInvestimentosSeguros,relatorios:htmlRelatorios,cadastros:htmlCadastros};
+  const mp={dashboard:htmlDashboard,contas:htmlContas,lancamentos:htmlLancamentos,contaspagar:htmlContasPagar,contasreceber:htmlContasReceber,chequesemitidos:htmlChequesEmitidos,investimentos:htmlInvestimentosSeguros,relatorios:htmlRelatorios,fechamento:htmlFechamentoDiario,cadastros:htmlCadastros};
   m.innerHTML=(mp[ABA]||htmlDashboard)();
 }
 
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.44';
+const VERSAO = 'v1.45';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -5307,6 +5308,308 @@ function grafDuploMes(items){
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px"><span style="width:52px;font-size:10px;color:var(--mut)">Entrada</span><div style="flex:1;background:var(--bg);border-radius:4px;height:10px;overflow:hidden"><div style="width:${Math.min(100,i.entrada/max*100)}%;height:100%;background:#3fb950"></div></div><span style="width:90px;text-align:right;font-size:10px">R$ ${fmt(i.entrada)}</span></div>
       <div style="display:flex;align-items:center;gap:6px"><span style="width:52px;font-size:10px;color:var(--mut)">Saída</span><div style="flex:1;background:var(--bg);border-radius:4px;height:10px;overflow:hidden"><div style="width:${Math.min(100,i.saida/max*100)}%;height:100%;background:#f85149"></div></div><span style="width:90px;text-align:right;font-size:10px">R$ ${fmt(i.saida)}</span></div>
     </div>`).join('') || '<div style="text-align:center;color:var(--mut);font-size:12px">Sem dados ainda</div>';
+}
+
+// ══════════════════════════════════════════
+// 📋 FECHAMENTO DIÁRIO — resumo consolidado de todos os sistemas integrados
+// (TesourariaSys + ChequeSys + CartoesPF + CartoesPJ), com observações
+// automáticas (regras, não IA) e impressão formal em uma página só.
+// ══════════════════════════════════════════
+function addDiasStr(dataStr,dias){
+  const d=new Date(dataStr+'T12:00:00'); d.setDate(d.getDate()+dias); return d.toISOString().slice(0,10);
+}
+let _fechamentoDados = null;
+try{ const _fRaw = localStorage.getItem('tsr_fechamento_'+hoje()); if(_fRaw) _fechamentoDados = JSON.parse(_fRaw); }catch(e){}
+
+async function gerarFechamentoDiario(){
+  setStatus('saving','⏳ Buscando dados nos sistemas integrados...');
+  const hj = hoje();
+  const resultado = { data:hj, geradoEm:new Date().toISOString() };
+
+  // ── TesourariaSys (já em memória, não precisa buscar) ──
+  const movTeso = (DB.lancamentos||[]).filter(l=>l.data===hj);
+  resultado.tesouraria = {
+    entradas: movTeso.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+Number(l.valor||0),0),
+    saidas: movTeso.filter(l=>l.tipo==='saida').reduce((s,l)=>s+Number(l.valor||0),0),
+    lancamentos: movTeso,
+    contasPagarHoje: contasPagarPendentes().filter(cp=>cp.vencimento===hj),
+    contasPagarAmanha: contasPagarPendentes().filter(cp=>cp.vencimento===addDiasStr(hj,1)),
+    contasReceberHoje: contasReceberPendentes().filter(cr=>cr.vencimento===hj),
+  };
+
+  // ── ChequeSys (busca fresca — precisa dos dados crus pra saber o que aconteceu HOJE) ──
+  const tokenChq = getTokenChequeSys();
+  if(tokenChq){
+    try{
+      const dadosChq = await buscarDadosChequeSys(tokenChq);
+      const cheques = dadosChq.cheques||[], boletos = dadosChq.boletos||[];
+      resultado.chequesys = {
+        ok:true,
+        depositadosHoje: cheques.filter(c=>c.dataDeposito===hj),
+        compensadosHoje: cheques.filter(c=>c.dataCompensacao===hj),
+        devolvidosHoje: cheques.filter(c=>c.dataDevolucao===hj),
+        resgatadosHoje: cheques.filter(c=>c.dataResgate===hj),
+        boletosEnviadosHoje: boletos.filter(b=>b.dataEnvio===hj),
+        boletosDevolvidosHoje: boletos.filter(b=>b.dataDevolucao===hj),
+        devolvidosAbertos: cheques.filter(c=>c.status==='devolvido').length + boletos.filter(b=>b.status==='devolvido').length,
+        valorDevolvidosAbertos: cheques.filter(c=>c.status==='devolvido').reduce((s,c)=>s+Number(c.bruto||0),0) + boletos.filter(b=>b.status==='devolvido').reduce((s,b)=>s+Number(b.bruto||0),0),
+        capitalTerceirosVencendo: (dadosChq.capitalTerceiros||[]).flatMap(ct=>(ct.parcelas||[]).filter(p=>!p.pago && p.vencimento && p.vencimento<=addDiasStr(hj,7)).map(p=>({...p,banco:ct.banco}))),
+        saldoContas: resumoContasDeChequeSys(dadosChq).total,
+      };
+    }catch(e){ resultado.chequesys = {ok:false, erro:'Não foi possível conectar (verifique o token).'}; }
+  } else resultado.chequesys = {ok:false, erro:'Token não configurado.'};
+
+  // ── CartoesPF / CartoesPJ (busca fresca) ──
+  async function resumoCartaoHoje(arquivo, token){
+    if(!token) return {ok:false, erro:'Token não configurado.'};
+    try{
+      const dados = await buscarDadosCartao(arquivo, token);
+      const comprasHoje = (dados.compras||[]).filter(c=>c.dataCompra===hj);
+      return {
+        ok:true,
+        comprasHoje,
+        totalComprasHoje: comprasHoje.reduce((s,c)=>s+Number(c.valorParcela||0),0),
+        resumoFaturas: resumoFaturasDeDados(dados),
+      };
+    }catch(e){ return {ok:false, erro:'Não foi possível conectar (verifique o token).'}; }
+  }
+  resultado.cartoesPF = await resumoCartaoHoje('dados.json', getTokenCartoesPF());
+  resultado.cartoesPJ = await resumoCartaoHoje('dados-pj.json', getTokenCartoesPJ());
+
+  // ── Posição Líquida Consolidada (mesma fórmula usada em Relatórios) ──
+  const cartoesPFAberto = resultado.cartoesPF?.resumoFaturas?.totalAberto||0;
+  const cartoesPJAberto = resultado.cartoesPJ?.resumoFaturas?.totalAberto||0;
+  const totalReceberPend = contasReceberPendentes().reduce((s,cr)=>s+cr.valor,0);
+  const totalPagarPend = contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0);
+  const chqEmitPend = chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0);
+  resultado.posicao = {
+    saldoTesouraria: saldoTotalGeral(),
+    saldoChequeSys: resultado.chequesys?.saldoContas||0,
+    patrimonioInvestido: totalPatrimonioInvestido(),
+    receberPend: totalReceberPend,
+    pagarPend: totalPagarPend,
+    chequesEmitidosPend: chqEmitPend,
+    cartoesPF: cartoesPFAberto,
+    cartoesPJ: cartoesPJAberto,
+  };
+  resultado.posicao.liquida = resultado.posicao.saldoTesouraria + resultado.posicao.saldoChequeSys + resultado.posicao.patrimonioInvestido
+    + resultado.posicao.receberPend - resultado.posicao.pagarPend - resultado.posicao.chequesEmitidosPend
+    - resultado.posicao.cartoesPF - resultado.posicao.cartoesPJ;
+
+  // ── Comparação com o fechamento salvo do dia útil anterior (se existir) ──
+  let ontemStr = addDiasStr(hj,-1);
+  let tentativas=0;
+  while(tentativas<4){
+    const dOntem = new Date(ontemStr+'T12:00:00');
+    if(dOntem.getDay()!==0 && dOntem.getDay()!==6) break;
+    ontemStr = addDiasStr(ontemStr,-1); tentativas++;
+  }
+  try{
+    const anteriorRaw = localStorage.getItem('tsr_fechamento_'+ontemStr);
+    resultado.posicaoAnterior = anteriorRaw ? JSON.parse(anteriorRaw).posicao?.liquida : null;
+  }catch(e){ resultado.posicaoAnterior = null; }
+
+  _fechamentoDados = resultado;
+  try{ localStorage.setItem('tsr_fechamento_'+hj, JSON.stringify(resultado)); }catch(e){}
+  setStatus('ok','✅ Fechamento de hoje gerado com sucesso');
+  setTimeout(()=>{ const el=document.getElementById('status'); if(el) el.style.display='none'; },3000);
+  renderAba();
+}
+
+// Gera a lista de observações automáticas (regras, sem IA) a partir dos dados já buscados
+function observacoesFechamento(f){
+  const obs = [];
+  if(!f) return obs;
+  const chq = f.chequesys, cpf = f.cartoesPF, cpj = f.cartoesPJ;
+
+  if(chq?.ok){
+    if(chq.devolvidosHoje.length>0){
+      const v = chq.devolvidosHoje.reduce((s,c)=>s+Number(c.bruto||0),0);
+      obs.push({tipo:'alerta', txt:`${chq.devolvidosHoje.length} cheque(s) devolvido(s) hoje, totalizando R$ ${fmt(v)}. Vale entrar em contato com os clientes envolvidos.`});
+    }
+    if(chq.boletosDevolvidosHoje.length>0){
+      const v = chq.boletosDevolvidosHoje.reduce((s,b)=>s+Number(b.bruto||0),0);
+      obs.push({tipo:'alerta', txt:`${chq.boletosDevolvidosHoje.length} boleto(s) devolvido(s) hoje, totalizando R$ ${fmt(v)}.`});
+    }
+    if(chq.devolvidosAbertos>0){
+      obs.push({tipo:'info', txt:`Carteira acumula ${chq.devolvidosAbertos} título(s) devolvido(s) ainda em aberto, somando R$ ${fmt(chq.valorDevolvidosAbertos)}.`});
+    }
+    if(chq.capitalTerceirosVencendo.length>0){
+      const v = chq.capitalTerceirosVencendo.reduce((s,p)=>s+Number(p.valor||0),0);
+      obs.push({tipo:'alerta', txt:`${chq.capitalTerceirosVencendo.length} parcela(s) de Capital de Terceiros vence(m) nos próximos 7 dias, total de R$ ${fmt(v)}. Confira se há caixa disponível.`});
+    }
+  } else if(chq && !chq.ok){
+    obs.push({tipo:'info', txt:`Não foi possível ler o ChequeSys agora (${chq.erro}). Os números deste sistema podem estar incompletos.`});
+  }
+
+  if(f.tesouraria.contasPagarHoje.length>0){
+    const v=f.tesouraria.contasPagarHoje.reduce((s,c)=>s+Number(c.valor||0),0);
+    obs.push({tipo:'alerta', txt:`${f.tesouraria.contasPagarHoje.length} conta(s) a pagar vence(m) hoje, total de R$ ${fmt(v)}.`});
+  }
+  if(f.tesouraria.contasPagarAmanha.length>0){
+    const v=f.tesouraria.contasPagarAmanha.reduce((s,c)=>s+Number(c.valor||0),0);
+    obs.push({tipo:'info', txt:`${f.tesouraria.contasPagarAmanha.length} conta(s) a pagar vence(m) amanhã, total de R$ ${fmt(v)}.`});
+  }
+
+  (DB.contas||[]).filter(c=>c.ativa!==false).forEach(c=>{
+    const s = saldoConta(c.id);
+    if(s<0) obs.push({tipo:'alerta', txt:`Conta "${c.titular||c.nome}" está com saldo negativo: R$ ${fmt(s)}.`});
+  });
+
+  if(cpf?.ok && cpf.resumoFaturas?.proximaVenc){
+    const dias = Math.round((new Date(cpf.resumoFaturas.proximaVenc+'T12:00:00')-new Date(hoje()+'T12:00:00'))/86400000);
+    if(dias>=0 && dias<=3) obs.push({tipo:'info', txt:`Fatura de cartão PF vence em ${dias===0?'hoje':dias+' dia(s)'}, valor R$ ${fmt(cpf.resumoFaturas.proximoValor)}.`});
+  }
+  if(cpj?.ok && cpj.resumoFaturas?.proximaVenc){
+    const dias = Math.round((new Date(cpj.resumoFaturas.proximaVenc+'T12:00:00')-new Date(hoje()+'T12:00:00'))/86400000);
+    if(dias>=0 && dias<=3) obs.push({tipo:'info', txt:`Fatura de cartão PJ vence em ${dias===0?'hoje':dias+' dia(s)'}, valor R$ ${fmt(cpj.resumoFaturas.proximoValor)}.`});
+  }
+
+  if(f.posicaoAnterior!==null && f.posicaoAnterior!==undefined){
+    const diff = f.posicao.liquida - f.posicaoAnterior;
+    const pct = f.posicaoAnterior!==0 ? (diff/Math.abs(f.posicaoAnterior)*100) : 0;
+    if(Math.abs(diff)>=1){
+      obs.push({tipo: diff>=0?'positivo':'alerta', txt:`Posição Líquida ${diff>=0?'subiu':'caiu'} R$ ${fmt(Math.abs(diff))} (${pct>=0?'+':''}${pct.toFixed(1)}%) desde o último fechamento registrado.`});
+    }
+  }
+
+  if(!obs.length) obs.push({tipo:'positivo', txt:'Nenhum ponto de atenção identificado hoje. Operação dentro da normalidade.'});
+  return obs;
+}
+
+function htmlFechamentoDiario(){
+  const f = _fechamentoDados;
+  const hj = hoje();
+  const desatualizado = f && f.data!==hj;
+  if(!f){
+    return `<div class="titulo acc">📋 Fechamento Diário</div>
+    <div class="card" style="text-align:center;padding:40px 20px">
+      <div style="font-size:14px;color:var(--mut);margin-bottom:16px">Nenhum fechamento gerado ainda hoje. Clique no botão abaixo para buscar os dados atualizados em todos os sistemas integrados (ChequeSys, CartoesPF, CartoesPJ) e montar o resumo do dia.</div>
+      ${B('🔄 Gerar Fechamento de Hoje','gerarFechamentoDiario()','var(--acc)')}
+    </div>`;
+  }
+  const obs = observacoesFechamento(f);
+  const corObs = {alerta:'var(--red)', info:'var(--acc)', positivo:'#3fb950'};
+  const iconObs = {alerta:'⚠', info:'ℹ', positivo:'✅'};
+  return `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+    <div class="titulo acc" style="margin-bottom:0">📋 Fechamento Diário — ${fmtD(f.data)}</div>
+    <div style="display:flex;gap:8px">
+      ${desatualizado?`<span style="font-size:11px;color:var(--mut);align-self:center">Gerado em ${fmtD(f.data)}, não é de hoje</span>`:''}
+      ${B('🔄 Atualizar','gerarFechamentoDiario()','var(--sur)','var(--txt)')}
+      ${B('🖨 Imprimir (1 página)','imprimirFechamentoDiario()','var(--acc)')}
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-weight:700;margin-bottom:10px">🧭 Posição Consolidada</div>
+    <table><tbody>
+      <tr><td>Saldo em Contas (TesourariaSys)</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(f.posicao.saldoTesouraria)}</td></tr>
+      <tr><td>Saldo em Contas (ChequeSys)${!f.chequesys?.ok?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(f.posicao.saldoChequeSys)}</td></tr>
+      <tr><td>Patrimônio Investido</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(f.posicao.patrimonioInvestido)}</td></tr>
+      <tr><td>Contas a Receber Pendentes</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(f.posicao.receberPend)}</td></tr>
+      <tr><td>Contas a Pagar Pendentes</td><td style="text-align:right;color:var(--red)">− R$ ${fmt(f.posicao.pagarPend)}</td></tr>
+      <tr><td>Cheques Emitidos Aguardando</td><td style="text-align:right;color:var(--red)">− R$ ${fmt(f.posicao.chequesEmitidosPend)}</td></tr>
+      <tr><td>Fatura Cartão PF em Aberto${!f.cartoesPF?.ok?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:var(--red)">− R$ ${fmt(f.posicao.cartoesPF)}</td></tr>
+      <tr><td>Fatura Cartão PJ em Aberto${!f.cartoesPJ?.ok?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:var(--red)">− R$ ${fmt(f.posicao.cartoesPJ)}</td></tr>
+      <tr class="trow"><td>Posição Líquida</td><td style="text-align:right;font-size:16px;color:${f.posicao.liquida<0?'var(--red)':'var(--acc)'}">R$ ${fmt(f.posicao.liquida)}</td></tr>
+    </tbody></table>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div style="font-weight:700;margin-bottom:10px">📊 Movimento do Dia</div>
+    <table><tbody>
+      <tr><td>Entradas (TesourariaSys)</td><td style="text-align:right;color:#3fb950">+ R$ ${fmt(f.tesouraria.entradas)}</td></tr>
+      <tr><td>Saídas (TesourariaSys)</td><td style="text-align:right;color:var(--red)">− R$ ${fmt(f.tesouraria.saidas)}</td></tr>
+      ${f.chequesys?.ok?`
+      <tr><td>Cheques Depositados Hoje</td><td style="text-align:right">${f.chequesys.depositadosHoje.length}</td></tr>
+      <tr><td>Cheques Compensados Hoje</td><td style="text-align:right">${f.chequesys.compensadosHoje.length}</td></tr>
+      <tr><td>Boletos Enviados Hoje</td><td style="text-align:right">${f.chequesys.boletosEnviadosHoje.length}</td></tr>`:''}
+      ${f.cartoesPF?.ok?`<tr><td>Compras no Cartão PF Hoje</td><td style="text-align:right">${f.cartoesPF.comprasHoje.length} — R$ ${fmt(f.cartoesPF.totalComprasHoje)}</td></tr>`:''}
+      ${f.cartoesPJ?.ok?`<tr><td>Compras no Cartão PJ Hoje</td><td style="text-align:right">${f.cartoesPJ.comprasHoje.length} — R$ ${fmt(f.cartoesPJ.totalComprasHoje)}</td></tr>`:''}
+    </tbody></table>
+  </div>
+
+  <div class="card">
+    <div style="font-weight:700;margin-bottom:10px">💡 Pontos de Atenção e Observações</div>
+    ${obs.map(o=>`<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--bor)"><span style="color:${corObs[o.tipo]};font-weight:700">${iconObs[o.tipo]}</span><span style="font-size:13px">${esc(o.txt)}</span></div>`).join('')}
+  </div>`;
+}
+
+function imprimirFechamentoDiario(){
+  const f = _fechamentoDados;
+  if(!f){ alert('Gere o fechamento de hoje antes de imprimir.'); return; }
+  const obs = observacoesFechamento(f);
+  const linhaPos = (label,val,sinal)=>`<tr><td>${label}</td><td class="v">${sinal}R$ ${fmt(Math.abs(val))}</td></tr>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Fechamento Diário — ${fmtD(f.data)}</title>
+  <style>
+    @page{size:A4;margin:14mm}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:10.5px;color:#000;margin:0;line-height:1.35}
+    h1{font-size:16px;margin:0 0 2px;font-weight:700}
+    .sub{font-size:10px;color:#000;margin-bottom:12px}
+    .cabecalho{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:12px}
+    .secao{margin-bottom:12px}
+    .secao-titulo{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid #000;padding-bottom:3px;margin-bottom:6px}
+    table{width:100%;border-collapse:collapse}
+    td{padding:2.5px 4px;border-bottom:1px solid #ccc;color:#000}
+    td.v{text-align:right;font-weight:700;white-space:nowrap}
+    tr.tot td{font-weight:700;border-top:1.5px solid #000;border-bottom:none;padding-top:5px}
+    .duascols{display:flex;gap:20px}
+    .duascols>div{flex:1}
+    .obs-item{padding:4px 0;border-bottom:1px dotted #999;font-size:10px}
+    .obs-marca{font-weight:700;margin-right:4px}
+    .rodape{margin-top:16px;padding-top:8px;border-top:1px solid #000;font-size:8.5px;color:#000;display:flex;justify-content:space-between}
+  </style></head>
+  <body>
+    <div class="cabecalho">
+      <div><h1>FECHAMENTO DIÁRIO CONSOLIDADO</h1><div class="sub">Fabio Oliveira Santos — Telasul / Construsul / Operação de Factoring — Itabuna/BA</div></div>
+      <div style="text-align:right"><div style="font-size:13px;font-weight:700">${fmtD(f.data)}</div><div class="sub">Gerado em ${new Date(f.geradoEm).toLocaleString('pt-BR')}</div></div>
+    </div>
+
+    <div class="duascols">
+      <div class="secao">
+        <div class="secao-titulo">Posição Consolidada</div>
+        <table><tbody>
+          ${linhaPos('Saldo em Contas (TesourariaSys)',f.posicao.saldoTesouraria,'+ ')}
+          ${linhaPos('Saldo em Contas (ChequeSys)',f.posicao.saldoChequeSys,'+ ')}
+          ${linhaPos('Patrimônio Investido',f.posicao.patrimonioInvestido,'+ ')}
+          ${linhaPos('Contas a Receber Pendentes',f.posicao.receberPend,'+ ')}
+          ${linhaPos('Contas a Pagar Pendentes',f.posicao.pagarPend,'− ')}
+          ${linhaPos('Cheques Emitidos Aguardando',f.posicao.chequesEmitidosPend,'− ')}
+          ${linhaPos('Fatura Cartão PF em Aberto',f.posicao.cartoesPF,'− ')}
+          ${linhaPos('Fatura Cartão PJ em Aberto',f.posicao.cartoesPJ,'− ')}
+          <tr class="tot"><td>POSIÇÃO LÍQUIDA</td><td class="v">R$ ${fmt(f.posicao.liquida)}</td></tr>
+        </tbody></table>
+      </div>
+      <div class="secao">
+        <div class="secao-titulo">Movimento do Dia</div>
+        <table><tbody>
+          ${linhaPos('Entradas (TesourariaSys)',f.tesouraria.entradas,'+ ')}
+          ${linhaPos('Saídas (TesourariaSys)',f.tesouraria.saidas,'− ')}
+          <tr><td>Cheques Depositados Hoje</td><td class="v">${f.chequesys?.ok?f.chequesys.depositadosHoje.length:'—'}</td></tr>
+          <tr><td>Cheques Compensados Hoje</td><td class="v">${f.chequesys?.ok?f.chequesys.compensadosHoje.length:'—'}</td></tr>
+          <tr><td>Cheques Devolvidos Hoje</td><td class="v">${f.chequesys?.ok?f.chequesys.devolvidosHoje.length:'—'}</td></tr>
+          <tr><td>Boletos Enviados Hoje</td><td class="v">${f.chequesys?.ok?f.chequesys.boletosEnviadosHoje.length:'—'}</td></tr>
+          <tr><td>Compras Cartão PF Hoje</td><td class="v">${f.cartoesPF?.ok?f.cartoesPF.comprasHoje.length+' — R$ '+fmt(f.cartoesPF.totalComprasHoje):'—'}</td></tr>
+          <tr><td>Compras Cartão PJ Hoje</td><td class="v">${f.cartoesPJ?.ok?f.cartoesPJ.comprasHoje.length+' — R$ '+fmt(f.cartoesPJ.totalComprasHoje):'—'}</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <div class="secao">
+      <div class="secao-titulo">Pontos de Atenção e Observações</div>
+      ${obs.map(o=>`<div class="obs-item"><span class="obs-marca">${o.tipo==='alerta'?'[ATENÇÃO]':o.tipo==='positivo'?'[OK]':'[INFO]'}</span>${esc(o.txt)}</div>`).join('')}
+    </div>
+
+    <div class="rodape">
+      <span>Fechamento gerado automaticamente pelo TesourariaSys — dados consolidados de TesourariaSys, ChequeSys, CartoesPF e CartoesPJ.</span>
+      <span>Pág. 1/1</span>
+    </div>
+  </body></html>`;
+  const w = window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>w.print(),300);
 }
 
 function htmlRelatorios(){
