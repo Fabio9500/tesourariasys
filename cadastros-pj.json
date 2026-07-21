@@ -1133,6 +1133,62 @@
       "nome": "Transf da conta excluída",
       "parentId": "5r3hqj75938o2",
       "tipo": "receita"
+    },
+    {
+      "id": "r4uoxd85hzrja",
+      "nome": "Fatura Cartão de Crédito",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "g4ujgg33d1tif",
+      "nome": "Investimentos (Aporte)",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "gvuoso4xk6ia8",
+      "nome": "Previdência (Aporte)",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "l338nyrav0rra",
+      "nome": "Capitalização (Parcela)",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "gyyl6u0rqanbm",
+      "nome": "Seguros (Prêmio)",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "g6uvdj34hy6ug",
+      "nome": "Operação ChequeSys",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "xknf4choj0o4h",
+      "nome": "Operação ChequeSys",
+      "parentId": null,
+      "tipo": "receita",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "5ojsz3vz6shw1",
+      "nome": "Rendimentos Financeiros",
+      "parentId": null,
+      "tipo": "receita",
+      "tipoPFPJ": "ambos"
     }
   ],
   "centrosCusto": [
