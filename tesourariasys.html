@@ -1110,7 +1110,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.47';
+const VERSAO = 'v1.48';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2636,6 +2636,33 @@ function salvar(novo){ DB=novo; ghSalvar(DB); renderAba(); }
 function opcoesContas(selId){
   return (DB.contas||[]).filter(c=>c.ativa!==false).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
 }
+// Sugestão de Categoria/Direcionamento/Centro de Custo com base no BENEFICIÁRIO
+// digitado no Novo Lançamento — mesmo motor de aprendizado (construirDicionarioAprendizado
+// + casarComHistorico) já usado há tempos no importador de OFX, só que aplicado também
+// na hora de digitar manualmente. Só sugere, nunca trava — o usuário sempre pode trocar.
+function sugerirPorContraparteLC(prefix){
+  const campoContraparte = document.getElementById(prefix+'-contraparte');
+  const nome = campoContraparte?.value?.trim();
+  const dica = document.getElementById(prefix+'-dica-contraparte');
+  if(!nome || nome.length<2){ if(dica) dica.style.display='none'; return; }
+  const dic = construirDicionarioAprendizado();
+  const match = casarComHistorico(nome, dic);
+  if(!match){ if(dica) dica.style.display='none'; return; }
+  const selCat = document.getElementById(prefix+'-categoria');
+  const selCC = document.getElementById(prefix+'-cc');
+  const campoDirec = document.getElementById(prefix+'-direcionamento');
+  let aplicouAlgo = false;
+  if(match.categoriaId && selCat && [...selCat.options].some(o=>o.value===match.categoriaId)){
+    selCat.value = match.categoriaId; aplicouAlgo = true;
+  }
+  if(match.centroCustoId && selCC && [...selCC.options].some(o=>o.value===match.centroCustoId)){
+    selCC.value = match.centroCustoId; aplicouAlgo = true;
+  }
+  if(match.direcionamento && campoDirec && !campoDirec.value){
+    campoDirec.value = match.direcionamento; aplicouAlgo = true;
+  }
+  if(dica) dica.style.display = aplicouAlgo ? 'block' : 'none';
+}
 // ══════════════════════════════════════════
 // 📥 IMPORTAR EXTRATO (OFX) — lê o arquivo baixado do internet banking e já
 // lança tudo, tentando reconhecer cada lançamento pelo HISTÓRICO de uso
@@ -2838,8 +2865,9 @@ function novoLancamento(contaIdPre){
       </div>
       ${C('Centro de Custo',`<select id="lc-cc" onchange="atualizarSugestoesConta('lc')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
     </div>
-    ${C('Cliente / Fornecedor (opcional)',`<input id="lc-contraparte" list="dl-contrapartes" placeholder="Quem pagou ou recebeu">
+    ${C('Cliente / Fornecedor (opcional)',`<input id="lc-contraparte" list="dl-contrapartes" placeholder="Quem pagou ou recebeu" oninput="sugerirPorContraparteLC('lc')">
       <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
+    <div id="lc-dica-contraparte" style="display:none;font-size:11px;color:var(--acc);margin:-6px 0 8px">🔁 Categoria/direcionamento sugeridos com base no histórico desse beneficiário — pode trocar à vontade.</div>
     ${C('Direcionamento (opcional)',`<input id="lc-direcionamento" list="dl-direcionamentos" placeholder="Ex: Obra X, Setor Y...">
       <datalist id="dl-direcionamentos">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     ${C('Descrição / Histórico',`<input id="lc-desc" list="dl-descricoes" placeholder="Ex: recebimento cliente X">
