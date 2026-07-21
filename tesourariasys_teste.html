@@ -1109,7 +1109,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.45';
+const VERSAO = 'v1.46';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1859,7 +1859,14 @@ async function sincronizarCaixaChequeSys(silencioso){
   try{ dados = await buscarDadosChequeSys(token); }
   catch(e){ if(!silencioso){ setStatus('err','⚠ Não foi possível sincronizar com o ChequeSys'); setTimeout(()=>{document.getElementById('status').style.display='none';},4000); } return; }
 
-  const caixa = dados.caixa||[];
+  // Entradas do caixa do ChequeSys marcadas naoSincronizar:true são saldo em
+  // TRÂNSITO dentro do próprio ChequeSys (depósito aguardando compensar/devolver,
+  // ou o débito que zera essa mesma conta na hora da compensação/devolução) —
+  // não representam dinheiro liquidado ainda, então não entram aqui. O crédito
+  // de verdade na Tesouraria só acontece via eventosLiquidacaoTesouraria (abaixo),
+  // gerado pelo ChequeSys no momento da COMPENSAÇÃO.
+  const caixa = (dados.caixa||[]).filter(l=>!l.naoSincronizar);
+  const eventosLiq = dados.eventosLiquidacaoTesouraria||[];
   // Nome dos clientes do ChequeSys, pra trazer como contraparte do lançamento espelhado
   const clientesChq = {};
   (dados.clientes||[]).forEach(cl=>{ clientesChq[cl.id] = cl.nome||''; });
@@ -1920,25 +1927,68 @@ async function sincronizarCaixaChequeSys(silencioso){
       sincronizados[chq.id] = {...reg, fingerprint, ausenteDesde:null};
       mudou = true;
     } else if(reg.ausenteDesde){
-      // Reapareceu numa leitura seguinte — cancela a marca de "ausente" (era instabilidade passageira, não exclusão real)
       sincronizados[chq.id] = {...reg, ausenteDesde:null};
       mudou = true;
     }
   }
+
+  // ═══ EVENTOS DE LIQUIDAÇÃO (novo modelo de saldo em trânsito) ═══
+  // Cada evento representa uma COMPENSAÇÃO de cheque no ChequeSys — é o momento
+  // em que o dinheiro realmente liquida e deve virar crédito de verdade aqui na
+  // Tesouraria (diferente do depósito, que fica só como trânsito interno do
+  // ChequeSys). Usa o mesmo mapa "sincronizados", com chave prefixada "evt_" pra
+  // nunca colidir com um id de lançamento de caixa do ChequeSys.
+  for(const ev of eventosLiq){
+    const contaDestino = destinoConta(ev.contaId);
+    if(!contaDestino) continue;
+    const chaveEv = 'evt_'+ev.id;
+    idsAtuais.add(chaveEv);
+    const contraparte = clientesChq[ev.clienteId] || '';
+    let identificacao = '';
+    if(ev.chequeId && chequesChq[ev.chequeId]){
+      const c = chequesChq[ev.chequeId];
+      const nomeEmitente = emitentesChq[c.emitenteId] || '';
+      identificacao = `Cheque nº ${c.numero||'-'}${nomeEmitente?' — Emitente: '+nomeEmitente:''}`;
+    }
+    const descricao = `[ChequeSys — Compensação]${identificacao?' '+identificacao+' —':''} ${ev.desc||''}`.trim();
+    const fingerprint = `entrada|${ev.valor}|${ev.data}|${ev.desc||''}|${contaDestino}|${contraparte}|compensacao|${identificacao}|${ev.chequeId||''}|`;
+    const reg = sincronizados[chaveEv];
+    if(!reg){
+      const cat = categoriaOperacaoChequeSys('entrada');
+      const novo = {
+        id:uid(), contaId:contaDestino, data:ev.data, tipo:'entrada', valor:Number(ev.valor||0),
+        categoriaId: cat?cat.id:'', centroCustoId:'', contraparte,
+        descricao, origem:'chequesys', origemId:chaveEv,
+        chequeId: ev.chequeId||null, boletoId: null,
+        contaPagarId:null, criadoEm:new Date().toISOString()
+      };
+      lancamentos.push(novo);
+      sincronizados[chaveEv] = {lancId:novo.id, fingerprint, ausenteDesde:null};
+      mudou = true;
+    } else if(reg.fingerprint !== fingerprint){
+      lancamentos = lancamentos.map(l=> l.id===reg.lancId ? {...l, contaId:contaDestino, data:ev.data, tipo:'entrada', valor:Number(ev.valor||0), contraparte, descricao, chequeId:ev.chequeId||null} : l);
+      sincronizados[chaveEv] = {...reg, fingerprint, ausenteDesde:null};
+      mudou = true;
+    } else if(reg.ausenteDesde){
+      sincronizados[chaveEv] = {...reg, ausenteDesde:null};
+      mudou = true;
+    }
+  }
+
   // Exclusão de lançamento espelhado: NUNCA na primeira leitura em que o registro
-  // não aparece mais no caixa do ChequeSys. Uma leitura isolada pode vir incompleta
+  // não aparece mais no ChequeSys. Uma leitura isolada pode vir incompleta
   // (instabilidade da API do GitHub, ou o ChequeSys ainda não terminou de gravar a
   // última ação na fila offline dele). Só exclui de fato se continuar ausente na
   // sincronização SEGUINTE também — aí sim é exclusão real na origem, não instabilidade.
-  for(const chqId of Object.keys(sincronizados)){
-    if(!idsAtuais.has(chqId)){
-      const reg = sincronizados[chqId];
+  for(const chave of Object.keys(sincronizados)){
+    if(!idsAtuais.has(chave)){
+      const reg = sincronizados[chave];
       if(reg.ausenteDesde){
         lancamentos = lancamentos.filter(l=>l.id!==reg.lancId);
-        delete sincronizados[chqId];
+        delete sincronizados[chave];
         mudou = true;
       } else {
-        sincronizados[chqId] = {...reg, ausenteDesde:new Date().toISOString()};
+        sincronizados[chave] = {...reg, ausenteDesde:new Date().toISOString()};
         mudou = true;
       }
     }
