@@ -74,5 +74,11 @@ tr:hover td{background:#1e2a3a22}
 .barra{height:6px;border-radius:3px;background:#30363d;overflow:hidden;margin-top:4px}
 .barra-f{height:100%;border-radius:3px}
 
+/* ===== COMPONENTES — MENU DE CONTEXTO (clique direito em lançamentos) ===== */
+#ctx-menu-lanc{display:none;position:fixed;z-index:500;background:var(--card);border:1px solid var(--bor);border-radius:8px;box-shadow:0 6px 20px #000a;min-width:230px;max-width:340px;padding:4px;font-size:12px}
+.ctxmenu-item{padding:8px 12px;border-radius:5px;cursor:pointer;white-space:normal;line-height:1.4}
+.ctxmenu-item:hover{background:var(--sur)}
+.ctxmenu-sep{height:1px;background:var(--bor);margin:4px 2px}
+
 /* ===== RESPONSIVO ===== */
 @media print{#navbar,.no-print,#status,#fab-buttons{display:none!important}#main{padding:0;max-width:none}}

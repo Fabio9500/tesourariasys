@@ -4916,7 +4916,7 @@ function htmlContas(){
   const linhas = contas.map(c=>{
     const saldo = saldoConta(c.id);
     return `<tr style="${c.ativa===false?'opacity:.5':''}">
-      <td>${esc(c.titular)}</td>
+      <td style="cursor:pointer" ondblclick="abrirContaNoExtrato('${c.id}')" title="Duplo clique para abrir o extrato desta conta">${esc(c.titular)}</td>
       <td>${T(c.tipo,c.tipo==='PF'?'az':'pur')}</td>
       <td>${esc(c.banco||'-')} ${c.agencia?'· Ag '+esc(c.agencia):''} ${c.conta?'· Cc '+esc(c.conta):''}</td>
       <td style="text-align:right;font-weight:700;color:${saldo<0?'var(--red)':'var(--txt)'}">R$ ${fmt(saldo)}</td>
@@ -4971,6 +4971,59 @@ function limparFiltroLanc(){
   _filtroLancContraparte=''; _filtroLancCategoria=''; _filtroLancCC='';
   renderAba();
 }
+// ══════════════════════════════════════════
+// MENU DE CONTEXTO — LANÇAMENTOS (clique direito, estilo Money)
+// ══════════════════════════════════════════
+// Ao clicar com o botão direito num lançamento, monta um menu com as
+// dimensões que aquele lançamento tem (Categoria, Centro de Custo,
+// Direcionamento, Cliente/Fornecedor) — cada opção "Ir para" reseta o
+// Relatório de Filtragem e aplica só aquele filtro, abrindo o extrato
+// já filtrado, igual ao padrão do Money na imagem que o Fabio mandou.
+let _ctxLancId = null;
+// Ações ficam num array de funções (não em string de onclick) — evita quebrar o
+// HTML quando contraparte/direcionamento tiverem aspas ou caracteres especiais.
+function abrirMenuLancamento(ev, id){
+  ev.preventDefault(); ev.stopPropagation();
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return false;
+  _ctxLancId = id;
+  const cat = categoriaById(l.categoriaId);
+  const cc = centroCustoById(l.centroCustoId);
+  const acoes = [];
+  acoes.push({label:'✏ Editar', fn:()=>{ fecharMenuLancamento(); editarLancamento(id); }});
+  if(l.contraparte) acoes.push({label:`👉 Ir para Cliente/Fornecedor: ${l.contraparte}`, fn:()=>irParaFiltroFRF('contraparte', l.contraparte)});
+  if(cat) acoes.push({label:`👉 Ir para Categoria: ${nomeCompletoCategoria(cat)}`, fn:()=>irParaFiltroFRF('categoriaId', cat.id)});
+  if(cc) acoes.push({label:`👉 Ir para Centro de Custo: ${nomeCompletoCentroCusto(cc)}`, fn:()=>irParaFiltroFRF('centroCustoId', cc.id)});
+  if(l.direcionamento) acoes.push({label:`👉 Ir para Direcionamento: ${l.direcionamento}`, fn:()=>irParaFiltroFRF('direcionamento', l.direcionamento)});
+  acoes.push({sep:true});
+  acoes.push({label:'🗑 Excluir', cor:'var(--red)', fn:()=>{ fecharMenuLancamento(); excluirLancamento(id); }});
+  const menu = document.getElementById('ctx-menu-lanc');
+  menu.innerHTML = acoes.map((a,i)=> a.sep ? `<div class="ctxmenu-sep"></div>` : `<div class="ctxmenu-item" data-idx="${i}" style="${a.cor?`color:${a.cor}`:''}">${esc(a.label)}</div>`).join('');
+  menu.querySelectorAll('.ctxmenu-item').forEach(el=>{
+    el.addEventListener('click', (e)=>{ e.stopPropagation(); acoes[Number(el.dataset.idx)].fn(); });
+  });
+  menu.style.display = 'block';
+  const x = Math.min(ev.clientX, window.innerWidth-260);
+  const y = Math.min(ev.clientY, window.innerHeight-(acoes.length*34+20));
+  menu.style.left = Math.max(4,x)+'px';
+  menu.style.top = Math.max(4,y)+'px';
+  return false;
+}
+function fecharMenuLancamento(){
+  const menu = document.getElementById('ctx-menu-lanc');
+  if(menu) menu.style.display = 'none';
+  _ctxLancId = null;
+}
+// Fecha o menu ao clicar em qualquer lugar da tela ou rolar a página
+document.addEventListener('click', fecharMenuLancamento);
+document.addEventListener('scroll', fecharMenuLancamento, true);
+// Reseta o Relatório de Filtragem, aplica só o filtro escolhido no menu e
+// já abre a tela mostrando o extrato filtrado por aquela opção.
+function irParaFiltroFRF(campo, valor){
+  fecharMenuLancamento();
+  FRF = {...FRF, de:'',ate:'',tipo:'',contaId:'',categoriaId:'',centroCustoId:'',contraparte:'',direcionamento:'',busca:'',origem:'',agruparPor:'',gruposAbertos:{}};
+  FRF[campo] = valor;
+  irPara('relatorio_flex');
+}
 function htmlLancamentos(){
   let lista = (DB.lancamentos||[]).slice();
   lista = lista.filter(l=>contaTipoOk(l.contaId));
@@ -4989,7 +5042,7 @@ function htmlLancamentos(){
     const c = contaById(l.contaId);
     const cat = categoriaById(l.categoriaId);
     const cc = centroCustoById(l.centroCustoId);
-    return `<tr>
+    return `<tr style="cursor:pointer" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
       <td>${fmtD(l.data)}</td>
       <td>${esc(c?nomeConta(c):'-')}</td>
       <td>${T(l.tipo==='entrada'?'Entrada':'Saída', l.tipo==='entrada'?'vd':'vm')}${l.origem==='transferencia'?' '+T('🔀 Transf.','az'):''}</td>
@@ -5034,7 +5087,7 @@ function htmlLancamentos(){
 // ══════════════════════════════════════════
 let FRF = {
   colunas: {data:true, conta:true, tipo:true, categoria:true, centroCusto:true, contraparte:true, descricao:true, valor:true, origem:false},
-  de:'', ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', busca:'', origem:'',
+  de:'', ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', direcionamento:'', busca:'', origem:'',
   agruparPor:'', gruposAbertos:{}
 };
 const COLUNAS_FRF = [
@@ -5072,7 +5125,7 @@ function aplicarFiltroFRF(){
   renderAba();
 }
 function limparFiltroFRF(){
-  FRF = {...FRF, de:'',ate:'',tipo:'',contaId:'',categoriaId:'',centroCustoId:'',contraparte:'',busca:'',origem:'',agruparPor:'',gruposAbertos:{}};
+  FRF = {...FRF, de:'',ate:'',tipo:'',contaId:'',categoriaId:'',centroCustoId:'',contraparte:'',direcionamento:'',busca:'',origem:'',agruparPor:'',gruposAbertos:{}};
   renderAba();
 }
 function irParaRelatorioFlex(){ irPara('relatorio_flex'); }
@@ -5092,6 +5145,7 @@ function _lancamentosFiltradosFRF(){
   if(FRF.centroCustoId) lista = lista.filter(l=>l.centroCustoId===FRF.centroCustoId);
   if(FRF.origem) lista = lista.filter(l=>l.origem===FRF.origem);
   if(FRF.contraparte) lista = lista.filter(l=>(l.contraparte||'').toLowerCase().includes(FRF.contraparte.toLowerCase()));
+  if(FRF.direcionamento) lista = lista.filter(l=>(l.direcionamento||'')===FRF.direcionamento);
   if(FRF.busca) lista = lista.filter(l=>(l.descricao||'').toLowerCase().includes(FRF.busca.toLowerCase()) || (l.contraparte||'').toLowerCase().includes(FRF.busca.toLowerCase()));
   lista.sort((a,b)=>b.data.localeCompare(a.data)||(b.criadoEm||'').localeCompare(a.criadoEm||''));
   return lista;
@@ -5205,6 +5259,8 @@ function htmlRelatorioFlex(){
   return `<div class="titulo acc">🔍 Relatório de Filtragem</div>
   <div style="font-size:11px;color:var(--mut);margin:-6px 0 14px;line-height:1.5">Escolha colunas, filtros e (se quiser) uma forma de agrupar — clique num grupo pra abrir os lançamentos dele. Emitente/Sacado/Vencimento do título aparecem dentro da Descrição — use a Busca Livre pra achar por esses termos.</div>
 
+  ${FRF.direcionamento ? `<div class="tag tag-az" style="display:inline-flex;align-items:center;gap:6px;margin-bottom:10px;padding:5px 10px">🧭 Direcionamento: ${esc(FRF.direcionamento)} <span style="cursor:pointer" onclick="FRF.direcionamento='';renderAba()" title="Remover este filtro">✕</span></div>` : ''}
+
   ${chipsFavoritos}
 
   <div class="card" style="margin-bottom:12px">
@@ -5292,7 +5348,7 @@ function imprimirRelatorioFlex(){
   }
   const filtroResumo = [
     FRF.de?`De ${fmtD(FRF.de)}`:'', FRF.ate?`Até ${fmtD(FRF.ate)}`:'', FRF.tipo?`Tipo: ${FRF.tipo==='entrada'?'Entrada':'Saída'}`:'',
-    FRF.contraparte?`Contraparte: ${FRF.contraparte}`:'', FRF.busca?`Busca: ${FRF.busca}`:'',
+    FRF.contraparte?`Contraparte: ${FRF.contraparte}`:'', FRF.direcionamento?`Direcionamento: ${FRF.direcionamento}`:'', FRF.busca?`Busca: ${FRF.busca}`:'',
     FRF.agruparPor?`Agrupado por: ${DIMENSOES_AGRUPAMENTO_FRF.find(d=>d.id===FRF.agruparPor).label}`:''
   ].filter(Boolean).join(' | ') || 'Sem filtros aplicados';
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Relatório de Filtragem</title>
@@ -6218,6 +6274,20 @@ function htmlRelatorios(){
     return `<tr><td>${esc(nome)}</td><td style="text-align:right;color:#3fb950">R$ ${fmt(v.entrada)}</td><td style="text-align:right;color:#f85149">R$ ${fmt(v.saida)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(v.entrada-v.saida)}</td></tr>`;
   }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Sem lançamentos ainda</td></tr>';
 
+  // Fluxo por centro de custo (todos os lançamentos, histórico completo — mesmo
+  // espírito do fluxo por Categoria acima, só que agrupado por Centro de Custo)
+  const porCentroCustoGeral = {};
+  (DB.lancamentos||[]).forEach(l=>{
+    const cc = centroCustoById(l.centroCustoId);
+    const nome = cc?nomeCompletoCentroCusto(cc):'(sem centro de custo)';
+    if(!porCentroCustoGeral[nome]) porCentroCustoGeral[nome]={entrada:0,saida:0};
+    porCentroCustoGeral[nome][l.tipo==='entrada'?'entrada':'saida'] += l.valor;
+  });
+  const linhasCCGeral = Object.keys(porCentroCustoGeral).sort().map(nome=>{
+    const v = porCentroCustoGeral[nome];
+    return `<tr><td>${esc(nome)}</td><td style="text-align:right;color:#3fb950">R$ ${fmt(v.entrada)}</td><td style="text-align:right;color:#f85149">R$ ${fmt(v.saida)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(v.entrada-v.saida)}</td></tr>`;
+  }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Sem lançamentos ainda</td></tr>';
+
   // Contas a pagar por centro de custo (pendentes)
   const porCC = {};
   contasPagarPendentes().forEach(cp=>{
@@ -6662,6 +6732,8 @@ function htmlRelatorios(){
       <table><thead><tr><th>Data</th><th>Conta</th><th>Contraparte/Descrição</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasTop(topSaidas,'#f85149')}</tbody></table></div>`,
     fluxo_categoria: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📊 Fluxo de Caixa por Categoria (histórico completo)</div>
       <table><thead><tr><th>Categoria</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Resultado</th></tr></thead><tbody>${linhasCat}</tbody></table></div>`,
+    fluxo_centro_custo: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏷️ Fluxo de Caixa por Centro de Custo (histórico completo)</div>
+      <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th><th style="text-align:right">Resultado</th></tr></thead><tbody>${linhasCCGeral}</tbody></table></div>`,
     mov_contraparte: `<div class="card"><div style="font-weight:700;margin-bottom:10px">👥 Movimentação por Cliente/Fornecedor</div>
       <table><thead><tr><th>Cliente/Fornecedor</th><th style="text-align:right">Entradas</th><th style="text-align:right">Saídas</th></tr></thead><tbody>${linhasContraparte}</tbody></table></div>`,
     investimentos: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📈 Rentabilidade — Investimentos e Previdência</div>
@@ -6735,7 +6807,7 @@ function htmlRelatorios(){
   };
 
   const CATS_TR = {
-    geral:      { label:'🌐 Geral',            cor:'var(--acc)', tipos:['resumo_graficos','fluxo_mensal','pareto_despesas','top_entradas','top_saidas','fluxo_categoria','mov_contraparte','investimentos','seguros'] },
+    geral:      { label:'🌐 Geral',            cor:'var(--acc)', tipos:['resumo_graficos','fluxo_mensal','pareto_despesas','top_entradas','top_saidas','fluxo_categoria','fluxo_centro_custo','mov_contraparte','investimentos','seguros'] },
     bancarias:  { label:'🏦 Contas Bancárias',  cor:'var(--blu)', tipos:['saldo_conta','extrato_conta','tarifas_conta'] },
     pagar:      { label:'📤 Contas a Pagar',    cor:'var(--red)', tipos:['pagar_periodo','pagar_cc','pagar_fornecedor','cheques_emitidos'] },
     receber:    { label:'📥 Contas a Receber',  cor:'#3fb950',    tipos:['receber_periodo','receber_cc','receber_cliente'] },
@@ -6745,6 +6817,7 @@ function htmlRelatorios(){
   const rotulos = {
     resumo_graficos:'🧭 Resumo e Gráficos', fluxo_mensal:'📅 Fluxo Mensal', pareto_despesas:'📉 Pareto de Despesas',
     top_entradas:'🔝 Top Entradas', top_saidas:'🔝 Top Saídas', fluxo_categoria:'📊 Por Categoria',
+    fluxo_centro_custo:'🏷️ Por Centro de Custo',
     mov_contraparte:'👥 Por Cliente/Fornecedor', investimentos:'📈 Investimentos', seguros:'🛡️ Seguros',
     saldo_conta:'💰 Saldo por Conta', extrato_conta:'📄 Extrato (Conta/Período/Fornecedor)', tarifas_conta:'🏦 Tarifas Bancárias',
     pagar_periodo:'📅 Por Período', pagar_cc:'📤 Por Centro de Custo', pagar_fornecedor:'🏭 Por Fornecedor', cheques_emitidos:'✍️ Cheques Emitidos',
