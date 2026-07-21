@@ -1112,7 +1112,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.53';
+const VERSAO = 'v1.54';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2604,12 +2604,51 @@ function excluirCC(id){
 }
 
 function direcionamentoById(id){ return (DB.direcionamentos||[]).find(d=>d.id===id); }
+// Direcionamento é campo de TEXTO LIVRE nos lançamentos (nunca foi por ID) — pra
+// dar hierarquia sem migrar dado nenhum, o que fica gravado no lançamento passa a
+// ser o NOME COMPLETO ("Telasul: Obra X"), sugerido pelo datalist. Continua
+// aceitando texto livre digitado à mão normalmente, como sempre aceitou.
+function nomeCompletoDirecionamento(d){
+  if(!d) return '-';
+  if(!d.parentId) return d.nome;
+  const pai = direcionamentoById(d.parentId);
+  return pai ? `${pai.nome}: ${d.nome}` : d.nome;
+}
+function opcoesDirecionamentoPaiParaSelect(selId, excluirId){
+  return (DB.direcionamentos||[]).filter(d=>!d.parentId && d.id!==excluirId)
+    .sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))
+    .map(d=>`<option value="${d.id}"${d.id===selId?' selected':''}>${esc(d.nome)}</option>`).join('');
+}
+function aoMudarDirecionamentoPai(prefix){
+  const paiId = document.getElementById(prefix+'-pai')?.value||'';
+  const wrap = document.getElementById(prefix+'-pfpj-wrap');
+  if(paiId){
+    const pai = direcionamentoById(paiId);
+    if(pai){
+      const selPfpj = document.getElementById(prefix+'-pfpj'); if(selPfpj) selPfpj.value = pai.tipoPFPJ||'ambos';
+    }
+    if(wrap) wrap.style.display='none';
+  } else {
+    if(wrap) wrap.style.display='';
+  }
+}
 function novoDirecionamento(){
   AM('➕ Novo Direcionamento',`
     ${EH('e-drc')}
+    <div class="campo" style="margin-bottom:10px">
+      <label>Direcionamento-mãe (opcional)</label>
+      <div style="font-size:11px;color:var(--mut);margin-bottom:6px">Deixe em branco pra um direcionamento principal. Escolha um pra criar um SUB-direcionamento (ex: mãe "Telasul", sub "Obra X" → sugere "Telasul: Obra X").</div>
+      <select id="drc-pai" onchange="aoMudarDirecionamentoPai('drc')">
+        <option value="">— Nenhum (direcionamento principal) —</option>
+        ${opcoesDirecionamentoPaiParaSelect()}
+      </select>
+    </div>
     <div class="row">
       ${C('Nome *',`<input id="drc-nome" placeholder="Ex: Obra X, Setor Y...">`,'2','200')}
-      ${C('PF ou PJ *',campoPFPJ('drc-pfpj'),'1','160')}
+      <div class="campo" id="drc-pfpj-wrap" style="flex:1;min-width:160px;margin-bottom:10px">
+        <label>PF ou PJ *</label>
+        ${campoPFPJ('drc-pfpj')}
+      </div>
     </div>
     ${C('Observações',`<input id="drc-obs" placeholder="Opcional">`,'2','200')}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -2621,7 +2660,14 @@ function novoDirecionamento(){
 function salvarNovoDirecionamento(){
   const nome = document.getElementById('drc-nome').value.trim();
   if(!nome){ ME('e-drc','Informe o nome do direcionamento.'); return; }
-  const novo = {id:uid(), nome, tipoPFPJ:document.getElementById('drc-pfpj').value, obs:document.getElementById('drc-obs').value.trim()};
+  const parentId = document.getElementById('drc-pai')?.value||null;
+  const pai = parentId ? direcionamentoById(parentId) : null;
+  const novo = {
+    id:uid(), nome,
+    tipoPFPJ: pai ? (pai.tipoPFPJ||'ambos') : document.getElementById('drc-pfpj').value,
+    parentId: parentId||null,
+    obs:document.getElementById('drc-obs').value.trim()
+  };
   salvar({...DB, direcionamentos:[...(DB.direcionamentos||[]), novo]});
   FM();
 }
@@ -2629,9 +2675,19 @@ function editarDirecionamento(id){
   const d = direcionamentoById(id); if(!d) return;
   AM('✏ Editar Direcionamento',`
     ${EH('e-drc-ed')}
+    <div class="campo" style="margin-bottom:10px">
+      <label>Direcionamento-mãe (opcional)</label>
+      <select id="edrc-pai" onchange="aoMudarDirecionamentoPai('edrc')">
+        <option value="">— Nenhum (direcionamento principal) —</option>
+        ${opcoesDirecionamentoPaiParaSelect(d.parentId, id)}
+      </select>
+    </div>
     <div class="row">
       ${C('Nome *',`<input id="edrc-nome" value="${esc(d.nome)}">`,'2','200')}
-      ${C('PF ou PJ *',campoPFPJ('edrc-pfpj', d.tipoPFPJ),'1','160')}
+      <div class="campo" id="edrc-pfpj-wrap" style="flex:1;min-width:160px;margin-bottom:10px;${d.parentId?'display:none':''}">
+        <label>PF ou PJ *</label>
+        ${campoPFPJ('edrc-pfpj', d.tipoPFPJ)}
+      </div>
     </div>
     ${C('Observações',`<input id="edrc-obs" value="${esc(d.obs||'')}">`,'2','200')}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -2644,20 +2700,36 @@ function editarDirecionamento(id){
 function salvarEdicaoDirecionamento(id){
   const nome = document.getElementById('edrc-nome').value.trim();
   if(!nome){ ME('e-drc-ed','Informe o nome.'); return; }
+  const parentId = document.getElementById('edrc-pai')?.value||null;
+  if(parentId===id){ ME('e-drc-ed','Um direcionamento não pode ser mãe dele mesmo.'); return; }
+  const temFilhos = (DB.direcionamentos||[]).some(x=>x.parentId===id);
+  if(parentId && temFilhos){ ME('e-drc-ed','Este direcionamento já tem subdirecionamentos — não pode virar sub de outro (só 2 níveis são suportados).'); return; }
   const antigo = direcionamentoById(id);
-  const novoNome = nome;
-  let novoDb = {...DB, direcionamentos:(DB.direcionamentos||[]).map(d=>d.id===id?{...d,nome:novoNome,tipoPFPJ:document.getElementById('edrc-pfpj').value,obs:document.getElementById('edrc-obs').value.trim()}:d)};
-  // Se o nome mudou, atualiza também os lançamentos que já usam o nome antigo,
-  // pra não "quebrar" o vínculo do que já foi lançado (direcionamento é texto livre).
-  if(antigo && antigo.nome!==novoNome){
-    novoDb.lancamentos = (novoDb.lancamentos||[]).map(l=>l.direcionamento===antigo.nome?{...l,direcionamento:novoNome}:l);
+  const nomeCompletoAntigo = nomeCompletoDirecionamento(antigo);
+  const pai = parentId ? direcionamentoById(parentId) : null;
+  const atualizado = {
+    ...antigo, nome,
+    tipoPFPJ: pai ? (pai.tipoPFPJ||'ambos') : document.getElementById('edrc-pfpj').value,
+    parentId: parentId||null,
+    obs:document.getElementById('edrc-obs').value.trim()
+  };
+  const nomeCompletoNovo = nomeCompletoDirecionamento(atualizado);
+  let novoDb = {...DB, direcionamentos:(DB.direcionamentos||[]).map(d=>d.id===id?atualizado:d)};
+  // Se o nome completo mudou (renomeou a si mesma OU mudou de mãe), atualiza os
+  // lançamentos que já usam o nome completo antigo, pra não "quebrar" o vínculo
+  // do que já foi lançado (direcionamento é texto livre gravado por valor).
+  if(nomeCompletoAntigo!==nomeCompletoNovo){
+    novoDb.lancamentos = (novoDb.lancamentos||[]).map(l=>l.direcionamento===nomeCompletoAntigo?{...l,direcionamento:nomeCompletoNovo}:l);
   }
   salvar(novoDb);
   FM();
 }
 function excluirDirecionamento(id){
   const d = direcionamentoById(id); if(!d) return;
-  const emUso = (DB.lancamentos||[]).some(l=>l.direcionamento===d.nome);
+  const temFilhos = (DB.direcionamentos||[]).some(x=>x.parentId===id);
+  if(temFilhos){ ME('e-drc-ed','Este direcionamento tem subdirecionamentos — exclua ou mova os subdirecionamentos primeiro.'); return; }
+  const nomeCompleto = nomeCompletoDirecionamento(d);
+  const emUso = (DB.lancamentos||[]).some(l=>l.direcionamento===nomeCompleto);
   if(emUso){ ME('e-drc-ed','Este direcionamento já está em uso em lançamentos e não pode ser excluído. Você pode editá-lo se quiser só renomear.'); return; }
   CF('Excluir este direcionamento?', ()=>{ salvar({...DB, direcionamentos:(DB.direcionamentos||[]).filter(d=>d.id!==id)}); FM(); });
 }
@@ -3150,10 +3222,10 @@ function contrapartesPorTipoConta(tipo){
 }
 function direcionamentosExistentes(tipoConta){
   const vistos = new Set();
-  (DB.direcionamentos||[]).forEach(d=>{ if(d.nome && itemValidoParaPFPJ(d,tipoConta)) vistos.add(d.nome); });
+  (DB.direcionamentos||[]).forEach(d=>{ if(d.nome && itemValidoParaPFPJ(d,tipoConta)) vistos.add(nomeCompletoDirecionamento(d)); });
   // Texto livre já usado em lançamentos mas ainda não cadastrado formalmente
   // como Direcionamento — só entra no filtro se bater com o tipo de conta certo.
-  const nomesCadastrados = new Set((DB.direcionamentos||[]).map(d=>d.nome));
+  const nomesCadastrados = new Set((DB.direcionamentos||[]).map(d=>nomeCompletoDirecionamento(d)));
   const tipoContaId = {}; (DB.contas||[]).forEach(c=>{ tipoContaId[c.id]=c.tipo; });
   (DB.lancamentos||[]).forEach(l=>{
     if(!l.direcionamento || nomesCadastrados.has(l.direcionamento)) return;
@@ -6939,10 +7011,13 @@ function htmlCadastros(){
       <div style="font-size:11px;color:var(--mut);margin:-6px 0 12px">Centros indentados com "—" são sub-centros.</div>
       <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='direcionamentos'){
-    const linhas = (DB.direcionamentos||[]).slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(d=>`<tr><td>${esc(d.nome)}</td><td>${badgePFPJ(d.tipoPFPJ)}</td><td>${esc(d.obs||'-')}</td><td>${B('✏','editarDirecionamento(\''+d.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum direcionamento cadastrado</td></tr>';
+    const linhaDrc = (d, subN) => `<tr${subN?' style="background:var(--bg)"':''}><td>${subN?'&nbsp;&nbsp;— ':''}${esc(d.nome)}</td><td>${badgePFPJ(d.tipoPFPJ)}</td><td>${esc(d.obs||'-')}</td><td>${B('✏','editarDirecionamento(\''+d.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
+    const paisDrc = (DB.direcionamentos||[]).filter(d=>!d.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    const filhosDeDrc = pid => (DB.direcionamentos||[]).filter(d=>d.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    const linhas = paisDrc.map(p=>linhaDrc(p,false)+filhosDeDrc(p.id).map(f=>linhaDrc(f,true)).join('')).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum direcionamento cadastrado</td></tr>';
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Novo Direcionamento','novoDirecionamento()','var(--acc)')}</div>
-      <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Direcionamentos cadastrados aqui aparecem como sugestão no campo "Direcionamento" dos Lançamentos (ex: Obra X, Setor Y).</div>
+      <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Direcionamentos cadastrados aqui aparecem como sugestão no campo "Direcionamento" dos Lançamentos (ex: Obra X, Setor Y). Direcionamentos indentados com "—" são subdirecionamentos — a sugestão vem no formato "Mãe: Sub".</div>
       <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='fornecedores'){
     const linhas = (DB.fornecedores||[]).map(f=>`<tr>
