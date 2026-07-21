@@ -27,6 +27,116 @@ function b64ParaTextoUtf8(b64){
 function getToken(){ return localStorage.getItem('tsr_gh_token') || ''; }
 function setToken(t){ localStorage.setItem('tsr_gh_token', t); }
 
+// ══════════════════════════════════════════
+// CADASTRO ÚNICO (Categoria / Centro de Custo / Direcionamento)
+// Vive em cadastros-pf.json e cadastros-pj.json neste mesmo repo —
+// NÃO em dados.json. É a mesma fonte usada por Cartões PF/PJ, pra
+// padronizar os lançamentos que se integram entre os sistemas.
+// ══════════════════════════════════════════
+const GH_CADASTRO_PF_FILE = 'cadastros-pf.json';
+const GH_CADASTRO_PJ_FILE = 'cadastros-pj.json';
+function ghCadastroApi(file){ return `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${file}`; }
+
+let _cadastroSha = { pf:null, pj:null };
+let CADASTRO_PF = {categorias:[],centrosCusto:[],direcionamentos:[]};
+let CADASTRO_PJ = {categorias:[],centrosCusto:[],direcionamentos:[]};
+
+async function ghCadastroCarregar(pfpj){
+  const file = pfpj==='pf' ? GH_CADASTRO_PF_FILE : GH_CADASTRO_PJ_FILE;
+  try{
+    const r = await fetch(ghCadastroApi(file), { headers:{ 'Authorization': `token ${getToken()}`, 'Accept': 'application/vnd.github.v3+json' } });
+    if(!r.ok){
+      if(r.status===404) return {categorias:[],centrosCusto:[],direcionamentos:[]};
+      throw new Error('HTTP '+r.status);
+    }
+    const j = await r.json();
+    _cadastroSha[pfpj] = j.sha;
+    let dados;
+    if(!j.content || j.content.trim()===''){
+      const r2 = await fetch(j.download_url);
+      dados = await r2.json();
+    } else {
+      dados = JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
+    }
+    return dados;
+  }catch(e){
+    console.error('Erro ao carregar cadastro único ('+pfpj+')', e);
+    return {categorias:[],centrosCusto:[],direcionamentos:[]};
+  }
+}
+
+async function ghCadastroSalvar(pfpj, dados){
+  const file = pfpj==='pf' ? GH_CADASTRO_PF_FILE : GH_CADASTRO_PJ_FILE;
+  // Busca o SHA mais recente antes de gravar (outro sistema — Cartões PF/PJ —
+  // pode ter alterado esse arquivo enquanto este app estava aberto).
+  let sha = _cadastroSha[pfpj];
+  try{
+    const rCheck = await fetch(ghCadastroApi(file), { headers:{ 'Authorization': `token ${getToken()}`, 'Accept': 'application/vnd.github.v3+json' } });
+    if(rCheck.ok){ const jCheck = await rCheck.json(); sha = jCheck.sha; }
+  }catch(e){}
+  const conteudo = btoa(unescape(encodeURIComponent(JSON.stringify(dados, null, 2))));
+  const body = { message:'Atualiza '+file+' via TesourariaSys', content:conteudo };
+  if(sha) body.sha = sha;
+  const r = await fetch(ghCadastroApi(file), {
+    method:'PUT',
+    headers:{ 'Authorization': `token ${getToken()}`, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
+    body: JSON.stringify(body)
+  });
+  if(!r.ok){ throw new Error('Falha ao salvar '+file+': HTTP '+r.status); }
+  const j = await r.json();
+  _cadastroSha[pfpj] = j.content.sha;
+  return dados;
+}
+
+// Carrega os dois arquivos, marca cada item com tipoPFPJ (se ainda não tiver —
+// os itens "de sistema" já vêm com tipoPFPJ:'ambos' fixo no próprio arquivo) e
+// popula DB.categorias/centrosCusto/direcionamentos (usados por todo o resto
+// do app, sem precisar mudar mais nada nas telas/relatórios).
+async function carregarCadastrosUnicos(){
+  const [pf, pj] = await Promise.all([ ghCadastroCarregar('pf'), ghCadastroCarregar('pj') ]);
+  CADASTRO_PF = pf; CADASTRO_PJ = pj;
+  aplicarCadastrosUnicosNaDB();
+  try{ localStorage.setItem('tsr_cadastro_bkp', JSON.stringify({pf:CADASTRO_PF, pj:CADASTRO_PJ})); }catch(e){}
+}
+
+function carregarCadastrosUnicosOffline(){
+  try{
+    const bkp = JSON.parse(localStorage.getItem('tsr_cadastro_bkp')||'null');
+    if(!bkp) return;
+    CADASTRO_PF = bkp.pf||{categorias:[],centrosCusto:[],direcionamentos:[]};
+    CADASTRO_PJ = bkp.pj||{categorias:[],centrosCusto:[],direcionamentos:[]};
+    aplicarCadastrosUnicosNaDB();
+  }catch(e){}
+}
+
+function aplicarCadastrosUnicosNaDB(){
+  const marcar = (lista, padrao) => (lista||[]).map(i => ({...i, tipoPFPJ: i.tipoPFPJ || padrao}));
+  DB.categorias       = [...marcar(CADASTRO_PF.categorias,'PF'),       ...marcar(CADASTRO_PJ.categorias,'PJ')];
+  DB.centrosCusto      = [...marcar(CADASTRO_PF.centrosCusto,'PF'),     ...marcar(CADASTRO_PJ.centrosCusto,'PJ')];
+  DB.direcionamentos  = [...marcar(CADASTRO_PF.direcionamentos,'PF'),  ...marcar(CADASTRO_PJ.direcionamentos,'PJ')];
+}
+
+// Grava um item (categoria / centro de custo / direcionamento) no(s)
+// arquivo(s) certo(s) — PF, PJ, ou os dois quando tipoPFPJ==='ambos'.
+// 'campo' é 'categorias' | 'centrosCusto' | 'direcionamentos'.
+async function salvarItemCadastroUnico(campo, item, exclusao){
+  const alvos = item.tipoPFPJ==='ambos' ? ['pf','pj'] : [item.tipoPFPJ==='PF' ? 'pf' : 'pj'];
+  for(const alvo of alvos){
+    const cad = await ghCadastroCarregar(alvo);
+    let lista = cad[campo]||[];
+    if(exclusao){
+      lista = lista.filter(x=>x.id!==item.id);
+    } else {
+      const idx = lista.findIndex(x=>x.id===item.id);
+      if(idx>=0) lista[idx]=item; else lista.push(item);
+    }
+    cad[campo]=lista;
+    await ghCadastroSalvar(alvo, cad);
+  }
+  await carregarCadastrosUnicos();
+}
+
+
 let _sha = null;
 let _shaAtual = null;
 
@@ -122,6 +232,7 @@ async function aplicarResolucaoConflito(opcao){
   }
   delete window._conflitoFilaDb;
   delete window._conflitoDadosRemotos;
+  aplicarCadastrosUnicosNaDB();
   renderAba();
   setTimeout(()=>{ document.getElementById('status').style.display='none'; },4000);
 }
@@ -188,6 +299,7 @@ async function ghSalvar(db, pularMesclagem){
       setUltimoSha(res.content.sha);
       limparFilaPendente();
       DB = db;
+      aplicarCadastrosUnicosNaDB(); // repõe categorias/CC/direcionamentos (não gravados em dados.json)
       setStatus('ok','✅ Salvo na nuvem');
     } else {
       setFilaPendente(db);
@@ -310,45 +422,13 @@ async function seedInicial(){
     for(let i=1;i<=6;i++) DB.contas.push({id:uid(),tipo:'PF',titular:`Conta PF ${i}`,banco:'',agencia:'',conta:'',saldoInicial:0,dataSaldoInicial:hoje(),ativa:true,obs:''});
     for(let i=1;i<=4;i++) DB.contas.push({id:uid(),tipo:'PJ',titular:`Conta PJ ${i}`,banco:'',agencia:'',conta:'',saldoInicial:0,dataSaldoInicial:hoje(),ativa:true,obs:''});
   }
-  if(!DB.categorias||DB.categorias.length===0){
-    DB.categorias = [
-      {id:uid(),tipo:'receita',nome:'Vendas / Recebimentos'},
-      {id:uid(),tipo:'receita',nome:'Rendimentos Financeiros'},
-      {id:uid(),tipo:'receita',nome:'Outras Receitas'},
-      {id:uid(),tipo:'despesa',nome:'Fornecedores'},
-      {id:uid(),tipo:'despesa',nome:'Salários e Encargos'},
-      {id:uid(),tipo:'despesa',nome:'Impostos e Taxas'},
-      {id:uid(),tipo:'despesa',nome:'Tarifas Bancárias'},
-      {id:uid(),tipo:'despesa',nome:'Aluguel'},
-      {id:uid(),tipo:'despesa',nome:'Manutenção'},
-      {id:uid(),tipo:'despesa',nome:'Outras Despesas'},
-      {id:uid(),tipo:'despesa',nome:'Investimentos (Aporte)'},
-      {id:uid(),tipo:'despesa',nome:'Previdência (Aporte)'},
-      {id:uid(),tipo:'despesa',nome:'Capitalização (Parcela)'},
-      {id:uid(),tipo:'despesa',nome:'Seguros (Prêmio)'},
-      {id:uid(),tipo:'despesa',nome:'Fatura Cartão de Crédito'},
-    ];
-  }
-  if(!categoriaPorNome('Fatura Cartão de Crédito','despesa')){
-    DB.categorias.push({id:uid(),tipo:'despesa',nome:'Fatura Cartão de Crédito'});
-  }
-  if(!categoriaPorNome('Operação ChequeSys','despesa')){
-    DB.categorias.push({id:uid(),tipo:'despesa',nome:'Operação ChequeSys'});
-  }
-  if(!categoriaPorNome('Operação ChequeSys','receita')){
-    DB.categorias.push({id:uid(),tipo:'receita',nome:'Operação ChequeSys'});
-  }
   if(!DB.integracaoChequeSys){
     DB.integracaoChequeSys = { mapaContas:{}, contaPadrao:null, sincronizados:{} };
   }
-  if(!DB.centrosCusto||DB.centrosCusto.length===0){
-    DB.centrosCusto = [
-      {id:uid(),nome:'Telasul'},
-      {id:uid(),nome:'Construsul'},
-      {id:uid(),nome:'Administrativo'},
-      {id:uid(),nome:'Pessoal'},
-    ];
-  }
+  // Categoria / Centro de Custo / Direcionamento não são mais seedados aqui —
+  // vêm do cadastro único compartilhado (cadastros-pf.json / cadastros-pj.json),
+  // carregado logo abaixo.
+  if(isOnline()) await carregarCadastrosUnicos(); else carregarCadastrosUnicosOffline();
   if(!DB.lancamentos) DB.lancamentos = [];
   if(!DB.contasPagar) DB.contasPagar = [];
   if(!DB.contasReceber) DB.contasReceber = [];
@@ -772,6 +852,7 @@ async function verificarAtualizacaoRemota(){
       }
       try{ localStorage.setItem('tsr_bkp', JSON.stringify(novosDados)); }catch(e){}
       DB = novosDados;
+      aplicarCadastrosUnicosNaDB();
       renderAba();
       setStatus('ok', '🔄 Dados atualizados de outro dispositivo');
       setTimeout(()=>{ document.getElementById('status').style.display='none'; }, 4000);
@@ -952,7 +1033,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.60';
+const VERSAO = 'v1.61';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2330,7 +2411,7 @@ function novaCategoria(){
     </div>
   `);
 }
-function salvarNovaCategoria(){
+async function salvarNovaCategoria(){
   const nome = document.getElementById('cat-nome').value.trim();
   if(!nome){ ME('e-cat','Informe o nome da categoria.'); return; }
   const parentId = document.getElementById('cat-pai')?.value||null;
@@ -2342,8 +2423,9 @@ function salvarNovaCategoria(){
     parentId: parentId||null,
     centrosCustoIds:lerCCsMarcados()
   };
-  salvar({...DB, categorias:[...(DB.categorias||[]), nova]});
-  FM();
+  setStatus('saving','⏳ Salvando categoria...');
+  await salvarItemCadastroUnico('categorias', nova, false);
+  FM(); renderAba();
 }
 function editarCategoria(id){
   const c = categoriaById(id); if(!c) return;
@@ -2374,30 +2456,33 @@ function editarCategoria(id){
     </div>
   `);
 }
-function salvarEdicaoCategoria(id){
+async function salvarEdicaoCategoria(id){
   const nome = document.getElementById('ecat-nome').value.trim();
   if(!nome){ ME('e-cat-ed','Informe o nome da categoria.'); return; }
   const parentId = document.getElementById('ecat-pai')?.value||null;
   if(parentId===id){ ME('e-cat-ed','Uma categoria não pode ser mãe dela mesma.'); return; }
-  // Não permite virar subcategoria se ela mesma já tiver subcategorias — manteria só 2 níveis
   const temFilhas = (DB.categorias||[]).some(x=>x.parentId===id);
   if(parentId && temFilhas){ ME('e-cat-ed','Esta categoria já tem subcategorias — não pode virar subcategoria de outra (só 2 níveis são suportados).'); return; }
   const pai = parentId ? categoriaById(parentId) : null;
-  salvar({...DB, categorias:(DB.categorias||[]).map(c=>c.id===id?{
+  const c = categoriaById(id);
+  const atualizada = {
     ...c, nome,
     tipo: pai ? pai.tipo : document.getElementById('ecat-tipo').value,
     tipoPFPJ: pai ? (pai.tipoPFPJ||'ambos') : document.getElementById('ecat-pfpj').value,
     parentId: parentId||null,
     centrosCustoIds:lerCCsMarcados()
-  }:c)});
-  FM();
+  };
+  setStatus('saving','⏳ Salvando categoria...');
+  await salvarItemCadastroUnico('categorias', atualizada, false);
+  FM(); renderAba();
 }
 function excluirCategoria(id){
   const emUso = (DB.lancamentos||[]).some(l=>l.categoriaId===id) || (DB.contasPagar||[]).some(cp=>cp.categoriaId===id);
   if(emUso){ ME('e-cat-ed','Esta categoria já está em uso em lançamentos ou contas a pagar e não pode ser excluída.'); return; }
   const temFilhas = (DB.categorias||[]).some(c=>c.parentId===id);
   if(temFilhas){ ME('e-cat-ed','Esta categoria tem subcategorias — exclua ou mova as subcategorias primeiro.'); return; }
-  CF('Excluir esta categoria?', ()=>{ salvar({...DB, categorias:(DB.categorias||[]).filter(c=>c.id!==id)}); FM(); });
+  const c = categoriaById(id);
+  CF('Excluir esta categoria?', async ()=>{ setStatus('saving','⏳ Excluindo...'); await salvarItemCadastroUnico('categorias', c, true); FM(); renderAba(); });
 }
 
 function novoCentroCusto(){
@@ -2425,7 +2510,7 @@ function novoCentroCusto(){
     </div>
   `);
 }
-function salvarNovoCC(){
+async function salvarNovoCC(){
   const nome = document.getElementById('cc-nome').value.trim();
   if(!nome){ ME('e-cc','Informe o nome do centro de custo.'); return; }
   const parentId = document.getElementById('cc-pai')?.value||null;
@@ -2436,8 +2521,9 @@ function salvarNovoCC(){
     parentId: parentId||null,
     obs:document.getElementById('cc-obs').value.trim()
   };
-  salvar({...DB, centrosCusto:[...(DB.centrosCusto||[]), novo]});
-  FM();
+  setStatus('saving','⏳ Salvando centro de custo...');
+  await salvarItemCadastroUnico('centrosCusto', novo, false);
+  FM(); renderAba();
 }
 function editarCentroCusto(id){
   const cc = centroCustoById(id); if(!cc) return;
@@ -2465,7 +2551,7 @@ function editarCentroCusto(id){
     </div>
   `);
 }
-function salvarEdicaoCC(id){
+async function salvarEdicaoCC(id){
   const nome = document.getElementById('ecc-nome').value.trim();
   if(!nome){ ME('e-cc-ed','Informe o nome.'); return; }
   const parentId = document.getElementById('ecc-pai')?.value||null;
@@ -2473,20 +2559,23 @@ function salvarEdicaoCC(id){
   const temFilhos = (DB.centrosCusto||[]).some(x=>x.parentId===id);
   if(parentId && temFilhos){ ME('e-cc-ed','Este centro de custo já tem sub-centros — não pode virar sub-centro de outro (só 2 níveis são suportados).'); return; }
   const pai = parentId ? centroCustoById(parentId) : null;
-  salvar({...DB, centrosCusto:(DB.centrosCusto||[]).map(c=>c.id===id?{
-    ...c, nome,
+  const atualizado = {
+    ...cc, nome,
     tipoPFPJ: pai ? (pai.tipoPFPJ||'ambos') : document.getElementById('ecc-pfpj').value,
     parentId: parentId||null,
     obs:document.getElementById('ecc-obs').value.trim()
-  }:c)});
-  FM();
+  };
+  setStatus('saving','⏳ Salvando centro de custo...');
+  await salvarItemCadastroUnico('centrosCusto', atualizado, false);
+  FM(); renderAba();
 }
 function excluirCC(id){
   const emUso = (DB.lancamentos||[]).some(l=>l.centroCustoId===id) || (DB.contasPagar||[]).some(cp=>cp.centroCustoId===id);
   if(emUso){ ME('e-cc-ed','Este centro de custo já está em uso e não pode ser excluído.'); return; }
   const temFilhos = (DB.centrosCusto||[]).some(c=>c.parentId===id);
   if(temFilhos){ ME('e-cc-ed','Este centro de custo tem sub-centros — exclua ou mova os sub-centros primeiro.'); return; }
-  CF('Excluir este centro de custo?', ()=>{ salvar({...DB, centrosCusto:(DB.centrosCusto||[]).filter(c=>c.id!==id)}); FM(); });
+  const cc = centroCustoById(id);
+  CF('Excluir este centro de custo?', async ()=>{ setStatus('saving','⏳ Excluindo...'); await salvarItemCadastroUnico('centrosCusto', cc, true); FM(); renderAba(); });
 }
 
 function direcionamentoById(id){ return (DB.direcionamentos||[]).find(d=>d.id===id); }
@@ -2509,6 +2598,10 @@ let _direcMigrado = false;
 // correspondente se ainda não existir). O campo de texto continua sendo
 // atualizado igual antes, então relatórios/filtros antigos não quebram.
 function migrarDirecionamentosParaId(){
+  // Superada pelo cadastro único (cadastros-pf.json/cadastros-pj.json) — a
+  // partir daqui, direcionamento de lançamento antigo sem ID fica em branco
+  // e é reclassificado manualmente, por decisão do Fabio (21/07/2026).
+  return;
   if(_direcMigrado) return;
   _direcMigrado = true;
   let direcionamentos = DB.direcionamentos||[];
@@ -2582,7 +2675,7 @@ function novoDirecionamento(){
     </div>
   `);
 }
-function salvarNovoDirecionamento(){
+async function salvarNovoDirecionamento(){
   const nome = document.getElementById('drc-nome').value.trim();
   if(!nome){ ME('e-drc','Informe o nome do direcionamento.'); return; }
   const parentId = document.getElementById('drc-pai')?.value||null;
@@ -2593,8 +2686,9 @@ function salvarNovoDirecionamento(){
     parentId: parentId||null,
     obs:document.getElementById('drc-obs').value.trim()
   };
-  salvar({...DB, direcionamentos:[...(DB.direcionamentos||[]), novo]});
-  FM();
+  setStatus('saving','⏳ Salvando direcionamento...');
+  await salvarItemCadastroUnico('direcionamentos', novo, false);
+  FM(); renderAba();
 }
 function editarDirecionamento(id){
   const d = direcionamentoById(id); if(!d) return;
@@ -2622,7 +2716,7 @@ function editarDirecionamento(id){
     </div>
   `);
 }
-function salvarEdicaoDirecionamento(id){
+async function salvarEdicaoDirecionamento(id){
   const nome = document.getElementById('edrc-nome').value.trim();
   if(!nome){ ME('e-drc-ed','Informe o nome.'); return; }
   const parentId = document.getElementById('edrc-pai')?.value||null;
@@ -2639,15 +2733,17 @@ function salvarEdicaoDirecionamento(id){
     obs:document.getElementById('edrc-obs').value.trim()
   };
   const nomeCompletoNovo = nomeCompletoDirecionamento(atualizado);
-  let novoDb = {...DB, direcionamentos:(DB.direcionamentos||[]).map(d=>d.id===id?atualizado:d)};
+  setStatus('saving','⏳ Salvando direcionamento...');
+  await salvarItemCadastroUnico('direcionamentos', atualizado, false);
   // Se o nome completo mudou (renomeou a si mesma OU mudou de mãe), atualiza os
   // lançamentos que já usam o nome completo antigo, pra não "quebrar" o vínculo
   // do que já foi lançado (direcionamento é texto livre gravado por valor).
   if(nomeCompletoAntigo!==nomeCompletoNovo){
-    novoDb.lancamentos = (novoDb.lancamentos||[]).map(l=>l.direcionamento===nomeCompletoAntigo?{...l,direcionamento:nomeCompletoNovo}:l);
+    const lancamentos = (DB.lancamentos||[]).map(l=>l.direcionamento===nomeCompletoAntigo?{...l,direcionamento:nomeCompletoNovo}:l);
+    salvar({...DB, lancamentos});
+  } else {
+    FM(); renderAba();
   }
-  salvar(novoDb);
-  FM();
 }
 function excluirDirecionamento(id){
   const d = direcionamentoById(id); if(!d) return;
@@ -2656,7 +2752,7 @@ function excluirDirecionamento(id){
   const nomeCompleto = nomeCompletoDirecionamento(d);
   const emUso = (DB.lancamentos||[]).some(l=>l.direcionamento===nomeCompleto);
   if(emUso){ ME('e-drc-ed','Este direcionamento já está em uso em lançamentos e não pode ser excluído. Você pode editá-lo se quiser só renomear.'); return; }
-  CF('Excluir este direcionamento?', ()=>{ salvar({...DB, direcionamentos:(DB.direcionamentos||[]).filter(d=>d.id!==id)}); FM(); });
+  CF('Excluir este direcionamento?', async ()=>{ setStatus('saving','⏳ Excluindo...'); await salvarItemCadastroUnico('direcionamentos', d, true); FM(); renderAba(); });
 }
 
 // ══════════════════════════════════════════
@@ -2781,7 +2877,7 @@ function excluirCliente(id){
 // ══════════════════════════════════════════
 // SALVAR (persistência central)
 // ══════════════════════════════════════════
-function salvar(novo){ DB=novo; ghSalvar(DB); renderAba(); }
+function salvar(novo){ DB=novo; ghSalvar({...DB, categorias:undefined, centrosCusto:undefined, direcionamentos:undefined}); renderAba(); }
 
 function opcoesContas(selId){
   return (DB.contas||[]).filter(c=>c.ativa!==false).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
