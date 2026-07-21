@@ -898,14 +898,20 @@ function iniciarApp(){
 // NAVEGAÇÃO
 // ══════════════════════════════════════════
 let ABA='dashboard';
-let _abaAnterior = 'dashboard';
+let _historicoAbas = [];
 function irPara(id){
-  _abaAnterior = ABA;
+  if(id!==ABA) _historicoAbas.push(ABA);
   ABA=id; initNav(); renderAba();
   const btnBack = document.querySelector('.fab-back');
   if(btnBack) btnBack.style.display = (id==='dashboard')?'none':'flex';
 }
-function voltarPagina(){ irPara(_abaAnterior==='dashboard'?'dashboard':_abaAnterior); }
+function voltarPagina(){
+  const anterior = _historicoAbas.pop();
+  ABA = anterior!==undefined ? anterior : 'dashboard';
+  initNav(); renderAba();
+  const btnBack = document.querySelector('.fab-back');
+  if(btnBack) btnBack.style.display = (ABA==='dashboard')?'none':'flex';
+}
 function initNav(){
   const abasVis = [
     {id:'dashboard',    r:'📊 Dashboard'},
@@ -945,7 +951,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.57';
+const VERSAO = 'v1.58';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3312,17 +3318,21 @@ function editarLancamento(id){
   AM('✏ Editar Lançamento',`
     ${EH('e-lanc-ed')}
     <div class="row">
-      ${C('Conta *',`<select id="elc-conta" onchange="atualizarSugestoesConta('elc')">${opcoesContas(l.contaId)}</select>`,'2','200')}
+      ${C('<span id="elc-conta-label">Conta *</span>',`<select id="elc-conta" onchange="atualizarSugestoesConta('elc')">${opcoesContas(l.contaId)}</select>`,'2','200')}
       ${C('Data *',`<input type="date" id="elc-data" value="${l.data}">`,'1','150')}
     </div>
-    <div class="row">
-      ${C('Tipo *',`<select id="elc-tipo" onchange="atualizarSugestoesConta('elc');atualizarLabelRecorrencia('elc')"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select>`,'1','140')}
-      ${C('Valor (R$) *',`<input id="elc-valor" value="${fmt(l.valor)}">`,'1','150')}
+    <div class="row" id="elc-destino-wrap" style="display:none">
+      ${C('Conta Destino *',`<select id="elc-conta-destino">${opcoesContas()}</select>`,'2','200')}
     </div>
     <div class="row">
+      ${C('Tipo *',`<select id="elc-tipo" onchange="atualizarSugestoesConta('elc');atualizarLabelRecorrencia('elc');atualizarUITipoLancamento('elc')"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option><option value="transferencia">🔀 Transferência</option></select>`,'1','140')}
+      ${C('Valor (R$) *',`<input id="elc-valor" value="${fmt(l.valor)}">`,'1','150')}
+    </div>
+    <div class="row" id="elc-categoria-wrap">
       ${C('Categoria',`<select id="elc-categoria">${opcoesCategorias(l.tipo==='entrada'?'receita':'despesa',l.categoriaId)}</select>`,'1','180')}
       ${C('Centro de Custo',`<select id="elc-cc" onchange="atualizarSugestoesConta('elc')"><option value="">-</option>${opcoesCC(l.centroCustoId)}</select>`,'1','180')}
     </div>
+    <div style="font-size:11px;color:var(--mut);margin:-6px 0 10px">Escolher "🔀 Transferência" aqui substitui este lançamento por um par de Transferência entre as contas escolhidas (remove o lançamento único, cria origem + destino vinculados).</div>
     ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
       <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
     ${C('Direcionamento (opcional)',`<input id="elc-direcionamento" list="dl-direcionamentos-ed" value="${esc(l.direcionamento||'')}">
@@ -3331,7 +3341,7 @@ function editarLancamento(id){
       <datalist id="dl-descricoes-ed">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
     <div id="elc-tipo-info" style="font-size:11px;color:var(--mut);margin:-4px 0 8px"></div>
 
-    <div class="card" style="margin:10px 0;padding:10px;background:var(--sur)">
+    <div class="card" id="elc-recorrencia-wrap" style="margin:10px 0;padding:10px;background:var(--sur)">
       <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:700;font-size:13px">
         <input type="checkbox" id="elc-recorrente" onchange="document.getElementById('elc-recorrencia-opcoes').style.display=this.checked?'block':'none'">
         🔁 Replicar automaticamente em <span id="elc-rec-label">Contas a Receber</span>
@@ -3353,12 +3363,15 @@ function editarLancamento(id){
   `);
   atualizarSugestoesConta('elc');
   atualizarLabelRecorrencia('elc');
+  atualizarUITipoLancamento('elc');
 }
 function atualizarCatsLancamentoEd(){
   const tipo = document.getElementById('elc-tipo').value==='entrada'?'receita':'despesa';
   document.getElementById('elc-categoria').innerHTML = opcoesCategorias(tipo);
 }
 function salvarEdicaoLancamento(id){
+  const tipoSel = document.getElementById('elc-tipo').value;
+  if(tipoSel==='transferencia'){ salvarConversaoParaTransferencia(id); return; }
   const valor = parseValor(document.getElementById('elc-valor').value);
   if(!valor||valor<=0){ ME('e-lanc-ed','Informe um valor válido maior que zero.'); return; }
   const patch = {
@@ -3400,6 +3413,46 @@ function salvarEdicaoLancamento(id){
     else novoDB = {...novoDB, contasReceber:[...(DB.contasReceber||[]), ...novasContas]};
   }
 
+  salvar(novoDB);
+  FM();
+}
+// Converte um lançamento comum (entrada/saída) que estava sendo editado em
+// uma Transferência entre contas — remove o lançamento original e cria o par
+// origem+destino vinculados, mesmo padrão de salvarNovaTransferencia().
+function salvarConversaoParaTransferencia(id){
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
+  const contaOrigemId = document.getElementById('elc-conta').value;
+  const contaDestinoId = document.getElementById('elc-conta-destino').value;
+  const valor = parseValor(document.getElementById('elc-valor').value);
+  const data = document.getElementById('elc-data').value||hoje();
+  const descricao = document.getElementById('elc-desc').value.trim();
+  const direcionamento = document.getElementById('elc-direcionamento').value.trim();
+  const centroCustoId = document.getElementById('elc-cc').value||'';
+  if(!contaOrigemId){ ME('e-lanc-ed','Selecione a conta de origem.'); return; }
+  if(!contaDestinoId){ ME('e-lanc-ed','Selecione a conta de destino.'); return; }
+  if(contaOrigemId===contaDestinoId){ ME('e-lanc-ed','A conta de origem e a conta de destino não podem ser a mesma.'); return; }
+  if(!valor||valor<=0){ ME('e-lanc-ed','Informe um valor válido maior que zero.'); return; }
+  const transferenciaId = uid();
+  const nomeOrigem = nomeConta(contaById(contaOrigemId));
+  const nomeDestino = nomeConta(contaById(contaDestinoId));
+  const agora = new Date().toISOString();
+  const saida = {
+    id:uid(), contaId:contaOrigemId, data, tipo:'saida', valor,
+    categoriaId:'', centroCustoId,
+    contraparte:'', direcionamento,
+    descricao: descricao || `Transferência para ${nomeDestino}`,
+    origem:'transferencia', transferenciaId, contaVinculadaId:contaDestinoId, contaPagarId:null,
+    criadoEm: agora
+  };
+  const entrada = {
+    id:uid(), contaId:contaDestinoId, data, tipo:'entrada', valor,
+    categoriaId:'', centroCustoId,
+    contraparte:'', direcionamento,
+    descricao: descricao || `Transferência de ${nomeOrigem}`,
+    origem:'transferencia', transferenciaId, contaVinculadaId:contaOrigemId, contaPagarId:null,
+    criadoEm: agora
+  };
+  const novoDB = {...DB, lancamentos:[...(DB.lancamentos||[]).filter(x=>x.id!==id), saida, entrada]};
   salvar(novoDB);
   FM();
 }

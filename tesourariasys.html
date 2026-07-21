@@ -105,7 +105,8 @@
 
 <!-- ====== SEÇÃO: MODAL_CONFIRMACAO - INÍCIO ====== -->
 <div class="overlay" id="ov-cf">
-  <div class="card" style="max-width:360px;width:100%;text-align:center;padding:24px">
+  <div class="card" style="max-width:360px;width:100%;text-align:center;padding:24px;position:relative">
+    <button type="button" onclick="FCF()" title="Fechar" style="position:absolute;top:10px;right:10px;background:var(--bor);color:var(--txt);padding:3px 9px;font-size:11px">✕</button>
     <div style="font-size:14px;font-weight:700;margin-bottom:20px" id="cf-msg"></div>
     <div class="row" style="justify-content:center;gap:10px">
       <button type="button" id="cf-sim" style="background:var(--red);color:#fff;padding:8px 18px">Sim, confirmar</button>
