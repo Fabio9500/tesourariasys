@@ -1033,7 +1033,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.61';
+const VERSAO = 'v1.62';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1265,7 +1265,7 @@ function saldoConta(contaId){
   const c = contaById(contaId); if(!c) return 0;
   const movs = lancamentosDaConta(contaId);
   let saldo = Number(c.saldoInicial||0);
-  movs.forEach(l=>{ saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
+  movs.forEach(l=>{ if(l.status==='nulo') return; saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
   return saldo;
 }
 // Reconstrução histórica: saldo da conta como ele ERA no fim de uma data passada
@@ -1276,7 +1276,7 @@ function saldoContaAteData(contaId, dataLimite){
   const c = contaById(contaId); if(!c) return 0;
   const movs = lancamentosDaConta(contaId).filter(l=>l.data<=dataLimite);
   let saldo = Number(c.saldoInicial||0);
-  movs.forEach(l=>{ saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
+  movs.forEach(l=>{ if(l.status==='nulo') return; saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
   return saldo;
 }
 function saldoTotalGeralAteData(dataLimite){
@@ -5332,25 +5332,77 @@ function limparFiltroLanc(){
 let _ctxLancId = null;
 // Ações ficam num array de funções (não em string de onclick) — evita quebrar o
 // HTML quando contraparte/direcionamento tiverem aspas ou caracteres especiais.
+function badgeStatusLancamento(l){
+  if(l.status==='C') return ' <span title="Compensado" style="font-size:10px;font-weight:800;color:#f0a500;border:1px solid #f0a500;border-radius:3px;padding:0 3px;margin-left:4px">C</span>';
+  if(l.status==='R') return ' <span title="Reconciliado" style="font-size:10px;font-weight:800;color:#3fb950;border:1px solid #3fb950;border-radius:3px;padding:0 3px;margin-left:4px">R</span>';
+  if(l.status==='nulo') return ' <span title="Nulo — não conta no saldo" style="font-size:10px;font-weight:800;color:var(--mut);border:1px solid var(--bor);border-radius:3px;padding:0 3px;margin-left:4px">NULO</span>';
+  return '';
+}
 function abrirMenuLancamento(ev, id){
   ev.preventDefault(); ev.stopPropagation();
   const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return false;
   _ctxLancId = id;
   const cat = categoriaById(l.categoriaId);
+  const catMae = cat ? (cat.parentId ? categoriaById(cat.parentId) : cat) : null;
   const cc = centroCustoById(l.centroCustoId);
+  const ccMae = cc ? (cc.parentId ? centroCustoById(cc.parentId) : cc) : null;
+  const direcPartes = (l.direcionamento||'').split(':').map(s=>s.trim()).filter(Boolean);
+  const direcMaeNome = direcPartes[0]||'';
+  const direcTemSub = direcPartes.length>1;
+  // Na página de Extratos, os "Ir para" filtram e ficam na própria tela
+  // (igual ao Money); nas demais telas que usam esse mesmo menu, abrem o
+  // Relatório Flexível filtrado.
+  const naExtratos = ABA==='relatorios' && RLT.tipo==='extrato_conta';
+  const irPara_ = (campo, valor) => {
+    fecharMenuLancamento();
+    if(naExtratos){
+      if(campo==='contraparte') filtrarExtratoPorFornecedor(valor);
+      else if(campo==='categoriaId') filtrarExtratoPorCategoria(valor);
+      else if(campo==='centroCustoId') filtrarExtratoPorCentroCusto(valor);
+      else if(campo==='direcionamento') filtrarExtratoPorDirecionamento(valor);
+    } else {
+      irParaFiltroFRF(campo, valor);
+    }
+  };
+
   const acoes = [];
   acoes.push({label:'✏ Editar', fn:()=>{ fecharMenuLancamento(); editarLancamento(id); }});
-  if(l.contraparte) acoes.push({label:`👉 Ir para Cliente/Fornecedor: ${l.contraparte}`, fn:()=>irParaFiltroFRF('contraparte', l.contraparte)});
-  if(cat) acoes.push({label:`👉 Ir para Categoria: ${nomeCompletoCategoria(cat)}`, fn:()=>irParaFiltroFRF('categoriaId', cat.id)});
-  if(cc) acoes.push({label:`👉 Ir para Centro de Custo: ${nomeCompletoCentroCusto(cc)}`, fn:()=>irParaFiltroFRF('centroCustoId', cc.id)});
-  if(l.direcionamento) acoes.push({label:`👉 Ir para Direcionamento: ${l.direcionamento}`, fn:()=>irParaFiltroFRF('direcionamento', l.direcionamento)});
+  if(l.contraparte) acoes.push({label:`👉 Ir para favorecido: ${l.contraparte}`, fn:()=>irPara_('contraparte', l.contraparte)});
+  if(catMae) acoes.push({label:`👉 Ir para categoria: ${catMae.nome}`, fn:()=>irPara_('categoriaId', catMae.id)});
+  if(cat && cat.parentId) acoes.push({label:`👉 Ir para subcategoria: ${cat.nome}`, fn:()=>irPara_('categoriaId', cat.id)});
+  if(ccMae) acoes.push({label:`👉 Ir para Centro de Custo: ${ccMae.nome}`, fn:()=>irPara_('centroCustoId', ccMae.id)});
+  if(cc && cc.parentId) acoes.push({label:`👉 Ir para Centro de Custo: ${nomeCompletoCentroCusto(cc)}`, fn:()=>irPara_('centroCustoId', cc.id)});
+  if(direcMaeNome) acoes.push({label:`👉 Ir para Direcionamento: ${direcMaeNome}`, fn:()=>irPara_('direcionamento', direcMaeNome)});
+  if(direcTemSub) acoes.push({label:`👉 Ir para Direcionamento: ${l.direcionamento}`, fn:()=>irPara_('direcionamento', l.direcionamento)});
+  acoes.push({sep:true});
+  acoes.push({label:'☑ Marcar como', submenu:[
+    {label:(!l.status?'● ':'○ ')+'Não reconciliado', fn:()=>marcarStatusLancamento(id,null)},
+    {label:(l.status==='C'?'● ':'○ ')+'Compensado (C)', fn:()=>marcarStatusLancamento(id,'C')},
+    {label:(l.status==='R'?'● ':'○ ')+'Reconciliado (R)', fn:()=>marcarStatusLancamento(id,'R')},
+    {label:(l.status==='nulo'?'● ':'○ ')+'Nulo', fn:()=>marcarStatusLancamento(id,'nulo')},
+  ]});
+  acoes.push({label:'⇄ Alterar tipo de transação para', submenu:[
+    {label:(l.tipo==='saida'?'● ':'○ ')+'Saída', fn:()=>alterarTipoLancamento(id,'saida')},
+    {label:(l.tipo==='entrada'?'● ':'○ ')+'Entrada', fn:()=>alterarTipoLancamento(id,'entrada')},
+    {label:(l.origem==='transferencia'?'● ':'○ ')+'Transferência', fn:()=>alterarTipoLancamento(id,'transferencia')},
+  ]});
+  acoes.push({sep:true});
+  acoes.push({label:'➕ Adicionar a Contas a pagar e depósitos...', fn:()=>{ fecharMenuLancamento(); adicionarContasAPagarDepositos(id); }});
+  acoes.push({label:'↪ Mover para conta...', fn:()=>{ fecharMenuLancamento(); moverLancamentoParaConta(id); }});
   acoes.push({sep:true});
   acoes.push({label:'🗑 Excluir', cor:'var(--red)', fn:()=>{ fecharMenuLancamento(); excluirLancamento(id); }});
+
   const menu = document.getElementById('ctx-menu-lanc');
-  menu.innerHTML = acoes.map((a,i)=> a.sep ? `<div class="ctxmenu-sep"></div>` : `<div class="ctxmenu-item" data-idx="${i}" style="${a.cor?`color:${a.cor}`:''}">${esc(a.label)}</div>`).join('');
+  menu.innerHTML = acoes.map((a,i)=> a.sep ? `<div class="ctxmenu-sep"></div>` : `<div class="ctxmenu-item" data-idx="${i}" style="${a.cor?`color:${a.cor}`:''}${a.submenu?';display:flex;justify-content:space-between;align-items:center':''}">${esc(a.label)}${a.submenu?' <span style="opacity:.6">▸</span>':''}</div>`).join('');
   menu.querySelectorAll('.ctxmenu-item').forEach(el=>{
-    el.addEventListener('click', (e)=>{ e.stopPropagation(); acoes[Number(el.dataset.idx)].fn(); });
+    const a = acoes[Number(el.dataset.idx)];
+    if(a.submenu){
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); abrirSubmenuCtx(el, a.submenu); });
+    } else {
+      el.addEventListener('click', (e)=>{ e.stopPropagation(); a.fn(); });
+    }
   });
+  fecharSubmenuCtx();
   menu.style.display = 'block';
   const x = Math.min(ev.clientX, window.innerWidth-260);
   const y = Math.min(ev.clientY, window.innerHeight-(acoes.length*34+20));
@@ -5358,9 +5410,139 @@ function abrirMenuLancamento(ev, id){
   menu.style.top = Math.max(4,y)+'px';
   return false;
 }
+// Submenu flyout (usado por "Marcar como" e "Alterar tipo de transação para") —
+// mesmo estilo visual do menu principal, posicionado à direita do item clicado.
+function abrirSubmenuCtx(parentEl, submenuAcoes){
+  fecharSubmenuCtx();
+  const sub = document.createElement('div');
+  sub.id = 'ctx-submenu-lanc';
+  sub.className = 'no-print';
+  sub.style.cssText = 'display:block;position:fixed;z-index:501;background:var(--card);border:1px solid var(--bor);border-radius:8px;box-shadow:0 6px 20px #000a;min-width:190px;padding:4px;font-size:12px';
+  sub.innerHTML = submenuAcoes.map((a,i)=>`<div class="ctxmenu-item" data-idx="${i}">${esc(a.label)}</div>`).join('');
+  document.body.appendChild(sub);
+  sub.querySelectorAll('.ctxmenu-item').forEach(el=>{
+    el.addEventListener('click', (e)=>{ e.stopPropagation(); submenuAcoes[Number(el.dataset.idx)].fn(); fecharMenuLancamento(); });
+  });
+  const r = parentEl.getBoundingClientRect();
+  const left = Math.min(r.right, window.innerWidth-198);
+  const top = Math.min(r.top, window.innerHeight-(submenuAcoes.length*34+20));
+  sub.style.left = Math.max(4,left)+'px';
+  sub.style.top = Math.max(4,top)+'px';
+}
+function fecharSubmenuCtx(){
+  const s = document.getElementById('ctx-submenu-lanc');
+  if(s) s.remove();
+}
+// Marca o lançamento como Não reconciliado / Compensado (C) / Reconciliado (R) / Nulo.
+// "Nulo" mantém o lançamento visível no extrato mas ele deixa de contar no saldo
+// (mesmo princípio do Money: registro fica lá, mas "não vale" pro saldo da conta).
+function marcarStatusLancamento(id, status){
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
+  const lancamentos = (DB.lancamentos||[]).map(x=>x.id===id?{...x, status:status||null}:x);
+  salvar({...DB, lancamentos});
+}
+// Alterar tipo de transação: Saída/Entrada é uma troca simples de sinal; Transferência
+// pede a conta de destino e converte este lançamento no par saída/entrada vinculado
+// (mesmo formato usado por "Nova Transferência").
+function alterarTipoLancamento(id, novoTipo){
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
+  if(novoTipo==='transferencia'){
+    if(l.origem==='transferencia'){ showToast('Este lançamento já é uma transferência.'); return; }
+    abrirEscolherContaDestinoTransferencia(id);
+    return;
+  }
+  if(l.tipo===novoTipo && l.origem!=='transferencia'){ return; }
+  CF(`Alterar este lançamento para ${novoTipo==='saida'?'Saída':'Entrada'}?${l.origem==='transferencia'?' Isso desfaz o vínculo com a transferência (o lançamento pareado na outra conta não é alterado).':''}`, ()=>{
+    const lancamentos = (DB.lancamentos||[]).map(x=>x.id===id?{...x, tipo:novoTipo, origem:x.origem==='transferencia'?'manual':x.origem, transferenciaId:null, contaVinculadaId:null}:x);
+    salvar({...DB, lancamentos});
+  });
+}
+function abrirEscolherContaDestinoTransferencia(id){
+  AM('↪ Transformar em Transferência', `
+    ${EH('e-transf-tipo')}
+    <div style="font-size:12px;color:var(--mut);margin-bottom:10px">Escolha a conta de destino/origem — vamos criar o lançamento pareado lá e transformar este numa transferência de verdade.</div>
+    ${C('Conta vinculada *',`<select id="tt-conta">${opcoesContas()}</select>`)}
+    <div style="display:flex;gap:8px;margin-top:8px">
+      ${B('💾 Confirmar','confirmarAlterarParaTransferencia(\''+id+'\')','var(--acc)')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function confirmarAlterarParaTransferencia(id){
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
+  const contaVinculadaId = document.getElementById('tt-conta').value;
+  if(!contaVinculadaId){ ME('e-transf-tipo','Escolha a conta.'); return; }
+  if(contaVinculadaId===l.contaId){ ME('e-transf-tipo','A conta vinculada não pode ser a mesma conta do lançamento.'); return; }
+  const transferenciaId = uid();
+  const tipoParelho = l.tipo==='entrada' ? 'saida' : 'entrada';
+  const nomeConta_ = nomeConta(contaById(contaVinculadaId));
+  const pareado = {
+    id: uid(), contaId: contaVinculadaId, data: l.data, tipo: tipoParelho, valor: l.valor,
+    categoriaId:'', centroCustoId: l.centroCustoId||'',
+    contraparte:'', direcionamentoId: l.direcionamentoId||null, direcionamento: l.direcionamento||'',
+    descricao: l.descricao || (tipoParelho==='saida'?`Transferência para ${nomeConta(contaById(l.contaId))}`:`Transferência de ${nomeConta(contaById(l.contaId))}`),
+    origem:'transferencia', transferenciaId, contaVinculadaId: l.contaId, contaPagarId:null,
+    criadoEm: new Date().toISOString()
+  };
+  const lancamentos = (DB.lancamentos||[]).map(x=>x.id===id?{
+    ...x, categoriaId:'', contraparte:'',
+    origem:'transferencia', transferenciaId, contaVinculadaId, contaPagarId:null
+  }:x).concat(pareado);
+  salvar({...DB, lancamentos});
+  FM();
+}
+// "Adicionar a Contas a pagar e depósitos": agenda um novo lançamento futuro
+// (conta a pagar/receber) já pré-preenchido com os dados deste lançamento —
+// útil pra transformar um pagamento recorrente numa cobrança agendada.
+function adicionarContasAPagarDepositos(id){
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
+  if(l.tipo==='saida'){
+    novaContaPagar();
+    setTimeout(()=>{
+      const favEl=document.getElementById('cp-fav'); if(favEl) favEl.value = l.contraparte||'';
+      const valEl=document.getElementById('cp-valor'); if(valEl) valEl.value = fmt(l.valor);
+      const contaEl=document.getElementById('cp-conta'); if(contaEl){ contaEl.value = l.contaId||''; atualizarSugestoesContaPagar('cp'); }
+      const catEl=document.getElementById('cp-categoria'); if(catEl && l.categoriaId) catEl.value = l.categoriaId;
+      const ccEl=document.getElementById('cp-cc'); if(ccEl && l.centroCustoId) ccEl.value = l.centroCustoId;
+    }, 50);
+  } else {
+    novaContaReceber();
+    setTimeout(()=>{
+      const favEl=document.getElementById('cr-cli'); if(favEl) favEl.value = l.contraparte||'';
+      const valEl=document.getElementById('cr-valor'); if(valEl) valEl.value = fmt(l.valor);
+      const contaEl=document.getElementById('cr-conta'); if(contaEl) contaEl.value = l.contaId||'';
+      const catEl=document.getElementById('cr-categoria'); if(catEl && l.categoriaId) catEl.value = l.categoriaId;
+      const ccEl=document.getElementById('cr-cc'); if(ccEl && l.centroCustoId) ccEl.value = l.centroCustoId;
+    }, 50);
+  }
+}
+// "Mover para conta": só troca a conta do lançamento (mesmo saldo lógico, mas
+// passa a contar na outra conta) — diferente de Transferência, que cria um par.
+function moverLancamentoParaConta(id){
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
+  AM('↪ Mover para Conta', `
+    ${EH('e-mover-conta')}
+    <div style="font-size:12px;color:var(--mut);margin-bottom:10px">O lançamento passa a valer pra outra conta (não cria transferência nem lançamento pareado).</div>
+    ${C('Nova conta *',`<select id="mc-conta">${opcoesContas(l.contaId)}</select>`)}
+    <div style="display:flex;gap:8px;margin-top:8px">
+      ${B('💾 Mover','confirmarMoverLancamentoParaConta(\''+id+'\')','var(--acc)')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function confirmarMoverLancamentoParaConta(id){
+  const novaContaId = document.getElementById('mc-conta').value;
+  if(!novaContaId){ ME('e-mover-conta','Escolha a conta.'); return; }
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l) return;
+  if(novaContaId===l.contaId){ FM(); return; }
+  const lancamentos = (DB.lancamentos||[]).map(x=>x.id===id?{...x, contaId:novaContaId}:x);
+  salvar({...DB, lancamentos});
+  FM();
+}
 function fecharMenuLancamento(){
   const menu = document.getElementById('ctx-menu-lanc');
   if(menu) menu.style.display = 'none';
+  fecharSubmenuCtx();
   _ctxLancId = null;
 }
 // Fecha o menu ao clicar em qualquer lugar da tela ou rolar a página
@@ -5392,8 +5574,8 @@ function htmlLancamentos(){
     const c = contaById(l.contaId);
     const cat = categoriaById(l.categoriaId);
     const cc = centroCustoById(l.centroCustoId);
-    return `<tr style="cursor:pointer" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
-      <td>${fmtD(l.data)}</td>
+    return `<tr style="cursor:pointer${l.status==='nulo'?';opacity:.55':''}" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
+      <td>${fmtD(l.data)}${badgeStatusLancamento(l)}</td>
       <td>${esc(c?nomeConta(c):'-')}</td>
       <td>${T(l.tipo==='entrada'?'Entrada':'Saída', l.tipo==='entrada'?'vd':'vm')}${l.origem==='transferencia'?' '+T('🔀 Transf.','az'):''}</td>
       <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
@@ -5493,11 +5675,11 @@ function _lancamentosFiltradosFRF(){
   if(FRF.ate) lista = lista.filter(l=>l.data<=FRF.ate);
   if(FRF.tipo) lista = lista.filter(l=>l.tipo===FRF.tipo);
   if(FRF.contaId) lista = lista.filter(l=>l.contaId===FRF.contaId);
-  if(FRF.categoriaId) lista = lista.filter(l=>l.categoriaId===FRF.categoriaId);
-  if(FRF.centroCustoId) lista = lista.filter(l=>l.centroCustoId===FRF.centroCustoId);
+  if(FRF.categoriaId) lista = lista.filter(l=>l.categoriaId===FRF.categoriaId || categoriaById(l.categoriaId)?.parentId===FRF.categoriaId);
+  if(FRF.centroCustoId) lista = lista.filter(l=>l.centroCustoId===FRF.centroCustoId || centroCustoById(l.centroCustoId)?.parentId===FRF.centroCustoId);
   if(FRF.origem) lista = lista.filter(l=>l.origem===FRF.origem);
   if(FRF.contraparte) lista = lista.filter(l=>(l.contraparte||'').toLowerCase().includes(FRF.contraparte.toLowerCase()));
-  if(FRF.direcionamento) lista = lista.filter(l=>(l.direcionamento||'')===FRF.direcionamento);
+  if(FRF.direcionamento) lista = lista.filter(l=>(l.direcionamento||'')===FRF.direcionamento || (l.direcionamento||'').startsWith(FRF.direcionamento+':'));
   if(FRF.busca) lista = lista.filter(l=>(l.descricao||'').toLowerCase().includes(FRF.busca.toLowerCase()) || (l.contraparte||'').toLowerCase().includes(FRF.busca.toLowerCase()));
   lista.sort((a,b)=>b.data.localeCompare(a.data)||(b.criadoEm||'').localeCompare(a.criadoEm||''));
   return lista;
@@ -6214,22 +6396,24 @@ function salvarEdicaoEmMassaExtrato(){
   setStatus('ok', `✅ ${alterados} lançamento(s) atualizado(s)`);
   setTimeout(()=>{document.getElementById('status').style.display='none';},4000);
 }
-let RelExtrato = { contaId:'', de:'', ate:'', fornecedor:'', categoriaId:'', direcionamento:'' };
+let RelExtrato = { contaId:'', de:'', ate:'', fornecedor:'', categoriaId:'', centroCustoId:'', direcionamento:'' };
 function aplicarFiltroRelExtrato(){
   RelExtrato.contaId = document.getElementById('re-conta')?.value||'';
   RelExtrato.de = document.getElementById('re-de')?.value||'';
   RelExtrato.ate = document.getElementById('re-ate')?.value||'';
   RelExtrato.fornecedor = document.getElementById('re-forn')?.value||'';
   RelExtrato.categoriaId = document.getElementById('re-categoria')?.value||'';
+  RelExtrato.centroCustoId = document.getElementById('re-cc')?.value||'';
   RelExtrato.direcionamento = document.getElementById('re-direc')?.value||'';
   renderAba();
 }
-function limparFiltroRelExtrato(){ RelExtrato = {contaId:'',de:'',ate:'',fornecedor:'',categoriaId:'',direcionamento:''}; renderAba(); }
-// Ao tocar numa célula de Categoria/Direcionamento/Fornecedor no extrato — refiltra pelo item,
+function limparFiltroRelExtrato(){ RelExtrato = {contaId:'',de:'',ate:'',fornecedor:'',categoriaId:'',centroCustoId:'',direcionamento:''}; renderAba(); }
+// Ao tocar numa célula de Categoria/Centro de Custo/Direcionamento/Fornecedor no extrato — refiltra pelo item,
 // mantendo a conta e o período que já estavam selecionados.
-function filtrarExtratoPorCategoria(catId){ RelExtrato.categoriaId = catId; RelExtrato.fornecedor=''; RelExtrato.direcionamento=''; renderAba(); }
-function filtrarExtratoPorDirecionamento(valor){ RelExtrato.direcionamento = valor; RelExtrato.fornecedor=''; RelExtrato.categoriaId=''; renderAba(); }
-function filtrarExtratoPorFornecedor(nome){ RelExtrato.fornecedor = nome; RelExtrato.categoriaId=''; RelExtrato.direcionamento=''; renderAba(); }
+function filtrarExtratoPorCategoria(catId){ RelExtrato.categoriaId = catId; RelExtrato.fornecedor=''; RelExtrato.centroCustoId=''; RelExtrato.direcionamento=''; renderAba(); }
+function filtrarExtratoPorCentroCusto(ccId){ RelExtrato.centroCustoId = ccId; RelExtrato.fornecedor=''; RelExtrato.categoriaId=''; RelExtrato.direcionamento=''; renderAba(); }
+function filtrarExtratoPorDirecionamento(valor){ RelExtrato.direcionamento = valor; RelExtrato.fornecedor=''; RelExtrato.categoriaId=''; RelExtrato.centroCustoId=''; renderAba(); }
+function filtrarExtratoPorFornecedor(nome){ RelExtrato.fornecedor = nome; RelExtrato.categoriaId=''; RelExtrato.centroCustoId=''; RelExtrato.direcionamento=''; renderAba(); }
 
 let RelPagarF = { de:'', ate:'', centroCustoId:'', texto:'' };
 function aplicarFiltroRelPagar(){
@@ -6346,6 +6530,7 @@ function imprimirExtrato(){
   if(RelExtrato.de||RelExtrato.ate) partes.push('Período: '+(RelExtrato.de?fmtD(RelExtrato.de):'início')+' até '+(RelExtrato.ate?fmtD(RelExtrato.ate):'hoje'));
   if(RelExtrato.fornecedor) partes.push('Fornecedor/Cliente: '+RelExtrato.fornecedor);
   if(RelExtrato.categoriaId){ const c=categoriaById(RelExtrato.categoriaId); if(c) partes.push('Categoria: '+c.nome); }
+  if(RelExtrato.centroCustoId){ const cc=centroCustoById(RelExtrato.centroCustoId); if(cc) partes.push('Centro de Custo: '+cc.nome); }
   if(RelExtrato.direcionamento) partes.push('Direcionamento: '+RelExtrato.direcionamento);
   const subtitulo = partes.length ? partes.join(' · ') : 'Todas as contas, sem filtro de período';
   const kpis = `<div class="kpi-print">
@@ -6922,8 +7107,9 @@ function htmlRelatorios(){
   if(RelExtrato.de) extratoLista = extratoLista.filter(l=>l.data>=RelExtrato.de);
   if(RelExtrato.ate) extratoLista = extratoLista.filter(l=>l.data<=RelExtrato.ate);
   if(RelExtrato.fornecedor) extratoLista = extratoLista.filter(l=>(l.contraparte||'')===RelExtrato.fornecedor);
-  if(RelExtrato.categoriaId) extratoLista = extratoLista.filter(l=>l.categoriaId===RelExtrato.categoriaId);
-  if(RelExtrato.direcionamento) extratoLista = extratoLista.filter(l=>(l.direcionamento||'')===RelExtrato.direcionamento);
+  if(RelExtrato.categoriaId) extratoLista = extratoLista.filter(l=>l.categoriaId===RelExtrato.categoriaId || categoriaById(l.categoriaId)?.parentId===RelExtrato.categoriaId);
+  if(RelExtrato.centroCustoId) extratoLista = extratoLista.filter(l=>l.centroCustoId===RelExtrato.centroCustoId || centroCustoById(l.centroCustoId)?.parentId===RelExtrato.centroCustoId);
+  if(RelExtrato.direcionamento) extratoLista = extratoLista.filter(l=>(l.direcionamento||'')===RelExtrato.direcionamento || (l.direcionamento||'').startsWith(RelExtrato.direcionamento+':'));
   extratoLista = extratoLista.slice().sort((a,b)=>a.data.localeCompare(b.data)||a.criadoEm.localeCompare(b.criadoEm));
   const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
   const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
@@ -6931,7 +7117,7 @@ function htmlRelatorios(){
   // Saldo de fechamento do dia — só faz sentido como reconciliação bancária real quando
   // filtrado por UMA conta específica e sem recorte de categoria/direcionamento/fornecedor
   // (que são consultas de investigação, não o extrato completo da conta).
-  const extratoEhRecorteItem = !!(RelExtrato.categoriaId || RelExtrato.direcionamento || RelExtrato.fornecedor);
+  const extratoEhRecorteItem = !!(RelExtrato.categoriaId || RelExtrato.centroCustoId || RelExtrato.direcionamento || RelExtrato.fornecedor);
   let saldoAcumuladoExtrato = null;
   if(RelExtrato.contaId && !extratoEhRecorteItem){
     const contaExt = contaById(RelExtrato.contaId);
@@ -6997,8 +7183,8 @@ function htmlRelatorios(){
           <td>${BPerm('excluir','🗑','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1,'Excluir este lançamento')}</td>
         </tr>`;
       }
-      return `<tr style="cursor:pointer" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
-        <td>${fmtD(l.data)}</td>
+      return `<tr style="cursor:pointer${l.status==='nulo'?';opacity:.55':''}" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
+        <td>${fmtD(l.data)}${badgeStatusLancamento(l)}</td>
         ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
         <td${l.contraparte?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este fornecedor/cliente" onclick="filtrarExtratoPorFornecedor('${esc(l.contraparte).replace(/'/g,"\\'")}')"`:''}>${esc(l.contraparte||'-')}</td>
         <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}</td>
@@ -7042,6 +7228,7 @@ function htmlRelatorios(){
       ${C('Até',`<input type="date" id="re-ate" value="${RelExtrato.ate}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
       ${C('Fornecedor/Cliente',`<select id="re-forn" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${contrapartesExistentes().map(n=>`<option value="${esc(n)}"${n===RelExtrato.fornecedor?' selected':''}>${esc(n)}</option>`).join('')}</select>`,'1','200')}
       ${C('Categoria',`<select id="re-categoria" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesCategorias('',RelExtrato.categoriaId)}</select>`,'1','180')}
+      ${C('Centro de Custo',`<select id="re-cc" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${opcoesCC(RelExtrato.centroCustoId)}</select>`,'1','180')}
       ${C('Direcionamento',`<select id="re-direc" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${direcionamentosExistentes().map(d=>`<option value="${esc(d)}"${d===RelExtrato.direcionamento?' selected':''}>${esc(d)}</option>`).join('')}</select>`,'1','180')}
     </div>
     <div class="row" style="margin-bottom:10px">
