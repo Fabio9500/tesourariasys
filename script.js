@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.64';
+const VERSAO = 'v1.65';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3202,41 +3202,152 @@ function processarArquivoOFX(){
     }
     catch(err){ ME('e-ofx',`Não consegui ler este arquivo. Confira se é um ${formato==='csv'?'.csv':formato==='qif'?'.qif':'.ofx'} válido exportado do banco/Money.`); return; }
     if(!transacoes.length){ ME('e-ofx','Nenhum lançamento encontrado neste arquivo.'); return; }
-    const idsExistentes = new Set((DB.lancamentos||[]).filter(l=>l.contaId===contaId && l.fitid).map(l=>l.fitid));
-    const dicionario = construirDicionarioAprendizado(contaId);
-    const jaUsadosConciliacao = new Set();
+    if(formato==='qif'){
+      // QIF do Money passa primeiro pelo mapeamento de categorias (criar novas
+      // ou usar existentes) antes de ir pra revisão normal do Extrato.
+      _qifTransacoesBrutas = transacoes; _qifContaIdBruta = contaId;
+      const contagem = {};
+      transacoes.forEach(t=>{ const tx=(t.categoriaTextoMoney||'').trim()||'(Sem categoria)'; contagem[tx]=(contagem[tx]||0)+1; });
+      _qifCategoriasUnicasTSR = Object.entries(contagem).map(([texto,count])=>({texto,count})).sort((a,b)=>b.count-a.count);
+      mostrarMapeamentoCategoriasQIF();
+      return;
+    }
     _ofxContaId = contaId;
-    _ofxPendente = transacoes.map(t=>{
-      const jaExiste = t.fitid && idsExistentes.has(t.fitid);
-      const match = casarComHistorico(t.memoOriginal, dicionario);
-      const parecido = !jaExiste ? encontrarLancamentoManualParecido(t, contaId, jaUsadosConciliacao) : null;
-      if(parecido) jaUsadosConciliacao.add(parecido.id);
-      // Sem aprendizado prévio pra esse texto, mas veio de um QIF com
-      // categoria do Money: tenta achar uma categoria nossa com o mesmo nome
-      // (Mãe ou Mãe:Sub) antes de deixar em branco.
-      let categoriaIdSugerida = match ? match.categoriaId : '';
-      if(!categoriaIdSugerida && t.categoriaTextoMoney){
-        const [maeTx, subTx] = t.categoriaTextoMoney.split(':').map(s=>s?.trim());
-        const tipoCat = t.tipo==='entrada' ? 'receita' : 'despesa';
-        const mae = (DB.categorias||[]).find(c=>!c.parentId && c.tipo===tipoCat && c.nome.toLowerCase()===(maeTx||'').toLowerCase());
-        if(mae){
-          if(subTx){ const sub=(DB.categorias||[]).find(c=>c.parentId===mae.id && c.nome.toLowerCase()===subTx.toLowerCase()); categoriaIdSugerida = sub?sub.id:mae.id; }
-          else categoriaIdSugerida = mae.id;
-        }
-      }
-      return {
-        ...t, incluir: !jaExiste && !parecido, jaExiste,
-        contraparte: match?match.contraparte:t.memoOriginal,
-        categoriaId: categoriaIdSugerida, direcionamento: match?match.direcionamento:'',
-        centroCustoId: match?match.centroCustoId:'', reconhecido: !!match,
-        parecidoId: parecido?parecido.id:null,
-        parecidoInfo: parecido?`Já lançado em ${fmtD(parecido.data)} — ${esc(parecido.contraparte||parecido.descricao||'sem nome')} — R$ ${fmt(parecido.valor)}`:null,
-      };
-    });
+    _ofxPendente = montarOfxPendente(transacoes, contaId);
     mostrarRevisaoOFX();
   };
   leitor.onerror = () => ME('e-ofx','Não foi possível ler o arquivo. Tente novamente.');
   leitor.readAsText(arquivo, 'UTF-8');
+}
+// Monta a lista de conferência (_ofxPendente) a partir das transações já
+// parseadas — compartilhado entre OFX/CSV (direto) e QIF (depois da etapa
+// de mapeamento de categorias). categoriaIdMoney vem preenchido só no QIF,
+// depois que o mapeamento foi confirmado.
+function montarOfxPendente(transacoes, contaId){
+  const idsExistentes = new Set((DB.lancamentos||[]).filter(l=>l.contaId===contaId && l.fitid).map(l=>l.fitid));
+  const dicionario = construirDicionarioAprendizado(contaId);
+  const jaUsadosConciliacao = new Set();
+  return transacoes.map(t=>{
+    const jaExiste = t.fitid && idsExistentes.has(t.fitid);
+    const match = casarComHistorico(t.memoOriginal, dicionario);
+    const parecido = !jaExiste ? encontrarLancamentoManualParecido(t, contaId, jaUsadosConciliacao) : null;
+    if(parecido) jaUsadosConciliacao.add(parecido.id);
+    const categoriaIdSugerida = match ? match.categoriaId : (t.categoriaIdMoney||'');
+    return {
+      ...t, incluir: !jaExiste && !parecido, jaExiste,
+      contraparte: match?match.contraparte:t.memoOriginal,
+      categoriaId: categoriaIdSugerida, direcionamento: match?match.direcionamento:'',
+      centroCustoId: match?match.centroCustoId:'', reconhecido: !!match,
+      parecidoId: parecido?parecido.id:null,
+      parecidoInfo: parecido?`Já lançado em ${fmtD(parecido.data)} — ${esc(parecido.contraparte||parecido.descricao||'sem nome')} — R$ ${fmt(parecido.valor)}`:null,
+    };
+  });
+}
+// ── MAPEAMENTO DE CATEGORIAS DO QIF (Money) ANTES DA REVISÃO ──────
+// Acha uma Categoria cadastrada pelo nome (mãe + sub opcional, filtrando por
+// tipo receita/despesa); cria a que faltar. Mesmo padrão de
+// acharOuCriarDirecionamento, usado aqui pro mapeamento em lote do QIF.
+function acharOuCriarCategoria(listaAtual, tipo, nomeMae, nomeSub){
+  let lista = listaAtual;
+  let mae = lista.find(c=>!c.parentId && c.tipo===tipo && c.nome===nomeMae);
+  if(!mae){ mae = {id:uid(), nome:nomeMae, parentId:null, tipo, tipoPFPJ:'ambos'}; lista=[...lista, mae]; }
+  if(!nomeSub) return {id:mae.id, lista};
+  let sub = lista.find(c=>c.parentId===mae.id && c.nome===nomeSub);
+  if(!sub){ sub = {id:uid(), nome:nomeSub, parentId:mae.id, tipo, tipoPFPJ:mae.tipoPFPJ||'ambos'}; lista=[...lista, sub]; }
+  return {id:sub.id, lista};
+}
+// Grava várias categorias novas de uma vez só (um round-trip por arquivo
+// pf/pj, em vez de um por categoria) — usado ao confirmar o mapeamento do QIF.
+async function salvarNovasCategoriasEmLote(novasCategorias){
+  if(!novasCategorias.length) return;
+  const cadPf = await ghCadastroCarregar('pf');
+  const cadPj = await ghCadastroCarregar('pj');
+  cadPf.categorias = [...(cadPf.categorias||[]), ...novasCategorias];
+  cadPj.categorias = [...(cadPj.categorias||[]), ...novasCategorias];
+  await ghCadastroSalvar('pf', cadPf);
+  await ghCadastroSalvar('pj', cadPj);
+  await carregarCadastrosUnicos();
+}
+let _qifTransacoesBrutas=[], _qifContaIdBruta='', _qifCategoriasUnicasTSR=[], _qifMapaCategoriaTSR={};
+function mostrarMapeamentoCategoriasQIF(){
+  const conta = contaById(_qifContaIdBruta);
+  const tipoConta = conta ? conta.tipo : null;
+  const linhas = _qifCategoriasUnicasTSR.map((c,i)=>{
+    if(c.texto==='(Sem categoria)') return '';
+    const [maeTexto, subTexto] = c.texto.split(':').map(s=>s?.trim());
+    const maeExistente = (DB.categorias||[]).find(x=>!x.parentId && x.nome.toLowerCase()===(maeTexto||'').toLowerCase() && itemValidoParaPFPJ(x,tipoConta));
+    let matchMaeId='', matchSubId='';
+    if(maeExistente){
+      matchMaeId = maeExistente.id;
+      if(subTexto){ const sub=(DB.categorias||[]).find(x=>x.parentId===maeExistente.id && x.nome.toLowerCase()===subTexto.toLowerCase()); if(sub) matchSubId=sub.id; }
+    }
+    const criarPorPadrao = !matchMaeId;
+    const tipoSugerido = maeExistente ? maeExistente.tipo : 'despesa';
+    return `<tr>
+      <td style="font-size:12px;padding:5px 8px">${esc(c.texto)} <span style="color:var(--mut);font-size:10px">(${c.count}x)</span></td>
+      <td style="text-align:center;padding:5px 4px;white-space:nowrap">
+        <input type="checkbox" id="qifmapTsr${i}-criar" ${criarPorPadrao?'checked':''} onchange="aoMudarCriarNovaQIFTsr(${i})">
+        <select id="qifmapTsr${i}-tipo" style="font-size:11px;margin-left:4px" ${criarPorPadrao?'':'disabled'}>
+          <option value="despesa"${tipoSugerido==='despesa'?' selected':''}>Despesa</option>
+          <option value="receita"${tipoSugerido==='receita'?' selected':''}>Receita</option>
+        </select>
+      </td>
+      <td style="padding:5px 8px"><div style="display:flex;gap:4px">
+        <select id="qifmapTsr${i}-categoria-mae" onchange="aoMudarMaeCascata('qifmapTsr${i}','categoria')" ${criarPorPadrao?'disabled':''} style="font-size:11px">${opcoesCategoriaMae('', tipoConta, '', matchMaeId)}</select>
+        <select id="qifmapTsr${i}-categoria-sub" ${criarPorPadrao?'disabled':''} style="font-size:11px">${opcoesSubcategoria(matchMaeId, matchSubId)}</select>
+      </div></td>
+    </tr>`;
+  }).join('');
+  AM('🔗 Mapear Categorias do Money', `
+    <div style="font-size:12px;color:var(--mut);margin-bottom:12px;line-height:1.5">${_qifTransacoesBrutas.length} lançamento(s), em ${_qifCategoriasUnicasTSR.length} categoria(s) diferentes do Money. Marque <strong>"Criar nova"</strong> pra criar um cadastro igual aqui (escolhendo Despesa ou Receita), ou desmarque e escolha uma categoria já existente na cascata. As sem categoria no Money ficam sem categoria aqui também.</div>
+    <div style="max-height:360px;overflow-y:auto;border:1px solid var(--bor);border-radius:8px;">
+      <table style="width:100%;font-size:12px"><thead><tr style="background:var(--sur);position:sticky;top:0"><th style="text-align:left;padding:6px 8px">Categoria no Money</th><th style="padding:6px 4px">Criar nova / Tipo</th><th style="text-align:left;padding:6px 8px">Ou usar categoria existente</th></tr></thead>
+      <tbody>${linhas}</tbody></table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      ${B('Continuar →','confirmarMapeamentoQIFTsr()','var(--acc)','#000')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function aoMudarCriarNovaQIFTsr(i){
+  const criar = document.getElementById(`qifmapTsr${i}-criar`)?.checked;
+  const tipoSel = document.getElementById(`qifmapTsr${i}-tipo`);
+  const maeSel = document.getElementById(`qifmapTsr${i}-categoria-mae`);
+  const subSel = document.getElementById(`qifmapTsr${i}-categoria-sub`);
+  if(tipoSel) tipoSel.disabled = !criar;
+  if(maeSel) maeSel.disabled = criar;
+  if(subSel) subSel.disabled = criar;
+}
+async function confirmarMapeamentoQIFTsr(){
+  const btn = event?.target; if(btn) btn.disabled=true;
+  try{
+    let categoriasAtuais = DB.categorias||[];
+    const novasCriadas=[];
+    const mapa={};
+    _qifCategoriasUnicasTSR.forEach((c,i)=>{
+      if(c.texto==='(Sem categoria)'){ mapa[c.texto]=''; return; }
+      const criar = document.getElementById(`qifmapTsr${i}-criar`)?.checked;
+      if(!criar){ mapa[c.texto] = valorFinalCascata('qifmapTsr'+i, 'categoria'); return; }
+      const tipo = document.getElementById(`qifmapTsr${i}-tipo`)?.value || 'despesa';
+      const [maeTexto, subTexto] = c.texto.split(':').map(s=>s?.trim());
+      const antes = categoriasAtuais.length;
+      const r = acharOuCriarCategoria(categoriasAtuais, tipo, maeTexto, subTexto);
+      if(r.lista.length>antes) novasCriadas.push(...r.lista.slice(antes));
+      categoriasAtuais = r.lista;
+      mapa[c.texto] = r.id;
+    });
+    if(novasCriadas.length) await salvarNovasCategoriasEmLote(novasCriadas);
+    _qifMapaCategoriaTSR = mapa;
+    _qifTransacoesBrutas.forEach(t=>{ t.categoriaIdMoney = mapa[(t.categoriaTextoMoney||'').trim()||'(Sem categoria)']||''; });
+    _ofxContaId = _qifContaIdBruta;
+    _ofxPendente = montarOfxPendente(_qifTransacoesBrutas, _qifContaIdBruta);
+    mostrarRevisaoOFX();
+  }catch(err){
+    setStatus('err', 'Erro ao criar categorias: '+err.message);
+  }finally{
+    if(btn) btn.disabled=false;
+  }
 }
 function mostrarRevisaoOFX(){
   const conta = contaById(_ofxContaId);
