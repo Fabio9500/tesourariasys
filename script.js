@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.66';
+const VERSAO = 'v1.67';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3359,7 +3359,7 @@ function mostrarRevisaoOFX(){
     <td><input type="checkbox" ${t.incluir?'checked':''} onchange="_ofxPendente[${i}].incluir=this.checked">${t.jaExiste?' <span style="font-size:10px;color:var(--mut)">(já importado)</span>':''}${t.parecidoId&&!t.jaExiste?` <span style="font-size:10px;color:#f0a500" title="${esc(t.parecidoInfo||'')}">🔗 conciliar</span>`:''}</td>
     <td>${fmtD(t.data)}</td>
     <td><input type="text" value="${esc(t.contraparte)}" style="width:100%;font-size:11px" onchange="_ofxPendente[${i}].contraparte=this.value">${t.reconhecido?' <span title="Reconhecido pelo histórico">✓</span>':''}</td>
-    <td><select style="font-size:11px" onchange="_ofxPendente[${i}].categoriaId=this.value">${opcoesCategorias(t.tipo==='entrada'?'receita':'despesa',t.categoriaId,'',tipoConta)}</select></td>
+    <td><div style="display:flex;gap:2px"><select id="ofxrev${i}-categoria-mae" onchange="aoMudarMaeCascataFixo('ofxrev${i}','categoria');_ofxPendente[${i}].categoriaId=valorFinalCascata('ofxrev${i}','categoria')" style="font-size:10px;width:85px">${opcoesCategoriaMae(t.tipo==='entrada'?'receita':'despesa',tipoConta,'',idsMaeSub(categoriaById(t.categoriaId)).maeId)}</select><select id="ofxrev${i}-categoria-sub" onchange="_ofxPendente[${i}].categoriaId=valorFinalCascata('ofxrev${i}','categoria')" style="font-size:10px;width:75px">${opcoesSubcategoria(idsMaeSub(categoriaById(t.categoriaId)).maeId, idsMaeSub(categoriaById(t.categoriaId)).subId)}</select></div></td>
     <td><input type="text" value="${esc(t.direcionamento)}" style="width:100%;font-size:11px" list="dl-direcionamentos-ofx" onchange="_ofxPendente[${i}].direcionamento=this.value"></td>
     <td style="text-align:right;color:${t.tipo==='entrada'?'#3fb950':'#f85149'};font-weight:700">${t.tipo==='entrada'?'+':'-'} R$ ${fmt(t.valor)}</td>
   </tr>`).join('');
@@ -3500,6 +3500,18 @@ function aoMudarMaeCascata(prefixo, campo){
   else if(campo==='cc') subSel.innerHTML = opcoesSubCentroCusto(maeId, '');
   else if(campo==='direc') subSel.innerHTML = opcoesSubDirecionamento(maeId, '');
   if(campo==='categoria' || campo==='cc') atualizarSugestoesConta(prefixo);
+}
+// Versão "leve" da troca de mãe — só repopula o sub, sem disparar o reflow
+// completo do formulário de Lançamento (que tem tipo Entrada/Saída dinâmico
+// e Direcionamento). Usada em formulários de tipo fixo — Conta a Pagar/
+// Receber, Cheque Emitido — e em filtros, onde não há isso pra recalcular.
+function aoMudarMaeCascataFixo(prefixo, campo){
+  const maeSel = document.getElementById(`${prefixo}-${campo}-mae`);
+  const subSel = document.getElementById(`${prefixo}-${campo}-sub`);
+  if(!maeSel || !subSel) return;
+  if(campo==='categoria') subSel.innerHTML = opcoesSubcategoria(maeSel.value, '');
+  else if(campo==='cc') subSel.innerHTML = opcoesSubCentroCusto(maeSel.value, '');
+  else if(campo==='direc') subSel.innerHTML = opcoesSubDirecionamento(maeSel.value, '');
 }
 // Resolve o ID final (sub, se escolhida; senão a mãe) — usado ao salvar.
 function valorFinalCascata(prefixo, campo){
@@ -4126,8 +4138,8 @@ function novaContaPagar(vencimentoPre){
     ${C('Conta bancária de pagamento (opcional — escolher já filtra Categoria/Fornecedor por PF/PJ)',`<select id="cp-conta" onchange="atualizarSugestoesContaPagar('cp')"><option value="">A definir no momento do pagamento</option>${opcoesContas()}</select>`)}
     <div class="row">
       ${C('Vencimento *',`<input type="date" id="cp-venc" value="${vencimentoPre||hoje()}">`,'1','150')}
-      ${C('Categoria',`<select id="cp-categoria" onchange="atualizarSugestoesContaPagar('cp')">${opcoesCategorias('despesa')}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="cp-cc" onchange="atualizarSugestoesContaPagar('cp')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="cp-categoria-mae" onchange="aoMudarMaeCascataFixo('cp','categoria');atualizarSugestoesContaPagar('cp')" style="flex:1">${opcoesCategoriaMae('despesa','','','')}</select><select id="cp-categoria-sub" onchange="atualizarSugestoesContaPagar('cp')" style="flex:1">${opcoesSubcategoria('','')}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="cp-cc-mae" onchange="aoMudarMaeCascataFixo('cp','cc');atualizarSugestoesContaPagar('cp')" style="flex:1">${opcoesCentroCustoMae('','')}</select><select id="cp-cc-sub" onchange="atualizarSugestoesContaPagar('cp')" style="flex:1">${opcoesSubCentroCusto('','')}</select></div>`,'2','260')}
     </div>
     ${C('Observações',`<textarea id="cp-obs" rows="2"></textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -4141,18 +4153,22 @@ function atualizarSugestoesContaPagar(prefixo){
   const tipoConta = tipoDaConta(contaId);
   const dl = document.getElementById(prefixo==='ecp' ? 'dl-fornecedores-ed' : 'dl-fornecedores');
   if(dl) dl.innerHTML = opcoesDatalist((DB.fornecedores||[]).filter(f=>itemValidoParaPFPJ(f,tipoConta)));
-  const ccSel = document.getElementById(prefixo+'-cc');
-  if(ccSel){
-    const ccAtual = ccSel.value;
-    ccSel.innerHTML = '<option value="">-</option>'+opcoesCC(ccAtual, tipoConta);
-    if(![...ccSel.options].some(o=>o.value===ccAtual)) ccSel.value='';
+  const ccMaeEl = document.getElementById(prefixo+'-cc-mae');
+  if(ccMaeEl){
+    const ccAtual = ccMaeEl.value;
+    ccMaeEl.innerHTML = opcoesCentroCustoMae(tipoConta, ccAtual);
+    if(![...ccMaeEl.options].some(o=>o.value===ccAtual)) ccMaeEl.value='';
+    const ccSubEl = document.getElementById(prefixo+'-cc-sub');
+    if(ccSubEl) ccSubEl.innerHTML = opcoesSubCentroCusto(ccMaeEl.value, ccSubEl.value);
   }
-  const catSel = document.getElementById(prefixo+'-categoria');
-  if(catSel){
-    const catAtual = catSel.value;
-    const opcoes = categoriasPorTipoConta('despesa', tipoConta, ccSel?ccSel.value:'');
-    catSel.innerHTML = opcoes.map(c=>`<option value="${c.id}"${c.id===catAtual?' selected':''}>${esc(c.nome)}</option>`).join('');
-    if(!opcoes.some(c=>c.id===catAtual)) catSel.value='';
+  const centroCustoId = valorFinalCascata(prefixo,'cc');
+  const catMaeEl = document.getElementById(prefixo+'-categoria-mae');
+  if(catMaeEl){
+    const catAtual = catMaeEl.value;
+    catMaeEl.innerHTML = opcoesCategoriaMae('despesa', tipoConta, centroCustoId, catAtual);
+    if(![...catMaeEl.options].some(o=>o.value===catAtual)) catMaeEl.value='';
+    const catSubEl = document.getElementById(prefixo+'-categoria-sub');
+    if(catSubEl) catSubEl.innerHTML = opcoesSubcategoria(catMaeEl.value, catSubEl.value);
   }
 }
 function fornecedorIdPorNome(nome){
@@ -4175,8 +4191,8 @@ function salvarNovaContaPagar(){
   const nova = {
     id:uid(), favorecido:fav, fornecedorId: fornecedorIdPorNome(fav), valor,
     vencimento: document.getElementById('cp-venc').value||hoje(),
-    categoriaId: document.getElementById('cp-categoria').value||'',
-    centroCustoId: document.getElementById('cp-cc').value||'',
+    categoriaId: valorFinalCascata('cp','categoria'),
+    centroCustoId: valorFinalCascata('cp','cc'),
     contaId: document.getElementById('cp-conta').value||'',
     status:'pendente', dataPagamento:null, valorPago:null, lancamentoId:null,
     obs: document.getElementById('cp-obs').value.trim(),
@@ -4210,8 +4226,8 @@ function editarContaPagar(id){
     ${C('Conta bancária de pagamento (opcional — escolher já filtra Categoria/Fornecedor por PF/PJ)',`<select id="ecp-conta" onchange="atualizarSugestoesContaPagar('ecp')"><option value="">A definir no momento do pagamento</option>${opcoesContas(cp.contaId)}</select>`)}
     <div class="row">
       ${C('Vencimento *',`<input type="date" id="ecp-venc" value="${cp.vencimento}">`,'1','150')}
-      ${C('Categoria',`<select id="ecp-categoria" onchange="atualizarSugestoesContaPagar('ecp')">${opcoesCategorias('despesa',cp.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="ecp-cc" onchange="atualizarSugestoesContaPagar('ecp')"><option value="">-</option>${opcoesCC(cp.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="ecp-categoria-mae" onchange="aoMudarMaeCascataFixo('ecp','categoria');atualizarSugestoesContaPagar('ecp')" style="flex:1">${opcoesCategoriaMae('despesa', tipoDaConta(cp.contaId), cp.centroCustoId, idsMaeSub(categoriaById(cp.categoriaId)).maeId)}</select><select id="ecp-categoria-sub" onchange="atualizarSugestoesContaPagar('ecp')" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(cp.categoriaId)).maeId, idsMaeSub(categoriaById(cp.categoriaId)).subId)}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="ecp-cc-mae" onchange="aoMudarMaeCascataFixo('ecp','cc');atualizarSugestoesContaPagar('ecp')" style="flex:1">${opcoesCentroCustoMae(tipoDaConta(cp.contaId), idsMaeSub(centroCustoById(cp.centroCustoId)).maeId)}</select><select id="ecp-cc-sub" onchange="atualizarSugestoesContaPagar('ecp')" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(cp.centroCustoId)).maeId, idsMaeSub(centroCustoById(cp.centroCustoId)).subId)}</select></div>`,'2','260')}
     </div>
     ${C('Observações',`<textarea id="ecp-obs" rows="2">${esc(cp.obs||'')}</textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -4229,8 +4245,8 @@ function salvarEdicaoContaPagar(id){
   const patch = {
     favorecido:fav, fornecedorId: fornecedorIdPorNome(fav), valor,
     vencimento: document.getElementById('ecp-venc').value||hoje(),
-    categoriaId: document.getElementById('ecp-categoria').value||'',
-    centroCustoId: document.getElementById('ecp-cc').value||'',
+    categoriaId: valorFinalCascata('ecp','categoria'),
+    centroCustoId: valorFinalCascata('ecp','cc'),
     contaId: document.getElementById('ecp-conta').value||'',
     obs: document.getElementById('ecp-obs').value.trim()
   };
@@ -4316,8 +4332,8 @@ function novaContaReceber(){
     ${C('Conta bancária de recebimento (opcional — escolher já filtra Categoria/Cliente por PF/PJ)',`<select id="cr-conta" onchange="atualizarSugestoesContaReceber('cr')"><option value="">A definir no momento do recebimento</option>${opcoesContas()}</select>`)}
     <div class="row">
       ${C('Vencimento *',`<input type="date" id="cr-venc" value="${hoje()}">`,'1','150')}
-      ${C('Categoria',`<select id="cr-categoria" onchange="atualizarSugestoesContaReceber('cr')">${opcoesCategorias('receita')}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="cr-cc" onchange="atualizarSugestoesContaReceber('cr')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="cr-categoria-mae" onchange="aoMudarMaeCascataFixo('cr','categoria');atualizarSugestoesContaReceber('cr')" style="flex:1">${opcoesCategoriaMae('receita','','','')}</select><select id="cr-categoria-sub" onchange="atualizarSugestoesContaReceber('cr')" style="flex:1">${opcoesSubcategoria('','')}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="cr-cc-mae" onchange="aoMudarMaeCascataFixo('cr','cc');atualizarSugestoesContaReceber('cr')" style="flex:1">${opcoesCentroCustoMae('','')}</select><select id="cr-cc-sub" onchange="atualizarSugestoesContaReceber('cr')" style="flex:1">${opcoesSubCentroCusto('','')}</select></div>`,'2','260')}
     </div>
     ${C('Observações',`<textarea id="cr-obs" rows="2"></textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -4331,18 +4347,22 @@ function atualizarSugestoesContaReceber(prefixo){
   const tipoConta = tipoDaConta(contaId);
   const dl = document.getElementById(prefixo==='ecr' ? 'dl-clientes-ed' : 'dl-clientes');
   if(dl) dl.innerHTML = opcoesDatalist((DB.clientes||[]).filter(c=>itemValidoParaPFPJ(c,tipoConta)));
-  const ccSel = document.getElementById(prefixo+'-cc');
-  if(ccSel){
-    const ccAtual = ccSel.value;
-    ccSel.innerHTML = '<option value="">-</option>'+opcoesCC(ccAtual, tipoConta);
-    if(![...ccSel.options].some(o=>o.value===ccAtual)) ccSel.value='';
+  const ccMaeEl = document.getElementById(prefixo+'-cc-mae');
+  if(ccMaeEl){
+    const ccAtual = ccMaeEl.value;
+    ccMaeEl.innerHTML = opcoesCentroCustoMae(tipoConta, ccAtual);
+    if(![...ccMaeEl.options].some(o=>o.value===ccAtual)) ccMaeEl.value='';
+    const ccSubEl = document.getElementById(prefixo+'-cc-sub');
+    if(ccSubEl) ccSubEl.innerHTML = opcoesSubCentroCusto(ccMaeEl.value, ccSubEl.value);
   }
-  const catSel = document.getElementById(prefixo+'-categoria');
-  if(catSel){
-    const catAtual = catSel.value;
-    const opcoes = categoriasPorTipoConta('receita', tipoConta, ccSel?ccSel.value:'');
-    catSel.innerHTML = opcoes.map(c=>`<option value="${c.id}"${c.id===catAtual?' selected':''}>${esc(c.nome)}</option>`).join('');
-    if(!opcoes.some(c=>c.id===catAtual)) catSel.value='';
+  const centroCustoId = valorFinalCascata(prefixo,'cc');
+  const catMaeEl = document.getElementById(prefixo+'-categoria-mae');
+  if(catMaeEl){
+    const catAtual = catMaeEl.value;
+    catMaeEl.innerHTML = opcoesCategoriaMae('receita', tipoConta, centroCustoId, catAtual);
+    if(![...catMaeEl.options].some(o=>o.value===catAtual)) catMaeEl.value='';
+    const catSubEl = document.getElementById(prefixo+'-categoria-sub');
+    if(catSubEl) catSubEl.innerHTML = opcoesSubcategoria(catMaeEl.value, catSubEl.value);
   }
 }
 function salvarNovaContaReceber(){
@@ -4353,8 +4373,8 @@ function salvarNovaContaReceber(){
   const nova = {
     id:uid(), cliente:cli, clienteId: clienteIdPorNome(cli), valor,
     vencimento: document.getElementById('cr-venc').value||hoje(),
-    categoriaId: document.getElementById('cr-categoria').value||'',
-    centroCustoId: document.getElementById('cr-cc').value||'',
+    categoriaId: valorFinalCascata('cr','categoria'),
+    centroCustoId: valorFinalCascata('cr','cc'),
     contaId: document.getElementById('cr-conta').value||'',
     status:'pendente', dataRecebimento:null, valorRecebido:null, lancamentoId:null,
     obs: document.getElementById('cr-obs').value.trim(),
@@ -4388,8 +4408,8 @@ function editarContaReceber(id){
     ${C('Conta bancária de recebimento (opcional — escolher já filtra Categoria/Cliente por PF/PJ)',`<select id="ecr-conta" onchange="atualizarSugestoesContaReceber('ecr')"><option value="">A definir no momento do recebimento</option>${opcoesContas(cr.contaId)}</select>`)}
     <div class="row">
       ${C('Vencimento *',`<input type="date" id="ecr-venc" value="${cr.vencimento}">`,'1','150')}
-      ${C('Categoria',`<select id="ecr-categoria" onchange="atualizarSugestoesContaReceber('ecr')">${opcoesCategorias('receita',cr.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="ecr-cc" onchange="atualizarSugestoesContaReceber('ecr')"><option value="">-</option>${opcoesCC(cr.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="ecr-categoria-mae" onchange="aoMudarMaeCascataFixo('ecr','categoria');atualizarSugestoesContaReceber('ecr')" style="flex:1">${opcoesCategoriaMae('receita', tipoDaConta(cr.contaId), cr.centroCustoId, idsMaeSub(categoriaById(cr.categoriaId)).maeId)}</select><select id="ecr-categoria-sub" onchange="atualizarSugestoesContaReceber('ecr')" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(cr.categoriaId)).maeId, idsMaeSub(categoriaById(cr.categoriaId)).subId)}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="ecr-cc-mae" onchange="aoMudarMaeCascataFixo('ecr','cc');atualizarSugestoesContaReceber('ecr')" style="flex:1">${opcoesCentroCustoMae(tipoDaConta(cr.contaId), idsMaeSub(centroCustoById(cr.centroCustoId)).maeId)}</select><select id="ecr-cc-sub" onchange="atualizarSugestoesContaReceber('ecr')" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(cr.centroCustoId)).maeId, idsMaeSub(centroCustoById(cr.centroCustoId)).subId)}</select></div>`,'2','260')}
     </div>
     ${C('Observações',`<textarea id="ecr-obs" rows="2">${esc(cr.obs||'')}</textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -4407,8 +4427,8 @@ function salvarEdicaoContaReceber(id){
   const patch = {
     cliente:cli, clienteId: clienteIdPorNome(cli), valor,
     vencimento: document.getElementById('ecr-venc').value||hoje(),
-    categoriaId: document.getElementById('ecr-categoria').value||'',
-    centroCustoId: document.getElementById('ecr-cc').value||'',
+    categoriaId: valorFinalCascata('ecr','categoria'),
+    centroCustoId: valorFinalCascata('ecr','cc'),
     contaId: document.getElementById('ecr-conta').value||'',
     obs: document.getElementById('ecr-obs').value.trim()
   };
@@ -4502,8 +4522,8 @@ function novoChequeEmitido(contaIdPre){
       ${C('Previsão de Compensação *',`<input type="date" id="chq-prevista" value="${hoje()}">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Categoria',`<select id="chq-categoria" onchange="atualizarSugestoesChequeEmitido('chq')">${opcoesCategorias('despesa')}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="chq-cc" onchange="atualizarSugestoesChequeEmitido('chq')"><option value="">-</option>${opcoesCC()}</select>`,'1','180')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="chq-categoria-mae" onchange="aoMudarMaeCascataFixo('chq','categoria');atualizarSugestoesChequeEmitido('chq')" style="flex:1">${opcoesCategoriaMae('despesa','','','')}</select><select id="chq-categoria-sub" onchange="atualizarSugestoesChequeEmitido('chq')" style="flex:1">${opcoesSubcategoria('','')}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="chq-cc-mae" onchange="aoMudarMaeCascataFixo('chq','cc');atualizarSugestoesChequeEmitido('chq')" style="flex:1">${opcoesCentroCustoMae('','')}</select><select id="chq-cc-sub" onchange="atualizarSugestoesChequeEmitido('chq')" style="flex:1">${opcoesSubCentroCusto('','')}</select></div>`,'2','260')}
     </div>
     ${C('Observações',`<textarea id="chq-obs" rows="2"></textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -4518,18 +4538,22 @@ function atualizarSugestoesChequeEmitido(prefixo){
   const tipoConta = tipoDaConta(contaId);
   const dl = document.getElementById(prefixo==='echq' ? 'dl-fornecedores-chq-ed' : 'dl-fornecedores-chq');
   if(dl) dl.innerHTML = opcoesDatalist([...(DB.fornecedores||[]),...(DB.clientes||[])].filter(x=>itemValidoParaPFPJ(x,tipoConta)));
-  const ccSel = document.getElementById(prefixo+'-cc');
-  if(ccSel){
-    const ccAtual = ccSel.value;
-    ccSel.innerHTML = '<option value="">-</option>'+opcoesCC(ccAtual, tipoConta);
-    if(![...ccSel.options].some(o=>o.value===ccAtual)) ccSel.value='';
+  const ccMaeEl = document.getElementById(prefixo+'-cc-mae');
+  if(ccMaeEl){
+    const ccAtual = ccMaeEl.value;
+    ccMaeEl.innerHTML = opcoesCentroCustoMae(tipoConta, ccAtual);
+    if(![...ccMaeEl.options].some(o=>o.value===ccAtual)) ccMaeEl.value='';
+    const ccSubEl = document.getElementById(prefixo+'-cc-sub');
+    if(ccSubEl) ccSubEl.innerHTML = opcoesSubCentroCusto(ccMaeEl.value, ccSubEl.value);
   }
-  const catSel = document.getElementById(prefixo+'-categoria');
-  if(catSel){
-    const catAtual = catSel.value;
-    const opcoes = categoriasPorTipoConta('despesa', tipoConta, ccSel?ccSel.value:'');
-    catSel.innerHTML = opcoes.map(c=>`<option value="${c.id}"${c.id===catAtual?' selected':''}>${esc(c.nome)}</option>`).join('');
-    if(!opcoes.some(c=>c.id===catAtual)) catSel.value='';
+  const centroCustoId = valorFinalCascata(prefixo,'cc');
+  const catMaeEl = document.getElementById(prefixo+'-categoria-mae');
+  if(catMaeEl){
+    const catAtual = catMaeEl.value;
+    catMaeEl.innerHTML = opcoesCategoriaMae('despesa', tipoConta, centroCustoId, catAtual);
+    if(![...catMaeEl.options].some(o=>o.value===catAtual)) catMaeEl.value='';
+    const catSubEl = document.getElementById(prefixo+'-categoria-sub');
+    if(catSubEl) catSubEl.innerHTML = opcoesSubcategoria(catMaeEl.value, catSubEl.value);
   }
 }
 function salvarNovoChequeEmitido(){
@@ -4545,8 +4569,8 @@ function salvarNovoChequeEmitido(){
     dataEmissao: document.getElementById('chq-emissao').value||hoje(),
     dataPrevista: document.getElementById('chq-prevista').value||hoje(),
     status:'emitido', dataCompensacao:null, lancamentoId:null,
-    categoriaId: document.getElementById('chq-categoria').value||'',
-    centroCustoId: document.getElementById('chq-cc').value||'',
+    categoriaId: valorFinalCascata('chq','categoria'),
+    centroCustoId: valorFinalCascata('chq','cc'),
     obs: document.getElementById('chq-obs').value.trim(),
     criadoEm: new Date().toISOString()
   };
@@ -4584,8 +4608,8 @@ function editarChequeEmitido(id){
       ${C('Previsão de Compensação *',`<input type="date" id="echq-prevista" value="${c.dataPrevista}">`,'1','150')}
     </div>
     <div class="row">
-      ${C('Categoria',`<select id="echq-categoria" onchange="atualizarSugestoesChequeEmitido('echq')">${opcoesCategorias('despesa',c.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="echq-cc" onchange="atualizarSugestoesChequeEmitido('echq')"><option value="">-</option>${opcoesCC(c.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="echq-categoria-mae" onchange="aoMudarMaeCascataFixo('echq','categoria');atualizarSugestoesChequeEmitido('echq')" style="flex:1">${opcoesCategoriaMae('despesa', tipoDaConta(c.contaId), c.centroCustoId, idsMaeSub(categoriaById(c.categoriaId)).maeId)}</select><select id="echq-categoria-sub" onchange="atualizarSugestoesChequeEmitido('echq')" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(c.categoriaId)).maeId, idsMaeSub(categoriaById(c.categoriaId)).subId)}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="echq-cc-mae" onchange="aoMudarMaeCascataFixo('echq','cc');atualizarSugestoesChequeEmitido('echq')" style="flex:1">${opcoesCentroCustoMae(tipoDaConta(c.contaId), idsMaeSub(centroCustoById(c.centroCustoId)).maeId)}</select><select id="echq-cc-sub" onchange="atualizarSugestoesChequeEmitido('echq')" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(c.centroCustoId)).maeId, idsMaeSub(centroCustoById(c.centroCustoId)).subId)}</select></div>`,'2','260')}
     </div>
     ${C('Observações',`<textarea id="echq-obs" rows="2">${esc(c.obs||'')}</textarea>`)}
     <div style="display:flex;gap:8px;margin-top:8px">
@@ -4607,8 +4631,8 @@ function salvarEdicaoChequeEmitido(id){
     favorecido: fav, fornecedorId: fornecedorIdPorNome(fav), valor,
     dataEmissao: document.getElementById('echq-emissao').value||hoje(),
     dataPrevista: document.getElementById('echq-prevista').value||hoje(),
-    categoriaId: document.getElementById('echq-categoria').value||'',
-    centroCustoId: document.getElementById('echq-cc').value||'',
+    categoriaId: valorFinalCascata('echq','categoria'),
+    centroCustoId: valorFinalCascata('echq','cc'),
     obs: document.getElementById('echq-obs').value.trim()
   };
   salvar({...DB, chequesEmitidos:(DB.chequesEmitidos||[]).map(c=>c.id===id?{...c,...patch}:c)});
@@ -5597,13 +5621,15 @@ function aplicarFiltroLanc(){
   _filtroLancIni = document.getElementById('flc-ini')?.value||'';
   _filtroLancFim = document.getElementById('flc-fim')?.value||'';
   _filtroLancContraparte = document.getElementById('flc-contraparte')?.value.trim()||'';
-  _filtroLancCategoria = document.getElementById('flc-categoria')?.value||'';
-  _filtroLancCC = document.getElementById('flc-cc')?.value||'';
+  _filtroLancCategoria = valorFinalCascata('flc','categoria');
+  _filtroLancCC = valorFinalCascata('flc','cc');
   renderAba();
 }
 function limparFiltroLanc(){
   _filtroLancConta=''; _filtroLancIni=''; _filtroLancFim='';
   _filtroLancContraparte=''; _filtroLancCategoria=''; _filtroLancCC='';
+  const catMae=document.getElementById('flc-categoria-mae'); if(catMae){ catMae.value=''; aoMudarMaeCascataFixo('flc','categoria'); }
+  const ccMae=document.getElementById('flc-cc-mae'); if(ccMae){ ccMae.value=''; aoMudarMaeCascataFixo('flc','cc'); }
   renderAba();
 }
 // ══════════════════════════════════════════
@@ -6053,8 +6079,8 @@ function htmlLancamentos(){
       </div>
       <div class="row">
         ${C('Cliente/Fornecedor',`<input type="text" id="flc-contraparte" value="${esc(_filtroLancContraparte)}" placeholder="Buscar por nome..." onchange="aplicarFiltroLanc()">`,'1','200')}
-        ${C('Categoria',`<select id="flc-categoria" onchange="aplicarFiltroLanc()"><option value="">Todas</option>${opcoesCategorias('',_filtroLancCategoria)}</select>`,'1','180')}
-        ${C('Centro de Custo',`<select id="flc-cc" onchange="aplicarFiltroLanc()"><option value="">Todos</option>${opcoesCC(_filtroLancCC)}</select>`,'1','180')}
+        ${C('Categoria',`<div style="display:flex;gap:5px"><select id="flc-categoria-mae" onchange="aoMudarMaeCascataFixo('flc','categoria');aplicarFiltroLanc()" style="flex:1">${opcoesCategoriaMae('','','',idsMaeSub(categoriaById(_filtroLancCategoria)).maeId)}</select><select id="flc-categoria-sub" onchange="aplicarFiltroLanc()" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(_filtroLancCategoria)).maeId, idsMaeSub(categoriaById(_filtroLancCategoria)).subId)}</select></div>`,'2','260')}
+        ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="flc-cc-mae" onchange="aoMudarMaeCascataFixo('flc','cc');aplicarFiltroLanc()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(_filtroLancCC)).maeId)}</select><select id="flc-cc-sub" onchange="aplicarFiltroLanc()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(_filtroLancCC)).maeId, idsMaeSub(centroCustoById(_filtroLancCC)).subId)}</select></div>`,'2','260')}
       </div>
       <div class="row">${BPerm('lancamentos','➕ Novo Lançamento','novoLancamento(\''+_filtroLancConta+'\')','var(--acc)')}${BPerm('lancamentos','📥 Importar Extrato (OFX/CSV)','abrirImportarOFX(\''+_filtroLancConta+'\')','var(--blu)','#fff')}${BPerm('lancamentos','🏦 Nova Tarifa Bancária','novaTarifaBancaria(\''+_filtroLancConta+'\')','var(--sur)','var(--txt)')}${B('✕ Limpar Filtros','limparFiltroLanc()','var(--sur)','var(--txt)')}
       ${BPerm('lancamentos', _lancEdit.ativo?'✅ Sair do Modo Categorização':'🖌 Modo Categorização (arrastar)', 'alternarModoEditarLanc()', _lancEdit.ativo?'var(--acc)':'var(--sur)', _lancEdit.ativo?'#fff':'var(--txt)')}</div>
@@ -6130,8 +6156,8 @@ function aplicarFiltroFRF(){
   FRF.ate = document.getElementById('frf-ate')?.value||'';
   FRF.tipo = document.getElementById('frf-tipo')?.value||'';
   FRF.contaId = document.getElementById('frf-conta')?.value||'';
-  FRF.categoriaId = document.getElementById('frf-categoria')?.value||'';
-  FRF.centroCustoId = document.getElementById('frf-cc')?.value||'';
+  FRF.categoriaId = valorFinalCascata('frf','categoria');
+  FRF.centroCustoId = valorFinalCascata('frf','cc');
   FRF.contraparte = document.getElementById('frf-contraparte')?.value||'';
   FRF.direcionamento = document.getElementById('frf-direc')?.value||'';
   FRF.busca = document.getElementById('frf-busca')?.value||'';
@@ -6141,6 +6167,8 @@ function aplicarFiltroFRF(){
 }
 function limparFiltroFRF(){
   FRF = {...FRF, de:'',ate:'',tipo:'',contaId:'',categoriaId:'',centroCustoId:'',contraparte:'',direcionamento:'',busca:'',origem:'',agruparPor:'',gruposAbertos:{}};
+  const catMae=document.getElementById('frf-categoria-mae'); if(catMae){ catMae.value=''; aoMudarMaeCascataFixo('frf','categoria'); }
+  const ccMae=document.getElementById('frf-cc-mae'); if(ccMae){ ccMae.value=''; aoMudarMaeCascataFixo('frf','cc'); }
   renderAba();
 }
 function irParaRelatorioFlex(){ irPara('relatorio_flex'); }
@@ -6291,8 +6319,8 @@ function htmlRelatorioFlex(){
     </div>
     <div class="row">
       ${C('Conta',`<select id="frf-conta" onchange="aplicarFiltroFRF()"><option value="">Todas</option>${opcoesContasFiltradas(FRF.contaId)}</select>`,'1','200')}
-      ${C('Categoria',`<select id="frf-categoria" onchange="aplicarFiltroFRF()"><option value="">Todas</option>${opcoesCategorias('',FRF.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="frf-cc" onchange="aplicarFiltroFRF()"><option value="">Todos</option>${opcoesCC(FRF.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="frf-categoria-mae" onchange="aoMudarMaeCascataFixo('frf','categoria');aplicarFiltroFRF()" style="flex:1">${opcoesCategoriaMae('','','',idsMaeSub(categoriaById(FRF.categoriaId)).maeId)}</select><select id="frf-categoria-sub" onchange="aplicarFiltroFRF()" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(FRF.categoriaId)).maeId, idsMaeSub(categoriaById(FRF.categoriaId)).subId)}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="frf-cc-mae" onchange="aoMudarMaeCascataFixo('frf','cc');aplicarFiltroFRF()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(FRF.centroCustoId)).maeId)}</select><select id="frf-cc-sub" onchange="aplicarFiltroFRF()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(FRF.centroCustoId)).maeId, idsMaeSub(centroCustoById(FRF.centroCustoId)).subId)}</select></div>`,'2','260')}
     </div>
     <div class="row">
       ${C('Fornecedor/Cliente',`<input type="text" id="frf-contraparte" value="${esc(FRF.contraparte)}" placeholder="Buscar por nome..." onchange="aplicarFiltroFRF()">`,'1','200')}
@@ -6863,8 +6891,8 @@ function salvarEdicaoEmMassaExtrato(){
       data: dataEl.value,
       contraparte: document.getElementById('edtx-forn-'+id).value.trim(),
       descricao: document.getElementById('edtx-desc-'+id).value.trim(),
-      categoriaId: document.getElementById('edtx-cat-'+id).value,
-      centroCustoId: document.getElementById('edtx-cc-'+id)?.value||'',
+      categoriaId: valorFinalCascata('edtx'+id,'categoria'),
+      centroCustoId: valorFinalCascata('edtx'+id,'cc'),
       direcionamento: document.getElementById('edtx-direc-'+id).value.trim(),
       tipo: document.getElementById('edtx-tipo-'+id).value,
       valor: valor||0,
@@ -6884,12 +6912,15 @@ function aplicarFiltroRelExtrato(){
   RelExtrato.de = document.getElementById('re-de')?.value||'';
   RelExtrato.ate = document.getElementById('re-ate')?.value||'';
   RelExtrato.fornecedor = document.getElementById('re-forn')?.value||'';
-  RelExtrato.categoriaId = document.getElementById('re-categoria')?.value||'';
-  RelExtrato.centroCustoId = document.getElementById('re-cc')?.value||'';
+  RelExtrato.categoriaId = valorFinalCascata('re','categoria');
+  RelExtrato.centroCustoId = valorFinalCascata('re','cc');
   RelExtrato.direcionamento = document.getElementById('re-direc')?.value||'';
   renderAba();
 }
-function limparFiltroRelExtrato(){ RelExtrato = {contaId:'',de:'',ate:'',fornecedor:'',categoriaId:'',centroCustoId:'',direcionamento:''}; renderAba(); }
+function limparFiltroRelExtrato(){
+  RelExtrato = {contaId:'',de:'',ate:'',fornecedor:'',categoriaId:'',centroCustoId:'',direcionamento:''};
+  renderAba();
+}
 // Ao tocar numa célula de Categoria/Centro de Custo/Direcionamento/Fornecedor no extrato — refiltra pelo item,
 // mantendo a conta e o período que já estavam selecionados.
 function filtrarExtratoPorCategoria(catId){ empilharHistorico(); RelExtrato.categoriaId = catId; RelExtrato.fornecedor=''; RelExtrato.centroCustoId=''; RelExtrato.direcionamento=''; renderAba(); }
@@ -6901,7 +6932,7 @@ let RelPagarF = { de:'', ate:'', centroCustoId:'', texto:'' };
 function aplicarFiltroRelPagar(){
   RelPagarF.de = document.getElementById('rp-de')?.value||'';
   RelPagarF.ate = document.getElementById('rp-ate')?.value||'';
-  RelPagarF.centroCustoId = document.getElementById('rp-cc')?.value||'';
+  RelPagarF.centroCustoId = valorFinalCascata('rp','cc');
   RelPagarF.texto = document.getElementById('rp-txt')?.value||'';
   renderAba();
 }
@@ -6911,7 +6942,7 @@ let RelReceberF = { de:'', ate:'', centroCustoId:'', texto:'' };
 function aplicarFiltroRelReceber(){
   RelReceberF.de = document.getElementById('rr-de')?.value||'';
   RelReceberF.ate = document.getElementById('rr-ate')?.value||'';
-  RelReceberF.centroCustoId = document.getElementById('rr-cc')?.value||'';
+  RelReceberF.centroCustoId = valorFinalCascata('rr','cc');
   RelReceberF.texto = document.getElementById('rr-txt')?.value||'';
   renderAba();
 }
@@ -7663,8 +7694,8 @@ function htmlRelatorios(){
           ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
           <td><input type="text" id="edtx-forn-${l.id}" value="${esc(l.contraparte||'')}" list="dl-contrapartes-edtx" style="width:130px;font-size:11px"></td>
           <td><input type="text" id="edtx-desc-${l.id}" value="${esc(l.descricao||'')}" style="width:130px;font-size:11px"></td>
-          <td><select id="edtx-cat-${l.id}" style="font-size:11px">${opcoesCategorias(l.tipo==='entrada'?'receita':'despesa',l.categoriaId)}</select></td>
-          <td><select id="edtx-cc-${l.id}" style="font-size:11px"><option value="">-</option>${opcoesCC(l.centroCustoId)}</select></td>
+          <td><div style="display:flex;gap:2px"><select id="edtx${l.id}-categoria-mae" onchange="aoMudarMaeCascataFixo('edtx${l.id}','categoria')" style="font-size:10px;width:80px">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa','','',idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select><select id="edtx${l.id}-categoria-sub" style="font-size:10px;width:70px">${opcoesSubcategoria(idsMaeSub(categoriaById(l.categoriaId)).maeId, idsMaeSub(categoriaById(l.categoriaId)).subId)}</select></div></td>
+          <td><div style="display:flex;gap:2px"><select id="edtx${l.id}-cc-mae" onchange="aoMudarMaeCascataFixo('edtx${l.id}','cc')" style="font-size:10px;width:80px">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</select><select id="edtx${l.id}-cc-sub" style="font-size:10px;width:70px">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(l.centroCustoId)).maeId, idsMaeSub(centroCustoById(l.centroCustoId)).subId)}</select></div></td>
           <td><input type="text" id="edtx-direc-${l.id}" value="${esc(l.direcionamento||'')}" list="dl-direcionamentos-edtx" style="width:110px;font-size:11px"></td>
           <td><select id="edtx-tipo-${l.id}" style="font-size:11px"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select></td>
           <td><input type="text" id="edtx-valor-${l.id}" value="${fmt(l.valor)}" style="width:90px;font-size:11px;text-align:right"></td>
@@ -7717,8 +7748,8 @@ function htmlRelatorios(){
       ${C('De',`<input type="date" id="re-de" value="${RelExtrato.de}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
       ${C('Até',`<input type="date" id="re-ate" value="${RelExtrato.ate}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
       ${C('Fornecedor/Cliente',`<select id="re-forn" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${contrapartesExistentes().map(n=>`<option value="${esc(n)}"${n===RelExtrato.fornecedor?' selected':''}>${esc(n)}</option>`).join('')}</select>`,'1','200')}
-      ${C('Categoria',`<select id="re-categoria" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesCategorias('',RelExtrato.categoriaId)}</select>`,'1','180')}
-      ${C('Centro de Custo',`<select id="re-cc" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${opcoesCC(RelExtrato.centroCustoId)}</select>`,'1','180')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="re-categoria-mae" onchange="aoMudarMaeCascataFixo('re','categoria');aplicarFiltroRelExtrato()" style="flex:1">${opcoesCategoriaMae('','','',idsMaeSub(categoriaById(RelExtrato.categoriaId)).maeId)}</select><select id="re-categoria-sub" onchange="aplicarFiltroRelExtrato()" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(RelExtrato.categoriaId)).maeId, idsMaeSub(categoriaById(RelExtrato.categoriaId)).subId)}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="re-cc-mae" onchange="aoMudarMaeCascataFixo('re','cc');aplicarFiltroRelExtrato()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).maeId)}</select><select id="re-cc-sub" onchange="aplicarFiltroRelExtrato()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).subId)}</select></div>`,'2','260')}
       ${C('Direcionamento',`<select id="re-direc" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${direcionamentosExistentes().map(d=>`<option value="${esc(d)}"${d===RelExtrato.direcionamento?' selected':''}>${esc(d)}</option>`).join('')}</select>`,'1','180')}
     </div>
     <div class="row" style="margin-bottom:10px">
@@ -7753,7 +7784,7 @@ function htmlRelatorios(){
     <div class="row" style="margin-bottom:10px">
       ${C('De',`<input type="date" id="rp-de" value="${RelPagarF.de}" onchange="aplicarFiltroRelPagar()">`,'1','150')}
       ${C('Até',`<input type="date" id="rp-ate" value="${RelPagarF.ate}" onchange="aplicarFiltroRelPagar()">`,'1','150')}
-      ${C('Centro de Custo',`<select id="rp-cc" onchange="aplicarFiltroRelPagar()"><option value="">Todos</option>${opcoesCC(RelPagarF.centroCustoId)}</select>`,'1','180')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="rp-cc-mae" onchange="aoMudarMaeCascataFixo('rp','cc');aplicarFiltroRelPagar()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).maeId)}</select><select id="rp-cc-sub" onchange="aplicarFiltroRelPagar()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).subId)}</select></div>`,'2','260')}
       ${C('Fornecedor',`<input type="text" id="rp-txt" value="${esc(RelPagarF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelPagar()">`,'1','200')}
     </div>
     <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelPagar()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirPagarPeriodo()','var(--sur)','var(--txt)')}</div>`;
@@ -7776,7 +7807,7 @@ function htmlRelatorios(){
     <div class="row" style="margin-bottom:10px">
       ${C('De',`<input type="date" id="rr-de" value="${RelReceberF.de}" onchange="aplicarFiltroRelReceber()">`,'1','150')}
       ${C('Até',`<input type="date" id="rr-ate" value="${RelReceberF.ate}" onchange="aplicarFiltroRelReceber()">`,'1','150')}
-      ${C('Centro de Custo',`<select id="rr-cc" onchange="aplicarFiltroRelReceber()"><option value="">Todos</option>${opcoesCC(RelReceberF.centroCustoId)}</select>`,'1','180')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="rr-cc-mae" onchange="aoMudarMaeCascataFixo('rr','cc');aplicarFiltroRelReceber()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).maeId)}</select><select id="rr-cc-sub" onchange="aplicarFiltroRelReceber()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).subId)}</select></div>`,'2','260')}
       ${C('Cliente',`<input type="text" id="rr-txt" value="${esc(RelReceberF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelReceber()">`,'1','200')}
     </div>
     <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelReceber()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirReceberPeriodo()','var(--sur)','var(--txt)')}</div>`;
