@@ -173,10 +173,11 @@
       "banco": "Cef",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 3.36,
+      "saldoInicial": 0,
       "dataSaldoInicial": "2026-05-31",
       "ativa": true,
-      "obs": ""
+      "obs": "",
+      "atualizadoEm": "2026-07-22T12:04:27.755Z"
     },
     {
       "id": "mrntzv0b20tht",
