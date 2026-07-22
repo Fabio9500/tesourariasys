@@ -971,6 +971,832 @@
       "nome": "Plano de Contas",
       "parentId": "z2d4o4i8k08k6",
       "tipo": "receita"
+    },
+    {
+      "id": "mrw0kj4oykr11",
+      "nome": "[Aplic. Sicred]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4oet80i",
+      "nome": "2- DESP. ESPOR�DICAS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4oal2yn",
+      "nome": "Tarifas Banc�rias",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4oilclp",
+      "nome": "[Caixa Telasul]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4o476cu",
+      "nome": "1- DESP. FIXAS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4ot2v6y",
+      "nome": "Imp. Parc. Simples",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4oc9d61",
+      "nome": "6- DESP. P.F�SICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4oggfyo",
+      "nome": "Pagamentos",
+      "parentId": "mrw0kj4oc9d61",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pkqyql",
+      "nome": "3- DESP. OBRAS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pn6c5i",
+      "nome": "M�o de Obra Extra",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pv6pse",
+      "nome": "Ct� Telefonia",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pgu93e",
+      "nome": "Ct� Energia",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4p8stc2",
+      "nome": "Imp. GFIP (FGTS)",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pnee3h",
+      "nome": "Imp. GPS (INSS)",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4p9t1x8",
+      "nome": "[Bc. CEF - Telasul]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4phav3z",
+      "nome": "[Conta Cheque]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4p3xtas",
+      "nome": "Juros C.Especial",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4p0f4lo",
+      "nome": "10- RECBT. P.JUR�DICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pcgshe",
+      "nome": "Vendas Telas",
+      "parentId": "mrw0kj4p0f4lo",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4p94tmu",
+      "nome": "Contabilidade",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4py80xu",
+      "nome": "Emp. Banc�rio",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pvvtkq",
+      "nome": "Seguro Outros",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4po27ub",
+      "nome": "7- FOLHA DE PAGT�",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pdmrzn",
+      "nome": "Func. Amaral",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pht8ep",
+      "nome": "Func. Adilson",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4pti6oy",
+      "nome": "Alimenta��o",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qqrix5",
+      "nome": "Func. Alice",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qaklmp",
+      "nome": "Imp. DARF Simples",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qaekd5",
+      "nome": "Deslocamento",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qtvh0s",
+      "nome": "11- RECBT� P.FISICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qgocr4",
+      "nome": "CEF Shoping",
+      "parentId": "mrw0kj4qtvh0s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qbwdm2",
+      "nome": "Aluguel",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qj3rou",
+      "nome": "[Crt.(05) C6 - 7185]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qpkpya",
+      "nome": "Obra Conclu�da",
+      "parentId": "mrw0kj4p0f4lo",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qrjwqc",
+      "nome": "Vigilancia",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qwowe5",
+      "nome": "[Conta Cart�o]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4q84eah",
+      "nome": "[Conv. It�o Corrente]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4q8ib7m",
+      "nome": "Cons. Cr�dito",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4q3sgvz",
+      "nome": "Venda Servi�os",
+      "parentId": "mrw0kj4p0f4lo",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4q8svjg",
+      "nome": "[Conta Boleto]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qjkn1a",
+      "nome": "[Conv. Multimais]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qx3fys",
+      "nome": "Recbt. Variado",
+      "parentId": "mrw0kj4p0f4lo",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qb81it",
+      "nome": "Obra Execu��o",
+      "parentId": "mrw0kj4p0f4lo",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qa36kt",
+      "nome": "Func. Hugo",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4q91z3n",
+      "nome": "Func. Adeilton",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qrjgbp",
+      "nome": "Material Estrutura",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4q5gc5k",
+      "nome": "Fretes",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qpbme4",
+      "nome": "Mat. Escrit�rio",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qeezxw",
+      "nome": "5- DESP. FACKTORY",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qkjpts",
+      "nome": "Emp. Realizado",
+      "parentId": "mrw0kj4qeezxw",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qgatxf",
+      "nome": "func. Ito",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4q1eqnz",
+      "nome": "Vale Quinzenal",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qcv6a1",
+      "nome": "Fretes",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4qgdn7z",
+      "nome": "Abastecimento",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4q28ev8",
+      "nome": "Recis�o",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4ravl4n",
+      "nome": "Bc. Bradesco",
+      "parentId": "mrw0kj4qtvh0s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rwntoa",
+      "nome": "Bc. Bradesco",
+      "parentId": "mrw0kj4oc9d61",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4r03tz6",
+      "nome": "Bc. Santander",
+      "parentId": "mrw0kj4oc9d61",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rc5dph",
+      "nome": "Bc. Santander",
+      "parentId": "mrw0kj4qtvh0s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rlzx15",
+      "nome": "12 - RECBT� FACKTORY",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rz04cl",
+      "nome": "Cta Bradesco",
+      "parentId": "mrw0kj4rlzx15",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rf6ku7",
+      "nome": "Material Acess�rios",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rejarn",
+      "nome": "[Conv. Serbri]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rqvojf",
+      "nome": "Juros Pago",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rxsplo",
+      "nome": "Imp. ISS",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rfxc3c",
+      "nome": "Func. Fernando",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rosce4",
+      "nome": "Pro-Labore",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rbproz",
+      "nome": "Func. Neilton",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rvnf8h",
+      "nome": "Material Pintura",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rzahfa",
+      "nome": "Empr�stimo",
+      "parentId": "mrw0kj4oc9d61",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rya4yo",
+      "nome": "[Conta F�bio]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rz039b",
+      "nome": "Func. Alessandro",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rjk093",
+      "nome": "Rede Prote��o",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4rmcexu",
+      "nome": "Mat. Consumo",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4s3u1jn",
+      "nome": "Func. Jai",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4sgnbsu",
+      "nome": "Jur�dico",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4syv707",
+      "nome": "Cx.Pessoal",
+      "parentId": "mrw0kj4oc9d61",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4sikyfw",
+      "nome": "Maqu.e Equip.",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4s9qj2w",
+      "nome": "Material Const. Civil",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4sehyzv",
+      "nome": "Bc. Brasil",
+      "parentId": "mrw0kj4qtvh0s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4ssg6i1",
+      "nome": "4- PAGT. SEM DESPESAS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4symlk8",
+      "nome": "Pagt. Conv�nios",
+      "parentId": "mrw0kj4ssg6i1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4sbnlu3",
+      "nome": "Exame Demissional",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4sjhc74",
+      "nome": "13� Sal�rio",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4sfn7cv",
+      "nome": "Hospedagem",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4s3zdom",
+      "nome": "[Conv. Conlar 2024]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4skl2er",
+      "nome": "Func. Meire",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4skgu0c",
+      "nome": "Material Abrasivo",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4sk59k0",
+      "nome": "Tela Revestida",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4th6i66",
+      "nome": "Alvar�",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tbnhwx",
+      "nome": "Rede Prote��o",
+      "parentId": "mrw0kj4p0f4lo",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4td0gyv",
+      "nome": "Func. Eduardo",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tnel3a",
+      "nome": "Transf. de Valores",
+      "parentId": "mrw0kj4ssg6i1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4trh7o0",
+      "nome": "[Aplic. Bc. C6 - CDI]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4td6blx",
+      "nome": "Func. Jeovane",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tsf6mv",
+      "nome": "Ct. Cart�o",
+      "parentId": "mrw0kj4qtvh0s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4td1je3",
+      "nome": "[Bc. Sicred Corrente]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tdrxmo",
+      "nome": "Bc. Ita�",
+      "parentId": "mrw0kj4qtvh0s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tacb3g",
+      "nome": "[Bc. CEF - Construsul]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tjmgbq",
+      "nome": "Tercerizados",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4t73i8v",
+      "nome": "Manut. Autom�veis",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4t5ksw6",
+      "nome": "Material Telhado",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tzj0f3",
+      "nome": "Material El�trico",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tkmghp",
+      "nome": "Func. Edson",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tq5pq6",
+      "nome": "Func. Genivaldo",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tfbea3",
+      "nome": "Material Alambrado",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tfbvvq",
+      "nome": "Juros C.Cr�dito",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tkyvbf",
+      "nome": "Ct. BRA (01)",
+      "parentId": "mrw0kj4oc9d61",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4t0j0zu",
+      "nome": "Tela Galvanizada",
+      "parentId": "mrw0kj4pkqyql",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tbmer1",
+      "nome": "Func. Arruda",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tj81xu",
+      "nome": "Manut. Instala��es",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4tyk5kz",
+      "nome": "Fardamentos",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4ttimpq",
+      "nome": "[Conv. Pescador]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4t110y6",
+      "nome": "Ret. Estoque",
+      "parentId": "mrw0kj4ssg6i1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4uz03s9",
+      "nome": "Func. Lucas",
+      "parentId": "mrw0kj4po27ub",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4urial3",
+      "nome": "[Crt.(20) CEF - 4716]",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4ulbf5c",
+      "nome": "F�rias",
+      "parentId": "mrw0kj4oet80i",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrw0kj4u0hqss",
+      "nome": "Sicred Construsul",
+      "parentId": "mrw0kj4oc9d61",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
     }
   ],
   "centrosCusto": [
