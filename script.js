@@ -979,16 +979,29 @@ function iniciarApp(){
 // NAVEGAÇÃO
 // ══════════════════════════════════════════
 let ABA='dashboard';
-let _historicoAbas = [];
+let _historicoAbas = []; // pilha de "fotografias" do estado (aba + filtros ativos) — não só o nome da aba, pra "Voltar" desfazer também os cliques de "Ir para" dentro da mesma tela (Extrato), um de cada vez.
+function snapshotEstadoAtual(){
+  return { aba: ABA, relExtrato: {...RelExtrato}, frf: {...FRF}, rlt: {...RLT} };
+}
+function empilharHistorico(){
+  _historicoAbas.push(snapshotEstadoAtual());
+}
 function irPara(id){
-  if(id!==ABA) _historicoAbas.push(ABA);
+  if(id!==ABA) empilharHistorico();
   ABA=id; initNav(); renderAba();
   const btnBack = document.querySelector('.fab-back');
   if(btnBack) btnBack.style.display = (id==='dashboard')?'none':'flex';
 }
 function voltarPagina(){
   const anterior = _historicoAbas.pop();
-  ABA = anterior!==undefined ? anterior : 'dashboard';
+  if(anterior){
+    ABA = anterior.aba;
+    RelExtrato = anterior.relExtrato;
+    FRF = anterior.frf;
+    RLT = anterior.rlt;
+  } else {
+    ABA = 'dashboard';
+  }
   initNav(); renderAba();
   const btnBack = document.querySelector('.fab-back');
   if(btnBack) btnBack.style.display = (ABA==='dashboard')?'none':'flex';
@@ -1033,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.62';
+const VERSAO = 'v1.63';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3010,17 +3023,24 @@ function encontrarLancamentoManualParecido(t, contaId, jaUsados){
 let _ofxPendente = [];
 let _ofxContaId = '';
 function abrirImportarOFX(contaIdPre){
-  AM('📥 Importar Extrato (OFX)', `
+  AM('📥 Importar Extrato', `
     ${EH('e-ofx')}
     <div style="font-size:12px;color:var(--mut);margin-bottom:12px;line-height:1.5">
-      Baixe o arquivo <strong>.ofx</strong> no site/app do banco (geralmente em "Extrato" → "Exportar" ou "Outros formatos") e escolha ele aqui. O sistema tenta reconhecer cada lançamento pelo que você já categorizou antes.
+      Baixe o extrato no site/app do banco (geralmente em "Extrato" → "Exportar" ou "Outros formatos") e escolha o arquivo aqui — pode ser <strong>.ofx</strong> ou <strong>.csv</strong>. O sistema tenta reconhecer cada lançamento pelo que você já categorizou antes.
+    </div>
+    <div class="campo">
+      <label>Formato do arquivo</label>
+      <select id="ofx-formato" onchange="document.getElementById('ofx-arquivo').accept = this.value==='csv' ? '.csv,text/csv' : '.ofx,.qfx,text/plain'">
+        <option value="ofx">OFX (.ofx / .qfx)</option>
+        <option value="csv">CSV (exportado do banco)</option>
+      </select>
     </div>
     <div class="campo">
       <label>Conta *</label>
       <select id="ofx-conta">${opcoesContasFiltradas(contaIdPre)}</select>
     </div>
     <div class="campo">
-      <label>Arquivo (.ofx)</label>
+      <label>Arquivo</label>
       <input type="file" id="ofx-arquivo" accept=".ofx,.qfx,text/plain" style="padding:8px">
     </div>
     <div style="display:flex;gap:8px;margin-top:10px">
@@ -3029,17 +3049,75 @@ function abrirImportarOFX(contaIdPre){
     </div>
   `);
 }
+function fitidSinteticoCSV(data, valor, memo){
+  const base = data+'|'+Number(valor).toFixed(2)+'|'+(memo||'').trim().toUpperCase();
+  let hash = 0;
+  for(let i=0;i<base.length;i++){ hash = ((hash<<5)-hash+base.charCodeAt(i))|0; }
+  return 'csv'+Math.abs(hash);
+}
+// Parser genérico de CSV bancário — aceita os formatos mais comuns de banco
+// brasileiro: cabeçalho com Data + Descrição/Histórico + (Valor único COM
+// sinal, OU colunas separadas de Débito/Crédito). Detecta delimitador (';'
+// ou ',') e formatos de data (dd/mm/aaaa) e número (1.234,56) automaticamente.
+function parseCSVBancario(texto){
+  const linhas = texto.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  if(!linhas.length) return [];
+  const delim = (linhas[0].match(/;/g)||[]).length >= (linhas[0].match(/,/g)||[]).length ? ';' : ',';
+  function quebrarLinha(l){ return l.split(delim).map(c=>c.trim().replace(/^"|"$/g,'')); }
+  const cabecalho = quebrarLinha(linhas[0]).map(h=>h.toLowerCase());
+  const idxData = cabecalho.findIndex(h=>/data|date/.test(h));
+  const idxDesc = cabecalho.findIndex(h=>/hist[oó]rico|descri[cç][aã]o|memo|lan[cç]amento|favorecido/.test(h));
+  const idxValor = cabecalho.findIndex(h=>/^valor(\s*\(r\$\))?$|montante|amount/.test(h));
+  const idxDebito = cabecalho.findIndex(h=>/d[eé]bito|sa[ií]da/.test(h));
+  const idxCredito = cabecalho.findIndex(h=>/cr[eé]dito|entrada/.test(h));
+  const temCabecalho = idxData>=0 && (idxValor>=0 || idxDebito>=0 || idxCredito>=0);
+  const linhasDados = temCabecalho ? linhas.slice(1) : linhas;
+  function parseDataBR(s){
+    const m = (s||'').match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+    if(!m) return '';
+    let [,d,mo,a] = m;
+    if(a.length===2) a = '20'+a;
+    return `${a}-${mo.padStart(2,'0')}-${d.padStart(2,'0')}`;
+  }
+  function parseNumeroBR(s){
+    if(!s) return 0;
+    s = String(s).replace(/[^\d,.\-]/g,'');
+    if(s.includes(',')) s = s.replace(/\.(?=\d{3}(\D|$))/g,'').replace(',', '.');
+    return parseFloat(s)||0;
+  }
+  const out = [];
+  linhasDados.forEach(l=>{
+    const campos = quebrarLinha(l);
+    if(campos.length<2) return;
+    const data = parseDataBR(idxData>=0 ? campos[idxData] : campos[0]);
+    const memo = idxDesc>=0 ? campos[idxDesc] : (campos.find((c,i)=>i!==idxData&&i!==idxValor&&i!==idxDebito&&i!==idxCredito)||'');
+    let valor=0, tipo='saida';
+    if(idxValor>=0){
+      valor = parseNumeroBR(campos[idxValor]);
+      tipo = valor>=0 ? 'entrada':'saida';
+      valor = Math.abs(valor);
+    } else {
+      const vD = idxDebito>=0 ? parseNumeroBR(campos[idxDebito]) : 0;
+      const vC = idxCredito>=0 ? parseNumeroBR(campos[idxCredito]) : 0;
+      if(Math.abs(vC)>0){ valor=Math.abs(vC); tipo='entrada'; } else { valor=Math.abs(vD); tipo='saida'; }
+    }
+    if(!data || !valor) return;
+    out.push({ data, valor, tipo, memoOriginal: (memo||'').trim(), fitid: fitidSinteticoCSV(data,valor,memo) });
+  });
+  return out;
+}
 function processarArquivoOFX(){
   const contaId = document.getElementById('ofx-conta').value;
+  const formato = document.getElementById('ofx-formato')?.value || 'ofx';
   const input = document.getElementById('ofx-arquivo');
   const arquivo = input?.files?.[0];
   if(!contaId){ ME('e-ofx','Selecione a conta.'); return; }
-  if(!arquivo){ ME('e-ofx','Escolha um arquivo .ofx primeiro.'); return; }
+  if(!arquivo){ ME('e-ofx','Escolha um arquivo primeiro.'); return; }
   const leitor = new FileReader();
   leitor.onload = (e) => {
     let transacoes;
-    try{ transacoes = parseOFX(e.target.result); }
-    catch(err){ ME('e-ofx','Não consegui ler este arquivo. Confira se é um .ofx válido exportado do banco.'); return; }
+    try{ transacoes = formato==='csv' ? parseCSVBancario(e.target.result) : parseOFX(e.target.result); }
+    catch(err){ ME('e-ofx',`Não consegui ler este arquivo. Confira se é um ${formato==='csv'?'.csv':'.ofx'} válido exportado do banco.`); return; }
     if(!transacoes.length){ ME('e-ofx','Nenhum lançamento encontrado neste arquivo.'); return; }
     const idsExistentes = new Set((DB.lancamentos||[]).filter(l=>l.contaId===contaId && l.fitid).map(l=>l.fitid));
     const dicionario = construirDicionarioAprendizado(contaId);
@@ -5556,37 +5634,207 @@ function irParaFiltroFRF(campo, valor){
   FRF[campo] = valor;
   irPara('relatorio_flex');
 }
-function htmlLancamentos(){
+// ══════════════════════════════════════════
+// PÁGINA LANÇAMENTOS — colunas ordenáveis (duplo clique), ocultáveis (ícone 👁)
+// e com filtro por valores (ícone 🔻, estilo Excel); e um "Modo Categorização"
+// que permite pintar Categoria/Centro de Custo/Direcionamento arrastando o
+// mouse sobre várias linhas de uma vez — útil pra classificar em massa
+// lançamentos zerados. A pedido do Fabio (21/07/2026).
+// ══════════════════════════════════════════
+let _lancColOcultas = new Set();
+let _lancColFiltros = {}; // {chave: Set(valores permitidos)}
+let _lancOrdem = { campo:'data', dir:'desc' };
+let _lancEdit = { ativo:false, arrastando:false, idsAlterados:new Set() };
+
+function colunasLanc(){
+  return [
+    {chave:'data', label:'Data', get:l=>l.data, disp:l=>fmtD(l.data)+badgeStatusLancamento(l)},
+    {chave:'conta', label:'Conta', get:l=>nomeConta(contaById(l.contaId)), disp:l=>esc(nomeConta(contaById(l.contaId)))},
+    {chave:'tipo', label:'Tipo', get:l=>l.tipo==='entrada'?'Entrada':'Saída', disp:l=>T(l.tipo==='entrada'?'Entrada':'Saída', l.tipo==='entrada'?'vd':'vm')+(l.origem==='transferencia'?' '+T('🔀 Transf.','az'):'')},
+    {chave:'categoria', label:'Categoria', get:l=>nomeCompletoCategoria(categoriaById(l.categoriaId))||'-', disp:l=>esc(nomeCompletoCategoria(categoriaById(l.categoriaId))||'-')},
+    {chave:'cc', label:'C. Custo', get:l=>nomeCompletoCentroCusto(centroCustoById(l.centroCustoId))||'-', disp:l=>esc(nomeCompletoCentroCusto(centroCustoById(l.centroCustoId))||'-')},
+    {chave:'direcionamento', label:'Direcionamento', get:l=>nomeCompletoDirecionamento(direcionamentoById(l.direcionamentoId))||l.direcionamento||'-', disp:l=>esc(nomeCompletoDirecionamento(direcionamentoById(l.direcionamentoId))||l.direcionamento||'-')},
+    {chave:'contraparte', label:'Cliente/Fornecedor', get:l=>l.contraparte||'-', disp:l=>esc(l.contraparte||'-')},
+    {chave:'descricao', label:'Descrição', get:l=>l.descricao||'-', disp:l=>`${esc(l.descricao||'-')}${l.origem==='pagamento'?' '+T('Pagamento','az'):''}${l.fitid?' <span title="Conferido com o extrato do banco" style="color:#3fb950">✅</span>':''}`, onclick:l=>l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''},
+    {chave:'valor', label:'Valor', get:l=>l.valor, numerico:true, disp:l=>`<span style="font-weight:700;color:${l.tipo==='entrada'?'#3fb950':'#f85149'}">${l.tipo==='entrada'?'+':'-'} R$ ${fmt(l.valor)}</span>`},
+  ];
+}
+function lancamentosBaseFiltrados(){
   let lista = (DB.lancamentos||[]).slice();
   lista = lista.filter(l=>contaTipoOk(l.contaId));
   if(_filtroLancConta) lista = lista.filter(l=>l.contaId===_filtroLancConta);
   if(_filtroLancIni) lista = lista.filter(l=>l.data>=_filtroLancIni);
   if(_filtroLancFim) lista = lista.filter(l=>l.data<=_filtroLancFim);
   if(_filtroLancContraparte) lista = lista.filter(l=>(l.contraparte||'').toLowerCase().includes(_filtroLancContraparte.toLowerCase()));
-  if(_filtroLancCategoria) lista = lista.filter(l=>l.categoriaId===_filtroLancCategoria);
-  if(_filtroLancCC) lista = lista.filter(l=>l.centroCustoId===_filtroLancCC);
-  lista.sort((a,b)=>b.data.localeCompare(a.data)||b.criadoEm.localeCompare(a.criadoEm));
-
+  if(_filtroLancCategoria) lista = lista.filter(l=>l.categoriaId===_filtroLancCategoria || categoriaById(l.categoriaId)?.parentId===_filtroLancCategoria);
+  if(_filtroLancCC) lista = lista.filter(l=>l.centroCustoId===_filtroLancCC || centroCustoById(l.centroCustoId)?.parentId===_filtroLancCC);
+  return lista;
+}
+// Aplica os filtros de coluna (checklist estilo Excel) por cima da lista já
+// filtrada pelos campos "de cima" (conta/período/categoria/CC/etc).
+function lancamentosComFiltroColunas(base, excluirChave){
+  const cols = colunasLanc();
+  let lista = base;
+  cols.forEach(col=>{
+    if(col.chave===excluirChave) return;
+    const permitidos = _lancColFiltros[col.chave];
+    if(permitidos) lista = lista.filter(l=>permitidos.has(String(col.get(l))));
+  });
+  return lista;
+}
+function lancamentosOrdenados(lista){
+  const {campo, dir} = _lancOrdem;
+  const cols = colunasLanc();
+  const col = cols.find(c=>c.chave===campo) || cols[0];
+  const mult = dir==='asc'?1:-1;
+  return lista.slice().sort((a,b)=>{
+    const va = col.get(a), vb = col.get(b);
+    if(col.numerico) return (Number(va)-Number(vb))*mult;
+    return String(va).localeCompare(String(vb),'pt-BR')*mult || (b.criadoEm||'').localeCompare(a.criadoEm||'');
+  });
+}
+function linhaLancTabela(l){
+  const cols = colunasLanc().filter(c=>!_lancColOcultas.has(c.chave));
+  const tds = cols.map(c=>`<td${c.onclick?c.onclick(l):''}>${c.disp(l)}</td>`).join('');
+  if(_lancEdit.ativo){
+    return `<tr data-lid="${l.id}" style="cursor:crosshair;user-select:none${_lancEdit.idsAlterados.has(l.id)?';background:#f0a50022':''}" onmousedown="iniciarArrastarCategorizacao('${l.id}',event)" onmouseenter="continuarArrastarCategorizacao('${l.id}')">${tds}</tr>`;
+  }
+  return `<tr style="cursor:pointer${l.status==='nulo'?';opacity:.55':''}" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">${tds}<td>${B('✏','editarLancamento(\''+l.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
+}
+// Recalcula e substitui só o corpo da tabela (usado durante o arrasto de
+// categorização, pra não re-renderizar filtros/toolbar a cada linha).
+function renderTabelaLancamentos(){
+  const base = lancamentosBaseFiltrados();
+  const lista = lancamentosOrdenados(lancamentosComFiltroColunas(base, null));
+  const tbody = document.getElementById('lanc-tbody');
+  const cols = colunasLanc().filter(c=>!_lancColOcultas.has(c.chave));
+  if(tbody) tbody.innerHTML = lista.map(linhaLancTabela).join('') || `<tr><td colspan="${cols.length+1}" style="text-align:center;color:var(--mut)">Nenhum lançamento encontrado</td></tr>`;
   const totalEntradas = lista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
   const totalSaidas = lista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
-
-  const linhas = lista.map(l=>{
-    const c = contaById(l.contaId);
-    const cat = categoriaById(l.categoriaId);
-    const cc = centroCustoById(l.centroCustoId);
-    return `<tr style="cursor:pointer${l.status==='nulo'?';opacity:.55':''}" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
-      <td>${fmtD(l.data)}${badgeStatusLancamento(l)}</td>
-      <td>${esc(c?nomeConta(c):'-')}</td>
-      <td>${T(l.tipo==='entrada'?'Entrada':'Saída', l.tipo==='entrada'?'vd':'vm')}${l.origem==='transferencia'?' '+T('🔀 Transf.','az'):''}</td>
-      <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
-      <td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
-      <td>${esc(l.contraparte||'-')}</td>
-      <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}${l.origem==='pagamento'?' '+T('Pagamento','az'):''}${l.fitid?' <span title="Conferido com o extrato do banco" style="color:#3fb950">✅</span>':''}</td>
-      <td style="text-align:right;font-weight:700;color:${l.tipo==='entrada'?'#3fb950':'#f85149'}">${l.tipo==='entrada'?'+':'-'} R$ ${fmt(l.valor)}</td>
-      <td>${B('✏','editarLancamento(\''+l.id+'\')','var(--sur)','var(--txt)',1)}</td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--mut)">Nenhum lançamento encontrado</td></tr>';
-
+  const elE = document.getElementById('lanc-kpi-entradas'); if(elE) elE.textContent = 'R$ '+fmt(totalEntradas);
+  const elS = document.getElementById('lanc-kpi-saidas'); if(elS) elS.textContent = 'R$ '+fmt(totalSaidas);
+  const elR = document.getElementById('lanc-kpi-resultado'); if(elR){ elR.textContent = 'R$ '+fmt(totalEntradas-totalSaidas); elR.style.color = (totalEntradas-totalSaidas)<0?'var(--red)':'var(--acc)'; }
+}
+function ordenarPorColunaLanc(chave){
+  if(_lancOrdem.campo===chave) _lancOrdem.dir = _lancOrdem.dir==='asc'?'desc':'asc';
+  else _lancOrdem = {campo:chave, dir: chave==='data'?'desc':'asc'};
+  renderAba();
+}
+function ocultarColunaLanc(chave){
+  _lancColOcultas.add(chave);
+  delete _lancColFiltros[chave];
+  renderAba();
+}
+function mostrarColunaLanc(chave){
+  _lancColOcultas.delete(chave);
+  renderAba();
+}
+// Popup de filtro por valores (estilo Excel) — lista os valores distintos
+// que aparecem naquela coluna (considerando os outros filtros já aplicados)
+// com checkbox, e permite escolher só alguns.
+function abrirFiltroColunaLanc(chave, ev){
+  ev.stopPropagation();
+  fecharSubmenuCtx();
+  const base = lancamentosComFiltroColunas(lancamentosBaseFiltrados(), chave);
+  const col = colunasLanc().find(c=>c.chave===chave);
+  const valores = [...new Set(base.map(l=>String(col.get(l))))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const selecionados = _lancColFiltros[chave] || new Set(valores);
+  const pop = document.createElement('div');
+  pop.id = 'ctx-submenu-lanc';
+  pop.className = 'no-print';
+  pop.style.cssText = 'display:block;position:fixed;z-index:501;background:var(--card);border:1px solid var(--bor);border-radius:8px;box-shadow:0 6px 20px #000a;min-width:220px;max-width:280px;max-height:340px;overflow-y:auto;padding:8px;font-size:12px';
+  pop.innerHTML = `
+    <div style="display:flex;gap:8px;margin-bottom:6px">
+      <span style="cursor:pointer;color:var(--acc)" onclick="_lancFiltroTemp=new Set(${JSON.stringify(valores)});renderFiltroColunaCheckboxes()">Selecionar todos</span>
+      <span style="cursor:pointer;color:var(--acc)" onclick="_lancFiltroTemp=new Set();renderFiltroColunaCheckboxes()">Limpar</span>
+    </div>
+    <div id="filtro-col-checks">${valores.map(v=>`<div style="padding:3px 0"><label style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" data-v="${esc(v)}" ${selecionados.has(v)?'checked':''}> ${esc(v)||'(vazio)'}</label></div>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-top:8px;border-top:1px solid var(--bor);padding-top:8px">
+      ${B('Aplicar', `aplicarFiltroColunaLanc('${chave}')`, 'var(--acc)')}
+      ${B('Cancelar', 'fecharSubmenuCtx()', 'var(--sur)', 'var(--txt)')}
+    </div>`;
+  document.body.appendChild(pop);
+  pop.addEventListener('click', e=>e.stopPropagation());
+  const r = ev.target.getBoundingClientRect();
+  pop.style.left = Math.max(4,Math.min(r.left, window.innerWidth-290))+'px';
+  pop.style.top = Math.max(4,Math.min(r.bottom+2, window.innerHeight-360))+'px';
+}
+function aplicarFiltroColunaLanc(chave){
+  const pop = document.getElementById('ctx-submenu-lanc'); if(!pop) return;
+  const marcados = [...pop.querySelectorAll('input[type=checkbox]:checked')].map(i=>i.dataset.v);
+  const todos = [...pop.querySelectorAll('input[type=checkbox]')].length;
+  if(marcados.length===todos) delete _lancColFiltros[chave];
+  else _lancColFiltros[chave] = new Set(marcados);
+  fecharSubmenuCtx();
+  renderAba();
+}
+// ── MODO CATEGORIZAÇÃO (arrastar pra pintar Categoria/CC/Direcionamento) ──
+function alternarModoEditarLanc(){
+  _lancEdit.ativo = !_lancEdit.ativo;
+  _lancEdit.idsAlterados.clear();
+  renderAba();
+}
+function popularCascataLancEdit(campo){
+  aoMudarMaeCascata('le', campo);
+}
+function iniciarArrastarCategorizacao(id, ev){
+  ev.preventDefault();
+  _lancEdit.arrastando = true;
+  aplicarCategorizacaoArrasto(id);
+  document.addEventListener('mouseup', finalizarArrastarCategorizacao, {once:true});
+}
+function continuarArrastarCategorizacao(id){
+  if(!_lancEdit.arrastando) return;
+  aplicarCategorizacaoArrasto(id);
+}
+function aplicarCategorizacaoArrasto(id){
+  const categoriaId = valorFinalCascata('le','categoria');
+  const centroCustoId = valorFinalCascata('le','cc');
+  const direcionamentoId = valorFinalCascata('le','direc');
+  if(!categoriaId && !centroCustoId && !direcionamentoId) return;
+  const idx = (DB.lancamentos||[]).findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const atual = DB.lancamentos[idx];
+  const atualizado = {...atual};
+  if(categoriaId) atualizado.categoriaId = categoriaId;
+  if(centroCustoId) atualizado.centroCustoId = centroCustoId;
+  if(direcionamentoId){
+    atualizado.direcionamentoId = direcionamentoId;
+    atualizado.direcionamento = nomeCompletoDirecionamento(direcionamentoById(direcionamentoId));
+  }
+  DB.lancamentos = DB.lancamentos.map((x,i)=>i===idx?atualizado:x);
+  _lancEdit.idsAlterados.add(id);
+  renderTabelaLancamentos();
+}
+function finalizarArrastarCategorizacao(){
+  if(!_lancEdit.arrastando) return;
+  _lancEdit.arrastando = false;
+  if(_lancEdit.idsAlterados.size){
+    const n = _lancEdit.idsAlterados.size;
+    salvar(DB);
+    showToast(`✅ ${n} lançamento(s) categorizado(s)`);
+  }
+}
+function htmlLancamentos(){
+  const base = lancamentosBaseFiltrados();
+  const lista = lancamentosOrdenados(lancamentosComFiltroColunas(base, null));
+  const totalEntradas = lista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
+  const totalSaidas = lista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
+  const cols = colunasLanc().filter(c=>!_lancColOcultas.has(c.chave));
+  const linhas = lista.map(linhaLancTabela).join('') || `<tr><td colspan="${cols.length+1}" style="text-align:center;color:var(--mut)">Nenhum lançamento encontrado</td></tr>`;
+  const ocultasChips = [..._lancColOcultas].map(chave=>{
+    const col = colunasLanc().find(c=>c.chave===chave);
+    return `<span style="cursor:pointer;font-size:11px;background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:2px 10px;margin-right:6px" onclick="mostrarColunaLanc('${chave}')" title="Clique pra mostrar de novo">👁‍🗨 ${esc(col?col.label:chave)} ✕</span>`;
+  }).join('');
+  const cabecalho = cols.map(col=>{
+    const filtroAtivo = !!_lancColFiltros[col.chave];
+    const setaOrdem = _lancOrdem.campo===col.chave ? (_lancOrdem.dir==='asc'?' ▲':' ▼') : '';
+    return `<th${col.numerico?' style="text-align:right"':''}>
+      <span style="cursor:pointer;user-select:none" ondblclick="ordenarPorColunaLanc('${col.chave}')" title="Duplo clique pra ordenar">${esc(col.label)}${setaOrdem}</span>
+      <span style="cursor:pointer;margin-left:4px;opacity:${filtroAtivo?1:.5}" title="Filtrar por valor" onclick="abrirFiltroColunaLanc('${col.chave}',event)">🔻</span>
+      <span style="cursor:pointer;margin-left:2px;opacity:.5" title="Ocultar coluna" onclick="ocultarColunaLanc('${col.chave}')">👁</span>
+    </th>`;
+  }).join('');
   return `
     <div class="titulo acc">📋 Lançamentos</div>
     ${barraFiltroPFPJGlobal()}
@@ -5601,15 +5849,41 @@ function htmlLancamentos(){
         ${C('Categoria',`<select id="flc-categoria" onchange="aplicarFiltroLanc()"><option value="">Todas</option>${opcoesCategorias('',_filtroLancCategoria)}</select>`,'1','180')}
         ${C('Centro de Custo',`<select id="flc-cc" onchange="aplicarFiltroLanc()"><option value="">Todos</option>${opcoesCC(_filtroLancCC)}</select>`,'1','180')}
       </div>
-      <div class="row">${BPerm('lancamentos','➕ Novo Lançamento','novoLancamento(\''+_filtroLancConta+'\')','var(--acc)')}${BPerm('lancamentos','📥 Importar Extrato (OFX)','abrirImportarOFX(\''+_filtroLancConta+'\')','var(--blu)','#fff')}${BPerm('lancamentos','🏦 Nova Tarifa Bancária','novaTarifaBancaria(\''+_filtroLancConta+'\')','var(--sur)','var(--txt)')}${B('✕ Limpar Filtros','limparFiltroLanc()','var(--sur)','var(--txt)')}</div>
+      <div class="row">${BPerm('lancamentos','➕ Novo Lançamento','novoLancamento(\''+_filtroLancConta+'\')','var(--acc)')}${BPerm('lancamentos','📥 Importar Extrato (OFX/CSV)','abrirImportarOFX(\''+_filtroLancConta+'\')','var(--blu)','#fff')}${BPerm('lancamentos','🏦 Nova Tarifa Bancária','novaTarifaBancaria(\''+_filtroLancConta+'\')','var(--sur)','var(--txt)')}${B('✕ Limpar Filtros','limparFiltroLanc()','var(--sur)','var(--txt)')}
+      ${BPerm('lancamentos', _lancEdit.ativo?'✅ Sair do Modo Categorização':'🖌 Modo Categorização (arrastar)', 'alternarModoEditarLanc()', _lancEdit.ativo?'var(--acc)':'var(--sur)', _lancEdit.ativo?'#fff':'var(--txt)')}</div>
+      ${ocultasChips?`<div style="margin-top:8px">${ocultasChips}</div>`:''}
     </div>
+    ${_lancEdit.ativo?`
+    <div class="card" style="margin-bottom:12px;border:1px dashed var(--acc)">
+      <div style="font-size:12px;color:var(--mut);margin-bottom:8px">🖌 <strong>Modo Categorização:</strong> escolha a Categoria/Centro de Custo/Direcionamento abaixo (o que ficar em branco não altera), depois segure o botão esquerdo do mouse numa linha e arraste pra cima ou pra baixo — todas as linhas que passar recebem essa classificação. Solte o mouse pra salvar.</div>
+      <div class="row">
+        <div class="campo" style="flex:1;min-width:160px"><label>Categoria</label>
+          <div class="row" style="margin-bottom:0">
+            <select id="le-categoria-mae" onchange="aoMudarMaeCascata('le','categoria')">${opcoesCategoriaMae(null,'',null,'')}</select>
+            <select id="le-categoria-sub">${opcoesSubcategoria('','')}</select>
+          </div>
+        </div>
+        <div class="campo" style="flex:1;min-width:160px"><label>Centro de Custo</label>
+          <div class="row" style="margin-bottom:0">
+            <select id="le-cc-mae" onchange="aoMudarMaeCascata('le','cc')">${opcoesCentroCustoMae('','')}</select>
+            <select id="le-cc-sub">${opcoesSubCentroCusto('','')}</select>
+          </div>
+        </div>
+        <div class="campo" style="flex:1;min-width:160px"><label>Direcionamento</label>
+          <div class="row" style="margin-bottom:0">
+            <select id="le-direc-mae" onchange="aoMudarMaeCascata('le','direc')">${opcoesDirecionamentoMae('','')}</select>
+            <select id="le-direc-sub">${opcoesSubDirecionamento('','')}</select>
+          </div>
+        </div>
+      </div>
+    </div>`:''}
     <div class="kpis">
-      <div class="card kpi"><div class="kpi-l">Entradas no filtro</div><div class="kpi-v" style="color:#3fb950">R$ ${fmt(totalEntradas)}</div></div>
-      <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" style="color:#f85149">R$ ${fmt(totalSaidas)}</div></div>
-      <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:${(totalEntradas-totalSaidas)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(totalEntradas-totalSaidas)}</div></div>
+      <div class="card kpi"><div class="kpi-l">Entradas no filtro</div><div class="kpi-v" id="lanc-kpi-entradas" style="color:#3fb950">R$ ${fmt(totalEntradas)}</div></div>
+      <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" id="lanc-kpi-saidas" style="color:#f85149">R$ ${fmt(totalSaidas)}</div></div>
+      <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" id="lanc-kpi-resultado" style="color:${(totalEntradas-totalSaidas)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(totalEntradas-totalSaidas)}</div></div>
     </div>
     <div class="card">
-      <table><thead><tr><th>Data</th><th>Conta</th><th>Tipo</th><th>Categoria</th><th>C. Custo</th><th>Cliente/Fornecedor</th><th>Descrição</th><th style="text-align:right">Valor</th><th></th></tr></thead><tbody>${linhas}</tbody></table>
+      <table><thead><tr>${cabecalho}<th></th></tr></thead><tbody id="lanc-tbody">${linhas}</tbody></table>
     </div>
   `;
 }
@@ -6410,10 +6684,10 @@ function aplicarFiltroRelExtrato(){
 function limparFiltroRelExtrato(){ RelExtrato = {contaId:'',de:'',ate:'',fornecedor:'',categoriaId:'',centroCustoId:'',direcionamento:''}; renderAba(); }
 // Ao tocar numa célula de Categoria/Centro de Custo/Direcionamento/Fornecedor no extrato — refiltra pelo item,
 // mantendo a conta e o período que já estavam selecionados.
-function filtrarExtratoPorCategoria(catId){ RelExtrato.categoriaId = catId; RelExtrato.fornecedor=''; RelExtrato.centroCustoId=''; RelExtrato.direcionamento=''; renderAba(); }
-function filtrarExtratoPorCentroCusto(ccId){ RelExtrato.centroCustoId = ccId; RelExtrato.fornecedor=''; RelExtrato.categoriaId=''; RelExtrato.direcionamento=''; renderAba(); }
-function filtrarExtratoPorDirecionamento(valor){ RelExtrato.direcionamento = valor; RelExtrato.fornecedor=''; RelExtrato.categoriaId=''; RelExtrato.centroCustoId=''; renderAba(); }
-function filtrarExtratoPorFornecedor(nome){ RelExtrato.fornecedor = nome; RelExtrato.categoriaId=''; RelExtrato.centroCustoId=''; RelExtrato.direcionamento=''; renderAba(); }
+function filtrarExtratoPorCategoria(catId){ empilharHistorico(); RelExtrato.categoriaId = catId; RelExtrato.fornecedor=''; RelExtrato.centroCustoId=''; RelExtrato.direcionamento=''; renderAba(); }
+function filtrarExtratoPorCentroCusto(ccId){ empilharHistorico(); RelExtrato.centroCustoId = ccId; RelExtrato.fornecedor=''; RelExtrato.categoriaId=''; RelExtrato.direcionamento=''; renderAba(); }
+function filtrarExtratoPorDirecionamento(valor){ empilharHistorico(); RelExtrato.direcionamento = valor; RelExtrato.fornecedor=''; RelExtrato.categoriaId=''; RelExtrato.centroCustoId=''; renderAba(); }
+function filtrarExtratoPorFornecedor(nome){ empilharHistorico(); RelExtrato.fornecedor = nome; RelExtrato.categoriaId=''; RelExtrato.centroCustoId=''; RelExtrato.direcionamento=''; renderAba(); }
 
 let RelPagarF = { de:'', ate:'', centroCustoId:'', texto:'' };
 function aplicarFiltroRelPagar(){
