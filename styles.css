@@ -18,6 +18,8 @@ button{cursor:pointer;font-weight:700;border:none;border-radius:var(--r);transit
 button:hover{opacity:.85}
 table{border-collapse:collapse;width:100%;font-size:12px}
 th{text-align:left;padding:7px 10px;color:var(--txt);font-weight:800;border-bottom:2px solid var(--acc);font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+/* Cabeçalho congelado ao rolar (telas de Lançamentos e Extrato de Conta) — fica logo abaixo do navbar (50px), que também é sticky. */
+.thead-fixo th{position:sticky;top:50px;background:var(--card);z-index:5}
 td{padding:7px 10px;border-bottom:1px solid #1e2530;vertical-align:middle}
 tr:hover td{background:#1e2a3a22}
 

@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.69';
+const VERSAO = 'v1.71';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3462,12 +3462,17 @@ async function confirmarMapeamentoCCQIFTsr(){
     if(btn) btn.disabled=false;
   }
 }
+function alternarTodosOFX(marcar){
+  _ofxPendente.forEach(t=>t.incluir=marcar);
+  mostrarRevisaoOFX();
+}
 function mostrarRevisaoOFX(){
   const conta = contaById(_ofxContaId);
   const tipoConta = conta ? conta.tipo : null;
   const reconhecidos = _ofxPendente.filter(t=>t.reconhecido).length;
   const duplicados = _ofxPendente.filter(t=>t.jaExiste).length;
   const conciliaveis = _ofxPendente.filter(t=>t.parecidoId && !t.jaExiste).length;
+  const todosMarcados = _ofxPendente.length>0 && _ofxPendente.every(t=>t.incluir);
   const linhas = _ofxPendente.map((t,i)=>`<tr style="${t.jaExiste?'opacity:.5':''}">
     <td><input type="checkbox" ${t.incluir?'checked':''} onchange="_ofxPendente[${i}].incluir=this.checked">${t.jaExiste?' <span style="font-size:10px;color:var(--mut)">(já importado)</span>':''}${t.parecidoId&&!t.jaExiste?` <span style="font-size:10px;color:#f0a500" title="${esc(t.parecidoInfo||'')}">🔗 conciliar</span>`:''}</td>
     <td>${fmtD(t.data)}</td>
@@ -3484,7 +3489,7 @@ function mostrarRevisaoOFX(){
       ${duplicados?` · <span style="color:#f0a500">${duplicados} já importado(s) antes (desmarcados)</span>`:''}
       ${conciliaveis?` · <span style="color:#f0a500">${conciliaveis} parece(m) já ter sido digitado(s) manualmente — desmarcados, vão ser conciliados com o que já existe em vez de duplicar</span>`:''}
     </div>
-    <div style="overflow-x:auto"><table><thead><tr><th></th><th>Data</th><th>Fornecedor/Cliente</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table></div>
+    <div style="overflow-x:auto"><table><thead><tr><th><input type="checkbox" ${todosMarcados?'checked':''} onchange="alternarTodosOFX(this.checked)" title="Marcar/desmarcar todos"></th><th>Data</th><th>Fornecedor/Cliente</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhas}</tbody></table></div>
     <div style="display:flex;gap:8px;margin-top:14px">
       ${B('✅ Confirmar Importação','confirmarImportacaoOFX()','var(--grn)','#fff')}
       ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
@@ -6229,7 +6234,7 @@ function htmlLancamentos(){
       <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" id="lanc-kpi-resultado" style="color:${(totalEntradas-totalSaidas)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(totalEntradas-totalSaidas)}</div></div>
     </div>
     <div class="card">
-      <table><thead><tr>${cabecalho}<th></th></tr></thead><tbody id="lanc-tbody">${linhas}</tbody></table>
+      <table><thead class="thead-fixo"><tr>${cabecalho}<th></th></tr></thead><tbody id="lanc-tbody">${linhas}</tbody></table>
     </div>
   `;
 }
@@ -8022,7 +8027,7 @@ function htmlRelatorios(){
         <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" style="color:#f85149">R$ ${fmt(extratoTotSai)}</div></div>
         <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:${(extratoTotEnt-extratoTotSai)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(extratoTotEnt-extratoTotSai)}</div></div>
       </div>
-      <table><thead>${cabecalhoExtrato}</thead><tbody>${linhasExtrato}</tbody></table>
+      <table><thead class="thead-fixo">${cabecalhoExtrato}</thead><tbody>${linhasExtrato}</tbody></table>
     </div>`,
     tarifas_conta: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏦 Tarifas Bancárias por Conta</div>
       <table><thead><tr><th>Conta</th><th style="text-align:right">Total em Tarifas</th></tr></thead><tbody>${linhasTarifa}</tbody></table></div>`,
