@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.63';
+const VERSAO = 'v1.64';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3026,13 +3026,22 @@ function abrirImportarOFX(contaIdPre){
   AM('📥 Importar Extrato', `
     ${EH('e-ofx')}
     <div style="font-size:12px;color:var(--mut);margin-bottom:12px;line-height:1.5">
-      Baixe o extrato no site/app do banco (geralmente em "Extrato" → "Exportar" ou "Outros formatos") e escolha o arquivo aqui — pode ser <strong>.ofx</strong> ou <strong>.csv</strong>. O sistema tenta reconhecer cada lançamento pelo que você já categorizou antes.
+      Baixe o extrato no site/app do banco (geralmente em "Extrato" → "Exportar" ou "Outros formatos") e escolha o arquivo aqui — pode ser <strong>.ofx</strong>, <strong>.csv</strong> ou um <strong>.qif</strong> exportado do Microsoft Money. O sistema tenta reconhecer cada lançamento pelo que você já categorizou antes (e, no QIF, também tenta casar pela categoria que o Money usava).
     </div>
     <div class="campo">
       <label>Formato do arquivo</label>
-      <select id="ofx-formato" onchange="document.getElementById('ofx-arquivo').accept = this.value==='csv' ? '.csv,text/csv' : '.ofx,.qfx,text/plain'">
+      <select id="ofx-formato" onchange="aoMudarFormatoImportExtrato()">
         <option value="ofx">OFX (.ofx / .qfx)</option>
         <option value="csv">CSV (exportado do banco)</option>
+        <option value="qif">QIF (exportado do Microsoft Money)</option>
+      </select>
+    </div>
+    <div class="campo" id="campo-qif-formato-data" style="display:none">
+      <label>Formato de data no arquivo QIF</label>
+      <select id="qif-formato-data">
+        <option value="auto">Detectar automaticamente</option>
+        <option value="DMA">Dia/Mês/Ano (padrão brasileiro)</option>
+        <option value="MDA">Mês/Dia/Ano (padrão americano do Money)</option>
       </select>
     </div>
     <div class="campo">
@@ -3049,6 +3058,11 @@ function abrirImportarOFX(contaIdPre){
     </div>
   `);
 }
+function aoMudarFormatoImportExtrato(){
+  const formato = document.getElementById('ofx-formato').value;
+  document.getElementById('campo-qif-formato-data').style.display = formato==='qif' ? 'block' : 'none';
+  document.getElementById('ofx-arquivo').accept = formato==='csv' ? '.csv,text/csv' : formato==='qif' ? '.qif,text/plain' : '.ofx,.qfx,text/plain';
+}
 function fitidSinteticoCSV(data, valor, memo){
   const base = data+'|'+Number(valor).toFixed(2)+'|'+(memo||'').trim().toUpperCase();
   let hash = 0;
@@ -3059,6 +3073,67 @@ function fitidSinteticoCSV(data, valor, memo){
 // brasileiro: cabeçalho com Data + Descrição/Histórico + (Valor único COM
 // sinal, OU colunas separadas de Débito/Crédito). Detecta delimitador (';'
 // ou ',') e formatos de data (dd/mm/aaaa) e número (1.234,56) automaticamente.
+// Parser QIF (Microsoft Money) para conta bancária/Extrato. Diferente do
+// parser de fatura de cartão: aqui T positivo é ENTRADA e negativo é SAÍDA
+// (convenção padrão de conta corrente no Money), sem filtrar transferências
+// — elas entram como entrada/saída normal, igual o OFX/CSV já fazem.
+function parseDataQIF(s, formato){
+  s=(s||'').trim();
+  let m = s.match(/^(\d{1,2})\/(\d{1,2})'(\d{2})$/);
+  if(m){ let [,a,b,ano]=m; ano='20'+ano;
+    return formato==='DMA' ? `${ano}-${b.padStart(2,'0')}-${a.padStart(2,'0')}` : `${ano}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`;
+  }
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(m){ let [,a,b,ano]=m; if(ano.length===2) ano=(parseInt(ano,10)<50?'20':'19')+ano;
+    return formato==='DMA' ? `${ano}-${b.padStart(2,'0')}-${a.padStart(2,'0')}` : `${ano}-${a.padStart(2,'0')}-${b.padStart(2,'0')}`;
+  }
+  m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m){ let [,ano,mes,dia]=m; return `${ano}-${mes.padStart(2,'0')}-${dia.padStart(2,'0')}`; }
+  return '';
+}
+function parseNumeroQIF(s){ s=String(s||'').trim().replace(/,/g,''); return parseFloat(s)||0; }
+function sugerirFormatoDataQIF(texto){
+  const datas = [...texto.matchAll(/^D(\d{1,2})\/(\d{1,2})[\/'](\d{2,4})/gm)];
+  let temA=false, temB=false;
+  datas.forEach(m=>{ if(parseInt(m[1],10)>12) temA=true; if(parseInt(m[2],10)>12) temB=true; });
+  if(temA && !temB) return 'DMA';
+  if(temB && !temA) return 'MDA';
+  return 'DMA';
+}
+function parseQIFBancario(texto, formatoData){
+  const linhas = texto.split(/\r?\n/);
+  const registros=[]; let atual=null, splits=[];
+  function fecharRegistro(){
+    if(!atual) return;
+    if(splits.length){
+      splits.forEach(s=>{ if(s.valor) registros.push({data:atual.data, valor:s.valor, memoOriginal:(atual.payee||s.memo||atual.memo||'').trim(), categoriaTextoMoney:s.categoria||atual.categoriaTexto}); });
+    } else if(atual.data && atual.valor){
+      registros.push({data:atual.data, valor:atual.valor, memoOriginal:(atual.payee||atual.memo||'').trim(), categoriaTextoMoney:atual.categoriaTexto});
+    }
+    atual=null; splits=[];
+  }
+  linhas.forEach(linhaRaw=>{
+    const linha=linhaRaw.trim(); if(!linha) return;
+    if(linha==='^'){ fecharRegistro(); return; }
+    if(linha[0]==='!') return;
+    if(!atual) atual={data:'',valor:0,payee:'',categoriaTexto:'',memo:''};
+    const tipo=linha[0], resto=linha.slice(1);
+    if(tipo==='D') atual.data=parseDataQIF(resto,formatoData);
+    else if(tipo==='T'||tipo==='U') atual.valor=parseNumeroQIF(resto);
+    else if(tipo==='P') atual.payee=resto.trim();
+    else if(tipo==='M') atual.memo=resto.trim();
+    else if(tipo==='L') atual.categoriaTexto=resto.split('/')[0].trim();
+    else if(tipo==='S') splits.push({categoria:resto.split('/')[0].trim(), valor:0, memo:''});
+    else if(tipo==='E'){ if(splits.length) splits[splits.length-1].memo=resto.trim(); }
+    else if(tipo==='$'){ if(splits.length) splits[splits.length-1].valor=parseNumeroQIF(resto); }
+  });
+  fecharRegistro();
+  return registros.filter(r=>r.data && r.valor).map(r=>({
+    data:r.data, valor:Math.abs(r.valor), tipo: r.valor>=0?'entrada':'saida',
+    memoOriginal:r.memoOriginal||'(sem descrição)', categoriaTextoMoney:(r.categoriaTextoMoney||'').trim(),
+    fitid: fitidSinteticoCSV(r.data, Math.abs(r.valor), r.memoOriginal)
+  }));
+}
 function parseCSVBancario(texto){
   const linhas = texto.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   if(!linhas.length) return [];
@@ -3109,6 +3184,7 @@ function parseCSVBancario(texto){
 function processarArquivoOFX(){
   const contaId = document.getElementById('ofx-conta').value;
   const formato = document.getElementById('ofx-formato')?.value || 'ofx';
+  const formatoDataEsc = document.getElementById('qif-formato-data')?.value || 'auto';
   const input = document.getElementById('ofx-arquivo');
   const arquivo = input?.files?.[0];
   if(!contaId){ ME('e-ofx','Selecione a conta.'); return; }
@@ -3116,8 +3192,15 @@ function processarArquivoOFX(){
   const leitor = new FileReader();
   leitor.onload = (e) => {
     let transacoes;
-    try{ transacoes = formato==='csv' ? parseCSVBancario(e.target.result) : parseOFX(e.target.result); }
-    catch(err){ ME('e-ofx',`Não consegui ler este arquivo. Confira se é um ${formato==='csv'?'.csv':'.ofx'} válido exportado do banco.`); return; }
+    try{
+      if(formato==='csv') transacoes = parseCSVBancario(e.target.result);
+      else if(formato==='qif'){
+        const fd = formatoDataEsc==='auto' ? sugerirFormatoDataQIF(e.target.result) : formatoDataEsc;
+        transacoes = parseQIFBancario(e.target.result, fd);
+      }
+      else transacoes = parseOFX(e.target.result);
+    }
+    catch(err){ ME('e-ofx',`Não consegui ler este arquivo. Confira se é um ${formato==='csv'?'.csv':formato==='qif'?'.qif':'.ofx'} válido exportado do banco/Money.`); return; }
     if(!transacoes.length){ ME('e-ofx','Nenhum lançamento encontrado neste arquivo.'); return; }
     const idsExistentes = new Set((DB.lancamentos||[]).filter(l=>l.contaId===contaId && l.fitid).map(l=>l.fitid));
     const dicionario = construirDicionarioAprendizado(contaId);
@@ -3128,10 +3211,23 @@ function processarArquivoOFX(){
       const match = casarComHistorico(t.memoOriginal, dicionario);
       const parecido = !jaExiste ? encontrarLancamentoManualParecido(t, contaId, jaUsadosConciliacao) : null;
       if(parecido) jaUsadosConciliacao.add(parecido.id);
+      // Sem aprendizado prévio pra esse texto, mas veio de um QIF com
+      // categoria do Money: tenta achar uma categoria nossa com o mesmo nome
+      // (Mãe ou Mãe:Sub) antes de deixar em branco.
+      let categoriaIdSugerida = match ? match.categoriaId : '';
+      if(!categoriaIdSugerida && t.categoriaTextoMoney){
+        const [maeTx, subTx] = t.categoriaTextoMoney.split(':').map(s=>s?.trim());
+        const tipoCat = t.tipo==='entrada' ? 'receita' : 'despesa';
+        const mae = (DB.categorias||[]).find(c=>!c.parentId && c.tipo===tipoCat && c.nome.toLowerCase()===(maeTx||'').toLowerCase());
+        if(mae){
+          if(subTx){ const sub=(DB.categorias||[]).find(c=>c.parentId===mae.id && c.nome.toLowerCase()===subTx.toLowerCase()); categoriaIdSugerida = sub?sub.id:mae.id; }
+          else categoriaIdSugerida = mae.id;
+        }
+      }
       return {
         ...t, incluir: !jaExiste && !parecido, jaExiste,
         contraparte: match?match.contraparte:t.memoOriginal,
-        categoriaId: match?match.categoriaId:'', direcionamento: match?match.direcionamento:'',
+        categoriaId: categoriaIdSugerida, direcionamento: match?match.direcionamento:'',
         centroCustoId: match?match.centroCustoId:'', reconhecido: !!match,
         parecidoId: parecido?parecido.id:null,
         parecidoInfo: parecido?`Já lançado em ${fmtD(parecido.data)} — ${esc(parecido.contraparte||parecido.descricao||'sem nome')} — R$ ${fmt(parecido.valor)}`:null,
