@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.65';
+const VERSAO = 'v1.66';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -6864,6 +6864,7 @@ function salvarEdicaoEmMassaExtrato(){
       contraparte: document.getElementById('edtx-forn-'+id).value.trim(),
       descricao: document.getElementById('edtx-desc-'+id).value.trim(),
       categoriaId: document.getElementById('edtx-cat-'+id).value,
+      centroCustoId: document.getElementById('edtx-cc-'+id)?.value||'',
       direcionamento: document.getElementById('edtx-direc-'+id).value.trim(),
       tipo: document.getElementById('edtx-tipo-'+id).value,
       valor: valor||0,
@@ -6970,7 +6971,7 @@ function imprimirReceberPeriodo(){
 }
 let _impExtratoEnt = 0, _impExtratoSai = 0, _impExtratoCabecalho = '', _impExtratoLinhas = '';
 let _impExtratoRows = [], _impExtratoMostraConta = false;
-let PrefsImpressaoExtrato = { conta:true, fornecedor:true, descricao:true, categoria:true, direcionamento:true, orientacao:'landscape' };
+let PrefsImpressaoExtrato = { conta:true, fornecedor:true, descricao:true, categoria:true, centroCusto:true, direcionamento:true, orientacao:'landscape' };
 function abrirOpcoesImpressaoExtrato(){
   const p = PrefsImpressaoExtrato;
   const chk = (chave,rotulo) => `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;font-size:13px"><input type="checkbox" id="opimp-${chave}" ${p[chave]?'checked':''}> ${rotulo}</label>`;
@@ -6980,6 +6981,7 @@ function abrirOpcoesImpressaoExtrato(){
     ${chk('fornecedor','Fornecedor/Cliente')}
     ${chk('descricao','Descrição')}
     ${chk('categoria','Categoria')}
+    ${chk('centroCusto','Centro de Custo')}
     ${chk('direcionamento','Direcionamento')}
     <div style="margin-top:14px">
       <label style="font-size:13px;font-weight:700;display:block;margin-bottom:6px">Orientação da página</label>
@@ -6995,7 +6997,7 @@ function abrirOpcoesImpressaoExtrato(){
   `);
 }
 function confirmarImpressaoExtrato(){
-  ['conta','fornecedor','descricao','categoria','direcionamento'].forEach(chave=>{
+  ['conta','fornecedor','descricao','categoria','centroCusto','direcionamento'].forEach(chave=>{
     const el = document.getElementById('opimp-'+chave);
     if(el) PrefsImpressaoExtrato[chave] = el.checked;
   });
@@ -7021,14 +7023,15 @@ function imprimirExtrato(){
   </div>`;
   // Se nenhuma coluna opcional estiver marcada, sai completo (todas)
   const p = PrefsImpressaoExtrato;
-  const nenhumaMarcada = !p.conta && !p.fornecedor && !p.descricao && !p.categoria && !p.direcionamento;
+  const nenhumaMarcada = !p.conta && !p.fornecedor && !p.descricao && !p.categoria && !p.centroCusto && !p.direcionamento;
   const mostraConta = _impExtratoMostraConta && (nenhumaMarcada || p.conta);
   const mostraForn = nenhumaMarcada || p.fornecedor;
   const mostraDesc = nenhumaMarcada || p.descricao;
   const mostraCat = nenhumaMarcada || p.categoria;
+  const mostraCC = nenhumaMarcada || p.centroCusto;
   const mostraDirec = nenhumaMarcada || p.direcionamento;
-  const cab = `<tr><th>Data</th>${mostraConta?'<th>Conta</th>':''}${mostraForn?'<th>Fornecedor/Cliente</th>':''}${mostraDesc?'<th>Descrição</th>':''}${mostraCat?'<th>Categoria</th>':''}${mostraDirec?'<th>Direcionamento</th>':''}<th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
-  const nColsImp = 3 + mostraConta + mostraForn + mostraDesc + mostraCat + mostraDirec;
+  const cab = `<tr><th>Data</th>${mostraConta?'<th>Conta</th>':''}${mostraForn?'<th>Fornecedor/Cliente</th>':''}${mostraDesc?'<th>Descrição</th>':''}${mostraCat?'<th>Categoria</th>':''}${mostraCC?'<th>Centro de Custo</th>':''}${mostraDirec?'<th>Direcionamento</th>':''}<th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
+  const nColsImp = 3 + mostraConta + mostraForn + mostraDesc + mostraCat + mostraCC + mostraDirec;
   const linhas = _impExtratoRows.map(r=>{
     if(r.tipo==='saldo'){
       return `<tr class="trow"><td colspan="${nColsImp-1}">${esc(r.label)}</td><td style="text-align:right">R$ ${fmt(r.valor)}</td></tr>`;
@@ -7039,6 +7042,7 @@ function imprimirExtrato(){
       ${mostraForn?`<td>${esc(r.contraparte)}</td>`:''}
       ${mostraDesc?`<td>${esc(r.descricao)}</td>`:''}
       ${mostraCat?`<td>${esc(r.categoria)}</td>`:''}
+      ${mostraCC?`<td>${esc(r.centroCusto)}</td>`:''}
       ${mostraDirec?`<td>${esc(r.direcionamento)}</td>`:''}
       <td style="text-align:right">${r.valorEntrada?'R$ '+fmt(r.valorEntrada):''}</td>
       <td style="text-align:right">${r.valorSaida?'R$ '+fmt(r.valorSaida):''}</td>
@@ -7605,7 +7609,7 @@ function htmlRelatorios(){
     const anteriores = (DB.lancamentos||[]).filter(l=>l.contaId===RelExtrato.contaId && RelExtrato.de && l.data < RelExtrato.de);
     saldoAcumuladoExtrato = (contaExt?Number(contaExt.saldoInicial||0):0) + anteriores.reduce((s,l)=>s+(l.tipo==='entrada'?l.valor:-l.valor),0);
   }
-  const nCols = 6 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
+  const nCols = 7 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
   const saldoAnteriorExtrato = saldoAcumuladoExtrato;
   const linhaAnterior = saldoAcumuladoExtrato!==null
     ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo Anterior${RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''}</td><td style="text-align:right;font-weight:800;color:${saldoAnteriorExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAnteriorExtrato)}</td></tr>`
@@ -7637,6 +7641,7 @@ function htmlRelatorios(){
     const linhasDia = gruposPorDia[dia].slice().reverse().map(l=>{
       const cta = contaById(l.contaId);
       const cat = categoriaById(l.categoriaId);
+      const cc = centroCustoById(l.centroCustoId);
       if(_extratoModoEdicao){
         const protegido = l.origem && l.origem!=='manual' && l.origem!=='ofx';
         if(protegido){
@@ -7646,6 +7651,7 @@ function htmlRelatorios(){
             <td>${esc(l.contraparte||'-')}</td>
             <td>${esc(l.descricao||'-')} ${T('não editável aqui','cz')}</td>
             <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
+            <td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
             <td>${esc(l.direcionamento||'-')}</td>
             <td>${l.tipo==='entrada'?'Entrada':'Saída'}</td>
             <td style="text-align:right">R$ ${fmt(l.valor)}</td>
@@ -7658,6 +7664,7 @@ function htmlRelatorios(){
           <td><input type="text" id="edtx-forn-${l.id}" value="${esc(l.contraparte||'')}" list="dl-contrapartes-edtx" style="width:130px;font-size:11px"></td>
           <td><input type="text" id="edtx-desc-${l.id}" value="${esc(l.descricao||'')}" style="width:130px;font-size:11px"></td>
           <td><select id="edtx-cat-${l.id}" style="font-size:11px">${opcoesCategorias(l.tipo==='entrada'?'receita':'despesa',l.categoriaId)}</select></td>
+          <td><select id="edtx-cc-${l.id}" style="font-size:11px"><option value="">-</option>${opcoesCC(l.centroCustoId)}</select></td>
           <td><input type="text" id="edtx-direc-${l.id}" value="${esc(l.direcionamento||'')}" list="dl-direcionamentos-edtx" style="width:110px;font-size:11px"></td>
           <td><select id="edtx-tipo-${l.id}" style="font-size:11px"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select></td>
           <td><input type="text" id="edtx-valor-${l.id}" value="${fmt(l.valor)}" style="width:90px;font-size:11px;text-align:right"></td>
@@ -7670,6 +7677,7 @@ function htmlRelatorios(){
         <td${l.contraparte?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este fornecedor/cliente" onclick="filtrarExtratoPorFornecedor('${esc(l.contraparte).replace(/'/g,"\\'")}')"`:''}>${esc(l.contraparte||'-')}</td>
         <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}</td>
         <td${l.categoriaId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só esta categoria" onclick="filtrarExtratoPorCategoria('${l.categoriaId}')"`:''}>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
+        <td${l.centroCustoId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este centro de custo" onclick="filtrarExtratoPorCentroCusto('${l.centroCustoId}')"`:''}>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
         <td${l.direcionamento?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este direcionamento" onclick="filtrarExtratoPorDirecionamento('${esc(l.direcionamento).replace(/'/g,"\\'")}')"`:''}>${esc(l.direcionamento||'-')}</td>
         <td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td>
         <td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td>
@@ -7682,8 +7690,8 @@ function htmlRelatorios(){
     return linhasDia + linhaSaldoDia;
   }).join('') + linhaAnterior || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
   const cabecalhoExtrato = _extratoModoEdicao
-    ? `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th>Tipo</th><th style="text-align:right">Valor</th><th></th></tr>`
-    : `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
+    ? `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Centro de Custo</th><th>Direcionamento</th><th>Tipo</th><th style="text-align:right">Valor</th><th></th></tr>`
+    : `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Centro de Custo</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
   // Dados brutos (não HTML) para a impressão poder escolher colunas dinamicamente
   const impRows = [];
   if(saldoAnteriorExtrato!==null) impRows.push({tipo:'saldo', label:'Saldo Anterior'+(RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''), valor:saldoAnteriorExtrato});
@@ -7692,8 +7700,9 @@ function htmlRelatorios(){
     gruposPorDia[dia].forEach(l=>{
       const cta = contaById(l.contaId);
       const cat = categoriaById(l.categoriaId);
+      const cc = centroCustoById(l.centroCustoId);
       if(_saldoImp!==null) _saldoImp += (l.tipo==='entrada'?l.valor:-l.valor);
-      impRows.push({tipo:'lancamento', data:l.data, conta:cta?cta.titular:'-', contraparte:l.contraparte||'-', descricao:l.descricao||'-', categoria:cat?nomeCompletoCategoria(cat):'-', direcionamento:l.direcionamento||'-', valorEntrada:l.tipo==='entrada'?l.valor:null, valorSaida:l.tipo==='saida'?l.valor:null});
+      impRows.push({tipo:'lancamento', data:l.data, conta:cta?cta.titular:'-', contraparte:l.contraparte||'-', descricao:l.descricao||'-', categoria:cat?nomeCompletoCategoria(cat):'-', centroCusto:cc?nomeCompletoCentroCusto(cc):'-', direcionamento:l.direcionamento||'-', valorEntrada:l.tipo==='entrada'?l.valor:null, valorSaida:l.tipo==='saida'?l.valor:null});
     });
     if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo do dia — '+fmtD(dia), valor:_saldoImp});
   });
