@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.67';
+const VERSAO = 'v1.68';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3128,11 +3128,22 @@ function parseQIFBancario(texto, formatoData){
     else if(tipo==='$'){ if(splits.length) splits[splits.length-1].valor=parseNumeroQIF(resto); }
   });
   fecharRegistro();
-  return registros.filter(r=>r.data && r.valor).map(r=>({
-    data:r.data, valor:Math.abs(r.valor), tipo: r.valor>=0?'entrada':'saida',
-    memoOriginal:r.memoOriginal||'(sem descrição)', categoriaTextoMoney:(r.categoriaTextoMoney||'').trim(),
-    fitid: fitidSinteticoCSV(r.data, Math.abs(r.valor), r.memoOriginal)
-  }));
+  return registros.filter(r=>r.data && r.valor && !/^opening balance$/i.test((r.memoOriginal||'').trim())).map(r=>{
+    const catTexto = (r.categoriaTextoMoney||'').trim();
+    // No Money, categoria entre colchetes "[Nome da Conta]" significa TRANSFERÊNCIA
+    // entre contas, não uma categoria de verdade — não entra no mapeamento de
+    // categorias (viraria um cadastro de categoria com nome de banco). Fica sem
+    // categoria e um aviso na descrição pra você revisar e marcar como
+    // Transferência depois, se quiser (Editar Lançamento → Tipo → Transferência).
+    const ehTransferenciaMoney = /^\[.*\]$/.test(catTexto);
+    const nomeContaMoney = ehTransferenciaMoney ? catTexto.slice(1,-1).trim() : '';
+    return {
+      data:r.data, valor:Math.abs(r.valor), tipo: r.valor>=0?'entrada':'saida',
+      memoOriginal: (r.memoOriginal||'(sem descrição)') + (ehTransferenciaMoney ? ` [Transferência p/ "${nomeContaMoney}" no Money — confira]` : ''),
+      categoriaTextoMoney: ehTransferenciaMoney ? '' : catTexto,
+      fitid: fitidSinteticoCSV(r.data, Math.abs(r.valor), r.memoOriginal)
+    };
+  });
 }
 function parseCSVBancario(texto){
   const linhas = texto.split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
