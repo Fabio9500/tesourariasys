@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.68';
+const VERSAO = 'v1.69';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3106,9 +3106,9 @@ function parseQIFBancario(texto, formatoData){
   function fecharRegistro(){
     if(!atual) return;
     if(splits.length){
-      splits.forEach(s=>{ if(s.valor) registros.push({data:atual.data, valor:s.valor, memoOriginal:(atual.payee||s.memo||atual.memo||'').trim(), categoriaTextoMoney:s.categoria||atual.categoriaTexto}); });
+      splits.forEach(s=>{ if(s.valor) registros.push({data:atual.data, valor:s.valor, memoOriginal:(atual.payee||s.memo||atual.memo||'').trim(), categoriaTextoMoney:s.categoria||atual.categoriaTexto, centroCustoTextoMoney:s.centroCusto||atual.centroCustoTexto}); });
     } else if(atual.data && atual.valor){
-      registros.push({data:atual.data, valor:atual.valor, memoOriginal:(atual.payee||atual.memo||'').trim(), categoriaTextoMoney:atual.categoriaTexto});
+      registros.push({data:atual.data, valor:atual.valor, memoOriginal:(atual.payee||atual.memo||'').trim(), categoriaTextoMoney:atual.categoriaTexto, centroCustoTextoMoney:atual.centroCustoTexto});
     }
     atual=null; splits=[];
   }
@@ -3116,20 +3116,23 @@ function parseQIFBancario(texto, formatoData){
     const linha=linhaRaw.trim(); if(!linha) return;
     if(linha==='^'){ fecharRegistro(); return; }
     if(linha[0]==='!') return;
-    if(!atual) atual={data:'',valor:0,payee:'',categoriaTexto:'',memo:''};
+    if(!atual) atual={data:'',valor:0,payee:'',categoriaTexto:'',centroCustoTexto:'',memo:''};
     const tipo=linha[0], resto=linha.slice(1);
     if(tipo==='D') atual.data=parseDataQIF(resto,formatoData);
     else if(tipo==='T'||tipo==='U') atual.valor=parseNumeroQIF(resto);
     else if(tipo==='P') atual.payee=resto.trim();
     else if(tipo==='M') atual.memo=resto.trim();
-    else if(tipo==='L') atual.categoriaTexto=resto.split('/')[0].trim();
-    else if(tipo==='S') splits.push({categoria:resto.split('/')[0].trim(), valor:0, memo:''});
+    // O Money grava "Categoria:Subcategoria/ClasseMãe:ClasseSub" na linha L —
+    // a parte depois da "/" é o que o Fabio chama de Centro de Custo.
+    else if(tipo==='L'){ const partesL=resto.split('/'); atual.categoriaTexto=(partesL[0]||'').trim(); atual.centroCustoTexto=(partesL[1]||'').trim(); }
+    else if(tipo==='S'){ const partesS=resto.split('/'); splits.push({categoria:(partesS[0]||'').trim(), centroCusto:(partesS[1]||'').trim(), valor:0, memo:''}); }
     else if(tipo==='E'){ if(splits.length) splits[splits.length-1].memo=resto.trim(); }
     else if(tipo==='$'){ if(splits.length) splits[splits.length-1].valor=parseNumeroQIF(resto); }
   });
   fecharRegistro();
   return registros.filter(r=>r.data && r.valor && !/^opening balance$/i.test((r.memoOriginal||'').trim())).map(r=>{
     const catTexto = (r.categoriaTextoMoney||'').trim();
+    const ccTexto = (r.centroCustoTextoMoney||'').trim();
     // No Money, categoria entre colchetes "[Nome da Conta]" significa TRANSFERÊNCIA
     // entre contas, não uma categoria de verdade — não entra no mapeamento de
     // categorias (viraria um cadastro de categoria com nome de banco). Fica sem
@@ -3141,6 +3144,7 @@ function parseQIFBancario(texto, formatoData){
       data:r.data, valor:Math.abs(r.valor), tipo: r.valor>=0?'entrada':'saida',
       memoOriginal: (r.memoOriginal||'(sem descrição)') + (ehTransferenciaMoney ? ` [Transferência p/ "${nomeContaMoney}" no Money — confira]` : ''),
       categoriaTextoMoney: ehTransferenciaMoney ? '' : catTexto,
+      centroCustoTextoMoney: ccTexto,
       fitid: fitidSinteticoCSV(r.data, Math.abs(r.valor), r.memoOriginal)
     };
   });
@@ -3228,7 +3232,9 @@ function processarArquivoOFX(){
     mostrarRevisaoOFX();
   };
   leitor.onerror = () => ME('e-ofx','Não foi possível ler o arquivo. Tente novamente.');
-  leitor.readAsText(arquivo, 'UTF-8');
+  // QIF exportado do Microsoft Money vem em ISO-8859-1 (Windows), não UTF-8 —
+  // lendo como UTF-8 os acentos (Ç, Ã, Á...) viriam corrompidos.
+  leitor.readAsText(arquivo, formato==='qif' ? 'ISO-8859-1' : 'UTF-8');
 }
 // Monta a lista de conferência (_ofxPendente) a partir das transações já
 // parseadas — compartilhado entre OFX/CSV (direto) e QIF (depois da etapa
@@ -3244,11 +3250,12 @@ function montarOfxPendente(transacoes, contaId){
     const parecido = !jaExiste ? encontrarLancamentoManualParecido(t, contaId, jaUsadosConciliacao) : null;
     if(parecido) jaUsadosConciliacao.add(parecido.id);
     const categoriaIdSugerida = match ? match.categoriaId : (t.categoriaIdMoney||'');
+    const centroCustoIdSugerido = match ? match.centroCustoId : (t.centroCustoIdMoney||'');
     return {
       ...t, incluir: !jaExiste && !parecido, jaExiste,
       contraparte: match?match.contraparte:t.memoOriginal,
       categoriaId: categoriaIdSugerida, direcionamento: match?match.direcionamento:'',
-      centroCustoId: match?match.centroCustoId:'', reconhecido: !!match,
+      centroCustoId: centroCustoIdSugerido, reconhecido: !!match,
       parecidoId: parecido?parecido.id:null,
       parecidoInfo: parecido?`Já lançado em ${fmtD(parecido.data)} — ${esc(parecido.contraparte||parecido.descricao||'sem nome')} — R$ ${fmt(parecido.valor)}`:null,
     };
@@ -3267,6 +3274,16 @@ function acharOuCriarCategoria(listaAtual, tipo, nomeMae, nomeSub){
   if(!sub){ sub = {id:uid(), nome:nomeSub, parentId:mae.id, tipo, tipoPFPJ:mae.tipoPFPJ||'ambos'}; lista=[...lista, sub]; }
   return {id:sub.id, lista};
 }
+// Mesma lógica, mas pra Centro de Custo (sem dimensão de tipo receita/despesa).
+function acharOuCriarCentroCustoQIF(listaAtual, nomeMae, nomeSub){
+  let lista = listaAtual;
+  let mae = lista.find(c=>!c.parentId && c.nome===nomeMae);
+  if(!mae){ mae = {id:uid(), nome:nomeMae, parentId:null, tipoPFPJ:'ambos'}; lista=[...lista, mae]; }
+  if(!nomeSub) return {id:mae.id, lista};
+  let sub = lista.find(c=>c.parentId===mae.id && c.nome===nomeSub);
+  if(!sub){ sub = {id:uid(), nome:nomeSub, parentId:mae.id, tipoPFPJ:mae.tipoPFPJ||'ambos'}; lista=[...lista, sub]; }
+  return {id:sub.id, lista};
+}
 // Grava várias categorias novas de uma vez só (um round-trip por arquivo
 // pf/pj, em vez de um por categoria) — usado ao confirmar o mapeamento do QIF.
 async function salvarNovasCategoriasEmLote(novasCategorias){
@@ -3275,6 +3292,16 @@ async function salvarNovasCategoriasEmLote(novasCategorias){
   const cadPj = await ghCadastroCarregar('pj');
   cadPf.categorias = [...(cadPf.categorias||[]), ...novasCategorias];
   cadPj.categorias = [...(cadPj.categorias||[]), ...novasCategorias];
+  await ghCadastroSalvar('pf', cadPf);
+  await ghCadastroSalvar('pj', cadPj);
+  await carregarCadastrosUnicos();
+}
+async function salvarNovosCentrosCustoEmLote(novosCC){
+  if(!novosCC.length) return;
+  const cadPf = await ghCadastroCarregar('pf');
+  const cadPj = await ghCadastroCarregar('pj');
+  cadPf.centrosCusto = [...(cadPf.centrosCusto||[]), ...novosCC];
+  cadPj.centrosCusto = [...(cadPj.centrosCusto||[]), ...novosCC];
   await ghCadastroSalvar('pf', cadPf);
   await ghCadastroSalvar('pj', cadPj);
   await carregarCadastrosUnicos();
@@ -3351,11 +3378,86 @@ async function confirmarMapeamentoQIFTsr(){
     if(novasCriadas.length) await salvarNovasCategoriasEmLote(novasCriadas);
     _qifMapaCategoriaTSR = mapa;
     _qifTransacoesBrutas.forEach(t=>{ t.categoriaIdMoney = mapa[(t.categoriaTextoMoney||'').trim()||'(Sem categoria)']||''; });
+    // Depois da Categoria, mapeia o Centro de Custo (2ª parte do campo L do
+    // Money, "Categoria/Classe") — mesmo fluxo, uma etapa depois.
+    const contagemCC = {};
+    _qifTransacoesBrutas.forEach(t=>{ const tx=(t.centroCustoTextoMoney||'').trim()||'(Sem centro de custo)'; contagemCC[tx]=(contagemCC[tx]||0)+1; });
+    _qifCentrosCustoUnicasTSR = Object.entries(contagemCC).map(([texto,count])=>({texto,count})).sort((a,b)=>b.count-a.count);
+    mostrarMapeamentoCentroCustoQIF();
+  }catch(err){
+    setStatus('err', 'Erro ao criar categorias: '+err.message);
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
+let _qifCentrosCustoUnicasTSR=[];
+function mostrarMapeamentoCentroCustoQIF(){
+  const conta = contaById(_qifContaIdBruta);
+  const tipoConta = conta ? conta.tipo : null;
+  const linhas = _qifCentrosCustoUnicasTSR.map((c,i)=>{
+    if(c.texto==='(Sem centro de custo)') return '';
+    const [maeTexto, subTexto] = c.texto.split(':').map(s=>s?.trim());
+    const maeExistente = (DB.centrosCusto||[]).find(x=>!x.parentId && x.nome.toLowerCase()===(maeTexto||'').toLowerCase() && itemValidoParaPFPJ(x,tipoConta));
+    let matchMaeId='', matchSubId='';
+    if(maeExistente){
+      matchMaeId = maeExistente.id;
+      if(subTexto){ const sub=(DB.centrosCusto||[]).find(x=>x.parentId===maeExistente.id && x.nome.toLowerCase()===subTexto.toLowerCase()); if(sub) matchSubId=sub.id; }
+    }
+    const criarPorPadrao = !matchMaeId;
+    return `<tr>
+      <td style="font-size:12px;padding:5px 8px">${esc(c.texto)} <span style="color:var(--mut);font-size:10px">(${c.count}x)</span></td>
+      <td style="text-align:center;padding:5px 4px;white-space:nowrap">
+        <input type="checkbox" id="qifmapCC${i}-criar" ${criarPorPadrao?'checked':''} onchange="aoMudarCriarNovaCCQIFTsr(${i})">
+      </td>
+      <td style="padding:5px 8px"><div style="display:flex;gap:4px">
+        <select id="qifmapCC${i}-cc-mae" onchange="aoMudarMaeCascata('qifmapCC${i}','cc')" ${criarPorPadrao?'disabled':''} style="font-size:11px">${opcoesCentroCustoMae(tipoConta, matchMaeId)}</select>
+        <select id="qifmapCC${i}-cc-sub" ${criarPorPadrao?'disabled':''} style="font-size:11px">${opcoesSubCentroCusto(matchMaeId, matchSubId)}</select>
+      </div></td>
+    </tr>`;
+  }).join('');
+  AM('🔗 Mapear Centro de Custo do Money', `
+    <div style="font-size:12px;color:var(--mut);margin-bottom:12px;line-height:1.5">${_qifCentrosCustoUnicasTSR.length} centro(s) de custo diferente(s) do Money (2ª parte do campo Categoria/Classe). Marque <strong>"Criar novo"</strong> pra criar um cadastro igual aqui, ou desmarque e escolha um já existente na cascata.</div>
+    <div style="max-height:360px;overflow-y:auto;border:1px solid var(--bor);border-radius:8px;">
+      <table style="width:100%;font-size:12px"><thead><tr style="background:var(--sur);position:sticky;top:0"><th style="text-align:left;padding:6px 8px">Centro de Custo no Money</th><th style="padding:6px 4px">Criar novo</th><th style="text-align:left;padding:6px 8px">Ou usar centro de custo existente</th></tr></thead>
+      <tbody>${linhas}</tbody></table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      ${B('Continuar →','confirmarMapeamentoCCQIFTsr()','var(--acc)','#000')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+function aoMudarCriarNovaCCQIFTsr(i){
+  const criar = document.getElementById(`qifmapCC${i}-criar`)?.checked;
+  const maeSel = document.getElementById(`qifmapCC${i}-cc-mae`);
+  const subSel = document.getElementById(`qifmapCC${i}-cc-sub`);
+  if(maeSel) maeSel.disabled = criar;
+  if(subSel) subSel.disabled = criar;
+}
+async function confirmarMapeamentoCCQIFTsr(){
+  const btn = event?.target; if(btn) btn.disabled=true;
+  try{
+    let ccAtuais = DB.centrosCusto||[];
+    const novosCriados=[];
+    const mapa={};
+    _qifCentrosCustoUnicasTSR.forEach((c,i)=>{
+      if(c.texto==='(Sem centro de custo)'){ mapa[c.texto]=''; return; }
+      const criar = document.getElementById(`qifmapCC${i}-criar`)?.checked;
+      if(!criar){ mapa[c.texto] = valorFinalCascata('qifmapCC'+i, 'cc'); return; }
+      const [maeTexto, subTexto] = c.texto.split(':').map(s=>s?.trim());
+      const antes = ccAtuais.length;
+      const r = acharOuCriarCentroCustoQIF(ccAtuais, maeTexto, subTexto);
+      if(r.lista.length>antes) novosCriados.push(...r.lista.slice(antes));
+      ccAtuais = r.lista;
+      mapa[c.texto] = r.id;
+    });
+    if(novosCriados.length) await salvarNovosCentrosCustoEmLote(novosCriados);
+    _qifTransacoesBrutas.forEach(t=>{ t.centroCustoIdMoney = mapa[(t.centroCustoTextoMoney||'').trim()||'(Sem centro de custo)']||''; });
     _ofxContaId = _qifContaIdBruta;
     _ofxPendente = montarOfxPendente(_qifTransacoesBrutas, _qifContaIdBruta);
     mostrarRevisaoOFX();
   }catch(err){
-    setStatus('err', 'Erro ao criar categorias: '+err.message);
+    setStatus('err', 'Erro ao criar centros de custo: '+err.message);
   }finally{
     if(btn) btn.disabled=false;
   }
