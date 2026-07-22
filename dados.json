@@ -77147,23 +77147,6 @@
       "fitid": "csv1013092538",
       "contaPagarId": null,
       "criadoEm": "2026-07-22T11:44:35.302Z"
-    },
-    {
-      "id": "mrw0lyhya2wop",
-      "contaId": "mrntzv0bvufp8",
-      "data": "2026-07-01",
-      "tipo": "saida",
-      "valor": 32.56,
-      "categoriaId": "mrw0kj4p3xtas",
-      "centroCustoId": "",
-      "contraparte": "Bc.CEF",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Bc.CEF",
-      "origem": "ofx",
-      "fitid": "csv736408861",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-22T11:44:35.302Z"
     }
   ],
   "contasPagar": [
