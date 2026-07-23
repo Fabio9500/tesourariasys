@@ -15028,20 +15028,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrnzdyj9rzm1j",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-02",
-      "tipo": "saida",
-      "valor": 1494.07,
-      "categoriaId": "mrnty0ghwv185",
-      "centroCustoId": "",
-      "contraparte": "Cartao de Compras",
-      "descricao": "Liquidacao Boleto",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrr9st8d5xwdc",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-05",
