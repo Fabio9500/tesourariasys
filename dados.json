@@ -87947,23 +87947,6 @@
       "criadoEm": "2026-07-23T02:43:15.912Z"
     },
     {
-      "id": "mrwwpnwoejqd3",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-01",
-      "tipo": "saida",
-      "valor": 150,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "PAGAMENTO PIX-PIX_DEB   02330869517 Cristiane Ferreira da Silva",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "PAGAMENTO PIX-PIX_DEB   02330869517 Cristiane Ferreira da Silva",
-      "origem": "ofx",
-      "fitid": "22667337610",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwoj076w",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-03",
