@@ -15070,20 +15070,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr500al9bksrc",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-07",
-      "tipo": "saida",
-      "valor": 1020,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Luis Carlos Silva Santos",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mr5lyqj76z9my",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-08",
