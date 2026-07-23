@@ -15056,20 +15056,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr74lg7n7ylbd",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-13",
-      "tipo": "saida",
-      "valor": 60,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Ana Claudia de Jesus",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrzqiiwd7vd4w",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-14",
