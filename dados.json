@@ -87998,23 +87998,6 @@
       "criadoEm": "2026-07-23T02:43:15.912Z"
     },
     {
-      "id": "mrwwpnwov07wn",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-01",
-      "tipo": "saida",
-      "valor": 4.08,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "JUROS UTILIZ.CH.ESPECIAL-ENC023",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "JUROS UTILIZ.CH.ESPECIAL-ENC023",
-      "origem": "ofx",
-      "fitid": "22690340721",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwoj076w",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-03",
