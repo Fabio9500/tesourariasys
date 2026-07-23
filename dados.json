@@ -87911,23 +87911,6 @@
       "fitid": "csv591014044",
       "contaPagarId": null,
       "criadoEm": "2026-07-23T02:37:27.714Z"
-    },
-    {
-      "id": "mrwwi78iiwdet",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-14",
-      "tipo": "saida",
-      "valor": 300,
-      "categoriaId": "mrw0kj4o476cu",
-      "centroCustoId": "nmk07cd3hlpw0",
-      "contraparte": "Coelba Empresa",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Coelba Empresa",
-      "origem": "ofx",
-      "fitid": "csv1273536706",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:37:27.714Z"
     }
   ],
   "contasPagar": [
