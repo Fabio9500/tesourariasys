@@ -55,10 +55,11 @@
       "banco": "PicPay",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 3.23,
-      "dataSaldoInicial": "2026-03-31",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-23",
       "ativa": true,
-      "obs": ""
+      "obs": "",
+      "atualizadoEm": "2026-07-23T03:09:18.981Z"
     },
     {
       "id": "mrnty0ghhcv08",
