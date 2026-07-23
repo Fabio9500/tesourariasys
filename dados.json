@@ -14837,20 +14837,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr5dk4wdihsyi",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-26",
-      "tipo": "saida",
-      "valor": 400,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Ailton Ramos Cruz Junior",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mreoj1oc99bfc",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-29",
