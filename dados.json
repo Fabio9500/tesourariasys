@@ -15952,20 +15952,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrp11uos2qsp6",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-30",
-      "tipo": "saida",
-      "valor": 641.62,
-      "categoriaId": "mrnty0ghjsvgu",
-      "centroCustoId": "",
-      "contraparte": "Sicredi",
-      "descricao": "Debito Arrecadacao DAS",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrrdhfafhkbyl",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-30",
