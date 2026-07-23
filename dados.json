@@ -87981,23 +87981,6 @@
       "criadoEm": "2026-07-23T02:43:15.912Z"
     },
     {
-      "id": "mrwwpnwo0d9ki",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-01",
-      "tipo": "saida",
-      "valor": 0.04,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "IOF BASICO C/C PJ-Iof.BAsic",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "IOF BASICO C/C PJ-Iof.BAsic",
-      "origem": "ofx",
-      "fitid": "22674179103",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwoj076w",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-03",
