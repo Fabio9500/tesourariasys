@@ -5477,20 +5477,6 @@
       "criadoEm": "2026-07-17T12:00:00.000Z"
     },
     {
-      "id": "mrkm3beqx8y1u",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-01",
-      "tipo": "saida",
-      "valor": 150,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Cristiane Ferreira",
-      "descricao": "Pagamento Pix",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-17T12:00:00.000Z"
-    },
-    {
       "id": "mrze45k12rkk9",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-01",
