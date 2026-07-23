@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.73';
+const VERSAO = 'v1.74';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -5723,7 +5723,10 @@ function htmlContas(){
 // RENDER — LANÇAMENTOS
 // ══════════════════════════════════════════
 let _filtroLancConta = '';
-let _filtroLancIni = '';
+// PADRÃO: últimos 90 dias, para não travar o navegador renderizando os
+// 20+ mil lançamentos de uma vez só. "Todos" continua disponível manualmente
+// (basta apagar a data "De"). A pedido do Fabio (23/07/2026).
+let _filtroLancIni = (()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })();
 let _filtroLancFim = '';
 let _filtroLancContraparte = '';
 let _filtroLancCategoria = '';
@@ -6244,7 +6247,9 @@ function htmlLancamentos(){
 // ══════════════════════════════════════════
 let FRF = {
   colunas: {data:true, conta:true, tipo:true, categoria:true, centroCusto:true, direcionamento:false, contraparte:true, descricao:true, valor:true, origem:false},
-  de:'', ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', direcionamento:'', busca:'', origem:'',
+  // PADRÃO: últimos 90 dias (mesmo motivo de Lançamentos — evitar travar
+  // renderizando a base inteira). "Todos" continua disponível apagando "De".
+  de:(()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })(), ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', direcionamento:'', busca:'', origem:'',
   agruparPor:'', gruposAbertos:{}
 };
 const COLUNAS_FRF = [
@@ -7024,7 +7029,9 @@ function salvarEdicaoEmMassaExtrato(){
   setStatus('ok', `✅ ${alterados} lançamento(s) atualizado(s)`);
   setTimeout(()=>{document.getElementById('status').style.display='none';},4000);
 }
-let RelExtrato = { contaId:'', de:'', ate:'', fornecedor:'', categoriaId:'', centroCustoId:'', direcionamento:'' };
+// PADRÃO: últimos 90 dias, mesmo critério usado em Lançamentos e Relatório
+// Flexível — contas antigas/movimentadas podem ter milhares de lançamentos.
+let RelExtrato = { contaId:'', de:(()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })(), ate:'', fornecedor:'', categoriaId:'', centroCustoId:'', direcionamento:'' };
 function aplicarFiltroRelExtrato(){
   RelExtrato.contaId = document.getElementById('re-conta')?.value||'';
   RelExtrato.de = document.getElementById('re-de')?.value||'';
