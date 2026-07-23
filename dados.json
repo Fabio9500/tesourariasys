@@ -87913,23 +87913,6 @@
       "criadoEm": "2026-07-23T02:37:27.714Z"
     },
     {
-      "id": "mrwwpnwo7garf",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-01",
-      "tipo": "saida",
-      "valor": 64,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "PAGAMENTO PIX-PIX_DEB   04120226565 Cleobio Carvalho Lima",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "PAGAMENTO PIX-PIX_DEB   04120226565 Cleobio Carvalho Lima",
-      "origem": "ofx",
-      "fitid": "22660900308",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwo9v5ct",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-01",
