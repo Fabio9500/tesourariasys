@@ -15980,20 +15980,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr1v0nncqs04c",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-30",
-      "tipo": "saida",
-      "valor": 350,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Antonio Fernando da Silva",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mr97d00p4wx13",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-30",
