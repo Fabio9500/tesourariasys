@@ -15056,20 +15056,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mreuu3fqcrouw",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-05",
-      "tipo": "saida",
-      "valor": 500,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Cristiane Ferreira",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mro33ogy2umbf",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-05",
