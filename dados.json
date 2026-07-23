@@ -216,10 +216,11 @@
       "banco": "Itaú",
       "agencia": "9690",
       "conta": "004718-9",
-      "saldoInicial": 509.12,
-      "dataSaldoInicial": "2025-12-31",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-23",
       "ativa": true,
-      "obs": ""
+      "obs": "",
+      "atualizadoEm": "2026-07-23T03:09:09.402Z"
     }
   ],
   "lancamentos": [
