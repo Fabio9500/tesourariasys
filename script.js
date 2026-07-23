@@ -1053,7 +1053,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.79';
+const VERSAO = 'v1.80';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -5559,7 +5559,11 @@ function toggleKpi(chave){
 }
 function abrirContaEmLancamentos(contaId){ _filtroLancConta = contaId; irPara('lancamentos'); }
 function abrirContaNoExtrato(contaId){
-  RelExtrato = { contaId, de:'', ate:'', fornecedor:'' };
+  // Usa o mesmo padrão de 90 dias das demais telas (23/07/2026) — antes essa
+  // função específica (clique numa conta no Dashboard) zerava a data e
+  // trazia o histórico completo, ignorando o padrão aplicado em outros lugares.
+  const de90 = (()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })();
+  RelExtrato = { contaId, de:de90, ate:'', fornecedor:'' };
   RLT.cat = 'bancarias'; RLT.tipo = 'extrato_conta';
   irPara('relatorios');
 }
