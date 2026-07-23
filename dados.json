@@ -14880,20 +14880,6 @@
       "fitid": "csv72781298"
     },
     {
-      "id": "mri2l163bqdev",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-29",
-      "tipo": "saida",
-      "valor": 96,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Cleobio Carvalho Lima",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrbqxvzkew4ao",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-30",
