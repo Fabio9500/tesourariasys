@@ -15070,20 +15070,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr0n1j4xyxxaw",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-09",
-      "tipo": "saida",
-      "valor": 712,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Neilton Soares Oliveira",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrur5hlw6q8y3",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-09",
