@@ -18,6 +18,15 @@ button{cursor:pointer;font-weight:700;border:none;border-radius:var(--r);transit
 button:hover{opacity:.85}
 table{border-collapse:collapse;width:100%;font-size:12px}
 th{text-align:left;padding:7px 10px;color:var(--txt);font-weight:800;border-bottom:2px solid var(--acc);font-size:11px;text-transform:uppercase;letter-spacing:.06em;position:sticky;top:50px;background:var(--card);z-index:5}
+/* CORREÇÃO: caixas com overflow-x:auto sem altura definida "prendem" o
+   cabeçalho sticky dentro delas (o navegador as trata como container de
+   rolagem próprio, mas como nunca rolam de verdade, o sticky não acompanha
+   a rolagem da página). No desktop, viram caixas com rolagem própria e
+   cabeçalho fixo no topo — mesma correção já aplicada no ChequeSys/Cartões. */
+@media (min-width:769px){
+  .tabela-mobile-cards{overflow:auto!important;max-height:calc(100vh - 230px);}
+  .tabela-mobile-cards thead th,.tabela-mobile-cards th{top:0;}
+}
 /* Cabeçalho congelado ao rolar (telas de Lançamentos e Extrato de Conta) — fica logo abaixo do navbar (50px), que também é sticky. */
 .thead-fixo th{position:sticky;top:50px;background:var(--card);z-index:5}
 td{padding:7px 10px;border-bottom:1px solid #1e2530;vertical-align:middle}
