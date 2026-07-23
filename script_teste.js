@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.77';
+const VERSAO = 'v1.78';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -7812,16 +7812,15 @@ function htmlRelatorios(){
   const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
   const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
 
-  // Saldo de fechamento do dia — só faz sentido como reconciliação bancária real quando
-  // filtrado por UMA conta específica e sem recorte de categoria/direcionamento/fornecedor
-  // (que são consultas de investigação, não o extrato completo da conta).
+  // REMOVIDO (23/07/2026, a pedido do Fabio): o extrato tinha um cálculo de
+  // "Saldo Anterior/Saldo Atual/Saldo do Dia" que reconstituía o saldo da
+  // conta dia a dia percorrendo TODO o histórico dela toda vez que a conta
+  // era trocada no filtro — pesado e, segundo o Fabio, sem utilidade prática.
+  // O restante do código já lida bem com saldoAcumuladoExtrato=null (as
+  // linhas de saldo simplesmente não aparecem), então manter como null
+  // desativa a funcionalidade sem precisar mexer no resto da tela.
   const extratoEhRecorteItem = !!(RelExtrato.categoriaId || RelExtrato.centroCustoId || RelExtrato.direcionamento || RelExtrato.fornecedor);
   let saldoAcumuladoExtrato = null;
-  if(RelExtrato.contaId && !extratoEhRecorteItem){
-    const contaExt = contaById(RelExtrato.contaId);
-    const anteriores = (DB.lancamentos||[]).filter(l=>l.contaId===RelExtrato.contaId && RelExtrato.de && l.data < RelExtrato.de);
-    saldoAcumuladoExtrato = (contaExt?Number(contaExt.saldoInicial||0):0) + anteriores.reduce((s,l)=>s+(l.tipo==='entrada'?l.valor:-l.valor),0);
-  }
   const nCols = 7 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
   const saldoAnteriorExtrato = saldoAcumuladoExtrato;
   const linhaAnterior = saldoAcumuladoExtrato!==null
@@ -7946,7 +7945,6 @@ function htmlRelatorios(){
     <datalist id="dl-direcionamentos-edtx">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
     ${_extratoModoEdicao ? '<div style="font-size:11px;color:#f0a500;margin-bottom:10px">✏️ Modo edição ativo — altere os campos direto na tabela e clique em "Salvar Alterações" quando terminar. Selecione o período/filtros antes de entrar em edição.</div>' : ''}
     ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}
-    ${extratoEhRecorteItem ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">🔎 Filtrando por um item específico (fornecedor/categoria/direcionamento) — o saldo do dia fica oculto porque essa visão mostra só uma parte da conta, não o extrato completo.</div>' : ''}
     <div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Toque em um Fornecedor, Categoria ou Direcionamento na tabela abaixo para ver só os lançamentos daquele item, mantendo o período filtrado.</div>`;
 
   // ── Contas a Pagar — Pagas em Período (com filtro CC / texto) ──
