@@ -87913,23 +87913,6 @@
       "criadoEm": "2026-07-23T02:37:27.714Z"
     },
     {
-      "id": "mrwwpnwowdwz1",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-06",
-      "tipo": "saida",
-      "valor": 350,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "PAGAMENTO PIX-PIX_DEB   73481807791 Antonio Fernando da Silva",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "PAGAMENTO PIX-PIX_DEB   73481807791 Antonio Fernando da Silva",
-      "origem": "ofx",
-      "fitid": "22706589578",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwo084hb",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-06",
