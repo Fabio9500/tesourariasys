@@ -87913,23 +87913,6 @@
       "criadoEm": "2026-07-23T02:37:27.714Z"
     },
     {
-      "id": "mrwwpnwoj076w",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-03",
-      "tipo": "saida",
-      "valor": 989.84,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "DEBITO CONVENIOS-VIVOBA    02558157000162 VIVO BA ID 04206926491",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "DEBITO CONVENIOS-VIVOBA    02558157000162 VIVO BA ID 04206926491",
-      "origem": "ofx",
-      "fitid": "22690996287",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwo4vwzw",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-06",
