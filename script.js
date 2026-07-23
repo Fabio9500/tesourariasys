@@ -15,6 +15,17 @@ const GH_USER = 'Fabio9500';
 const GH_REPO = 'tesourariasys';
 const GH_FILE = 'dados.json';
 const GH_API  = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
+// ARQUIVAMENTO POR ANO (23/07/2026): lançamentos deixaram de morar dentro de
+// dados.json (que só tem contas, contasPagar, cadastros etc. — sempre
+// pequeno e rápido) e passaram a ficar em arquivos separados por ano
+// (lancamentos_2026.json, lancamentos_2025.json...). Por padrão só o ano
+// corrente e o anterior são carregados ao abrir o sistema; anos mais antigos
+// são buscados sob demanda quando o usuário pede um período mais largo.
+// Isso existe porque o dados.json único cresceu demais (12MB, ~24 mil
+// lançamentos) e deixou o sistema lento — com esse formato, o tamanho do
+// histórico acumulado não afeta mais a velocidade do uso do dia a dia.
+const GH_URL_ARQUIVO = nome => `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${nome}`;
+const ARQ_ANO = ano => `lancamentos_${ano}.json`;
 
 // Decodifica base64 -> UTF-8 corretamente (o par exato do encode usado em ghSalvar:
 // btoa(unescape(encodeURIComponent(str))) ). Usar atob() sozinho corrompe acentos
@@ -153,6 +164,78 @@ let _online = navigator.onLine;
 let _sincronizando = false;
 function isOnline(){ return navigator.onLine; }
 
+// Busca o conteúdo de um arquivo do repositório (dados.json ou um
+// lancamentos_AAAA.json), com o mesmo fallback pra arquivos grandes que já
+// existia só pra dados.json. Retorna {conteudo, sha} ou null se não existir.
+async function buscarArquivoGH(nomeArquivo){
+  const url = GH_URL_ARQUIVO(nomeArquivo);
+  const r = await fetch(url, { headers:{ 'Authorization': `token ${getToken()}`, 'Accept': 'application/vnd.github.v3+json' } });
+  if(r.status === 404) return null;
+  if(!r.ok) throw new Error('HTTP '+r.status+' ao buscar '+nomeArquivo);
+  const j = await r.json();
+  let conteudo;
+  if(!j.content || j.content.trim() === ''){
+    const r2 = await fetch(j.download_url);
+    if(!r2.ok) throw new Error('Download falhou: '+r2.status+' ('+nomeArquivo+')');
+    conteudo = await r2.json();
+  } else {
+    conteudo = JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
+  }
+  return { conteudo, sha: j.sha };
+}
+
+// Determina quais anos carregar por padrão: ano corrente + ano anterior —
+// cobre qualquer filtro de "últimos 90 dias" mesmo virando o ano, e cobre
+// a grande maioria do uso do dia a dia sem precisar buscar nada extra.
+function anosPadraoParaCarregar(){
+  const anoAtual = new Date().getFullYear();
+  return [String(anoAtual-1), String(anoAtual)];
+}
+
+// Busca sob demanda um ano de lançamentos ainda não carregado (ex: usuário
+// pediu um período/relatório que volta mais no tempo). Idempotente — se o
+// ano já estiver carregado ou não existir arquivo pra ele, não faz nada.
+async function carregarAnoLancamentos(ano){
+  ano = String(ano);
+  if(!DB._anosCarregados) DB._anosCarregados = new Set();
+  if(DB._anosCarregados.has(ano)) return;
+  if(DB.anosLancamentos && !DB.anosLancamentos.includes(ano)) { DB._anosCarregados.add(ano); return; } // ano não existe, nada a buscar
+  try{
+    const res = await buscarArquivoGH(ARQ_ANO(ano));
+    DB._anosCarregados.add(ano);
+    if(!res) return; // arquivo daquele ano ainda não existe (conta nova, sem movimento nesse ano)
+    DB._shaAnos = DB._shaAnos || {};
+    DB._shaAnos[ano] = res.sha;
+    const idsJa = new Set(DB.lancamentos.map(l=>l.id));
+    const novos = (res.conteudo||[]).filter(l=>!idsJa.has(l.id));
+    DB.lancamentos = [...DB.lancamentos, ...novos];
+  }catch(e){
+    console.error('Falha ao carregar ano '+ano, e);
+  }
+}
+
+// Garante que todos os anos entre duas datas (inclusive) estejam carregados
+// na memória antes de renderizar uma tela que precisa deles. dataDe/dataAte
+// vazias significam "sem limite" nessa ponta — nesse caso carrega desde o
+// ano mais antigo disponível (ou até o ano corrente).
+async function garantirAnosCarregados(dataDe, dataAte){
+  const anoAtual = new Date().getFullYear();
+  const anoIni = dataDe ? Number(dataDe.slice(0,4)) : (DB.anosLancamentos?.length ? Number(DB.anosLancamentos[0]) : anoAtual);
+  const anoFim = dataAte ? Number(dataAte.slice(0,4)) : anoAtual;
+  const faltantes = [];
+  for(let a=anoIni; a<=anoFim; a++){
+    const anoStr = String(a);
+    if(!DB._anosCarregados || !DB._anosCarregados.has(anoStr)) faltantes.push(anoStr);
+  }
+  if(!faltantes.length) return false;
+  setStatus('saving', `🔄 Carregando histórico (${faltantes.join(', ')})...`);
+  await Promise.all(faltantes.map(a=>carregarAnoLancamentos(a)));
+  setStatus('ok','✅ Pronto');
+  setTimeout(()=>{ document.getElementById('status').style.display='none'; },2000);
+  return true;
+}
+
+
 async function ghCarregar(){
   try{
     setStatus('saving','🔄 Carregando...');
@@ -172,7 +255,21 @@ async function ghCarregar(){
     } else {
       dados = JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
     }
-    try{ localStorage.setItem('tsr_bkp', JSON.stringify(dados)); }catch(e){}
+    // ARQUIVAMENTO POR ANO (23/07/2026): dados.json não guarda mais os
+    // lançamentos — busca separadamente só o ano corrente + o anterior
+    // (cobre o uso do dia a dia). Anos mais antigos são buscados sob
+    // demanda em garantirAnosCarregados() quando o usuário pedir.
+    dados.lancamentos = [];
+    dados._anosCarregados = new Set();
+    dados._shaAnos = {};
+    setStatus('saving','🔄 Carregando lançamentos recentes...');
+    await Promise.all(anosPadraoParaCarregar().map(async ano=>{
+      if(dados.anosLancamentos && !dados.anosLancamentos.includes(ano)){ dados._anosCarregados.add(ano); return; }
+      const res = await buscarArquivoGH(ARQ_ANO(ano));
+      dados._anosCarregados.add(ano);
+      if(res){ dados._shaAnos[ano] = res.sha; dados.lancamentos.push(...(res.conteudo||[])); }
+    }));
+    try{ localStorage.setItem('tsr_bkp', JSON.stringify({...dados, _anosCarregados:[...dados._anosCarregados]})); }catch(e){}
     const fila = getFilaPendente();
     if(fila){ setStatus('warn','📤 Sincronizando alterações offline...'); return await resolverFilaPendente(fila, dados, j.sha); }
     setStatus('ok','✅ Dados carregados');
@@ -180,7 +277,12 @@ async function ghCarregar(){
     return dados;
   }catch(e){
     const bkp = localStorage.getItem('tsr_bkp');
-    if(bkp){ setStatus('warn','📴 Offline — usando dados locais'); return JSON.parse(bkp); }
+    if(bkp){
+      setStatus('warn','📴 Offline — usando dados locais');
+      const d = JSON.parse(bkp);
+      d._anosCarregados = new Set(d._anosCarregados||[]);
+      return d;
+    }
     setStatus('warn','⚠ Sem dados');
     return dbVazio();
   }
@@ -240,7 +342,7 @@ async function aplicarResolucaoConflito(opcao){
 }
 
 async function ghSalvar(db, pularMesclagem){
-  try{ localStorage.setItem('tsr_bkp', JSON.stringify(db)); }catch(e){}
+  try{ localStorage.setItem('tsr_bkp', JSON.stringify({...db, _anosCarregados:[...(db._anosCarregados||[])]})); }catch(e){}
   if(!isOnline()){
     setFilaPendente(db);
     setStatus('warn','📴 Offline — alteração salva neste dispositivo');
@@ -254,23 +356,14 @@ async function ghSalvar(db, pularMesclagem){
     if(rGet.ok){
       const jGet = await rGet.json();
       _sha = jGet.sha; _shaAtual = jGet.sha;
-      // Alguém (ex: CartõesPF/PJ pagando fatura) pode ter gravado dados.json entre o
-      // carregamento local e este salvamento. Em vez de sobrescrever cegamente, mescla
-      // os lançamentos que só existem na versão remota, pra não perdê-los.
+      // Protege as CONTAS (saldo inicial etc.) do mesmo jeito: se alguém salvou uma
+      // versão diferente nesse meio-tempo, compara por "atualizadoEm" e mantém sempre
+      // a edição mais recente de cada conta — em vez de deixar a gravação atual (que
+      // pode estar operando com uma cópia mais antiga de outra conta) apagar sem querer
+      // uma alteração feita em outro dispositivo/aba, ou vice-versa.
       if(shaAntesDoSave && jGet.sha !== shaAntesDoSave && jGet.content && !pularMesclagem){
         try{
           const remoto = JSON.parse(b64ParaTextoUtf8(jGet.content.replace(/\n/g,'')));
-          const idsLocais = new Set((db.lancamentos||[]).map(l=>l.id));
-          const novosDoRemoto = (remoto.lancamentos||[]).filter(l=>!idsLocais.has(l.id));
-          if(novosDoRemoto.length){
-            db = { ...db, lancamentos: [...(db.lancamentos||[]), ...novosDoRemoto] };
-            setStatus('warn', `🔄 ${novosDoRemoto.length} lançamento(s) de outro sistema mesclado(s) antes de salvar`);
-          }
-          // Protege as CONTAS (saldo inicial etc.) do mesmo jeito: se alguém salvou uma
-          // versão diferente nesse meio-tempo, compara por "atualizadoEm" e mantém sempre
-          // a edição mais recente de cada conta — em vez de deixar a gravação atual (que
-          // pode estar operando com uma cópia mais antiga de outra conta) apagar sem querer
-          // uma alteração feita em outro dispositivo/aba, ou vice-versa.
           if(remoto.contas && remoto.contas.length){
             const remotoPorId = {}; remoto.contas.forEach(c=>{ remotoPorId[c.id]=c; });
             const localPorId = {}; (db.contas||[]).forEach(c=>{ localPorId[c.id]=c; });
@@ -285,10 +378,54 @@ async function ghSalvar(db, pularMesclagem){
             });
             db = { ...db, contas: contasMescladas };
           }
+          // anosLancamentos: nunca reduz — sempre a união do que já existia no
+          // remoto com o que temos localmente (evita "esquecer" um ano que outro
+          // dispositivo tenha criado nesse meio-tempo).
+          if(remoto.anosLancamentos){
+            db = { ...db, anosLancamentos: [...new Set([...(remoto.anosLancamentos||[]), ...(db.anosLancamentos||[])])].sort() };
+          }
         }catch(eMerge){ /* se a mesclagem falhar, segue salvando o que já tínhamos, melhor que travar */ }
       }
     }
-    const conteudo = btoa(unescape(encodeURIComponent(JSON.stringify(db, null, 2))));
+    // ARQUIVAMENTO POR ANO: separa os lançamentos por ano e grava cada
+    // arquivo de ano SEPARADAMENTE — só os anos que estão carregados na
+    // memória (db._anosCarregados), nunca um ano que não foi buscado (senão
+    // apagaríamos sem querer o conteúdo dele, já que não o temos completo
+    // aqui). dados.json grava tudo o mais, sem os lançamentos.
+    const porAno = {};
+    (db.lancamentos||[]).forEach(l=>{
+      const ano = (l.data||'').slice(0,4); if(!ano) return;
+      if(!porAno[ano]) porAno[ano] = [];
+      porAno[ano].push(l);
+    });
+    const anosParaGravar = [...(db._anosCarregados||Object.keys(porAno))];
+    const anosLancamentosFinal = [...new Set([...(db.anosLancamentos||[]), ...Object.keys(porAno)])].sort();
+
+    await Promise.all(anosParaGravar.map(async ano=>{
+      const lista = porAno[ano] || [];
+      const shaAno = (db._shaAnos||{})[ano];
+      const conteudoAno = btoa(unescape(encodeURIComponent(JSON.stringify(lista))));
+      const bodyAno = { message:`TesourariaSys update — lançamentos ${ano}`, content: conteudoAno };
+      if(shaAno) bodyAno.sha = shaAno;
+      const rAno = await fetch(GH_URL_ARQUIVO(ARQ_ANO(ano)), {
+        method:'PUT',
+        headers:{ 'Authorization':`token ${getToken()}`, 'Accept':'application/vnd.github.v3+json', 'Content-Type':'application/json' },
+        body: JSON.stringify(bodyAno)
+      });
+      const resAno = await rAno.json();
+      if(resAno.content && resAno.content.sha){ db._shaAnos = {...(db._shaAnos||{}), [ano]: resAno.content.sha}; }
+    }));
+
+    const dbSemLancamentos = {...db};
+    delete dbSemLancamentos.lancamentos;
+    delete dbSemLancamentos._anosCarregados;
+    delete dbSemLancamentos._shaAnos;
+    dbSemLancamentos.anosLancamentos = anosLancamentosFinal;
+    dbSemLancamentos.categorias = undefined;
+    dbSemLancamentos.centrosCusto = undefined;
+    dbSemLancamentos.direcionamentos = undefined;
+
+    const conteudo = btoa(unescape(encodeURIComponent(JSON.stringify(dbSemLancamentos, null, 2))));
     const body = { message:'TesourariaSys update', content: conteudo, sha: _sha };
     const r = await fetch(GH_API, {
       method:'PUT',
@@ -323,13 +460,13 @@ window.addEventListener('online', async ()=>{
     _sincronizando = true;
     setStatus('warn','🔄 Conexão recuperada — verificando sincronização...');
     try{
-      const r = await fetch(GH_API, { headers:{ 'Authorization':`token ${getToken()}`, 'Accept':'application/vnd.github.v3+json' } });
-      if(r.ok){
-        const j = await r.json();
-        const dadosRemotos = JSON.parse(b64ParaTextoUtf8(j.content.replace(/\n/g,'')));
-        await resolverFilaPendente(fila, dadosRemotos, j.sha);
-        if(!window._conflitoFilaDb){ renderAba(); }
-      }
+      // ghCarregar() já busca dados.json (enxuto) + os anos padrão de
+      // lançamentos e resolve a fila pendente internamente — evita duplicar
+      // essa lógica aqui (antes esse trecho fazia um fetch bruto assumindo
+      // que dados.json ainda tinha lancamentos dentro, o que não é mais
+      // verdade desde o arquivamento por ano).
+      const resultado = await ghCarregar();
+      if(resultado && !window._conflitoFilaDb){ DB = resultado; _relCacheVersion++; renderAba(); }
     }catch(e){ }
     _sincronizando = false;
   }
@@ -445,7 +582,7 @@ async function seedInicial(){
   if(!DB.relatoriosFavoritos) DB.relatoriosFavoritos = [];
 }
 
-function dbVazio(){ return {usuarios:[],contas:[],categorias:[],centrosCusto:[],direcionamentos:[],lancamentos:[],contasPagar:[],contasReceber:[],fornecedores:[],clientes:[],chequesEmitidos:[],investimentos:[],previdencias:[],capitalizacoes:[],seguros:[],relatoriosFavoritos:[],integracaoChequeSys:{mapaContas:{},contaPadrao:null,sincronizados:{}},alertas:[]}; }
+function dbVazio(){ return {usuarios:[],contas:[],categorias:[],centrosCusto:[],direcionamentos:[],lancamentos:[],contasPagar:[],contasReceber:[],fornecedores:[],clientes:[],chequesEmitidos:[],investimentos:[],previdencias:[],capitalizacoes:[],seguros:[],relatoriosFavoritos:[],integracaoChequeSys:{mapaContas:{},contaPadrao:null,sincronizados:{}},alertas:[],anosLancamentos:[],_anosCarregados:new Set(),_shaAnos:{}}; }
 
 // ══════════════════════════════════════════
 // BIOMETRIA (WebAuthn / Face ID / Touch ID)
@@ -1053,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.80';
+const VERSAO = 'v2.0';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1302,9 +1439,17 @@ function lancamentosDaConta(contaId){
   // de ordenação, não depende desta função.
   return (DB.lancamentos||[]).filter(l=>l.contaId===contaId);
 }
+// ARQUIVAMENTO POR ANO (23/07/2026): saldoInicial de cada conta já embute
+// tudo o que aconteceu ANTES de DB.corteSaldoInicial (calculado na migração,
+// conferido contra o saldo real). Por isso essas duas funções SEMPRE
+// ignoram lançamentos anteriores a esse corte, mesmo que anos antigos
+// estejam carregados na memória por outro motivo (ex: relatório com "Ver
+// Tudo") — senão esses lançamentos seriam contados duas vezes (uma dentro
+// do saldoInicial, outra somando eles de novo aqui).
 function saldoConta(contaId){
   const c = contaById(contaId); if(!c) return 0;
-  const movs = lancamentosDaConta(contaId);
+  const corte = DB.corteSaldoInicial || '0000-00-00';
+  const movs = lancamentosDaConta(contaId).filter(l=>l.data>=corte);
   let saldo = Number(c.saldoInicial||0);
   movs.forEach(l=>{ if(l.status==='nulo') return; saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
   return saldo;
@@ -1312,11 +1457,27 @@ function saldoConta(contaId){
 // Reconstrução histórica: saldo da conta como ele ERA no fim de uma data passada
 // (mesmo princípio de "cálculo sempre ao vivo" usado no resto do sistema — nunca
 // fica um valor histórico gravado à parte, sempre recalcula a partir dos lançamentos
-// reais até aquela data).
+// reais até aquela data). Só funciona corretamente para datas >= corteSaldoInicial;
+// para datas mais antigas, é preciso carregar o(s) ano(s) correspondente(s) primeiro
+// (garantirAnosCarregados) — nesse caso soma a partir do saldoInicial normalmente,
+// mas sem o filtro de corte, já que o objetivo aqui é justamente reconstituir o passado.
 function saldoContaAteData(contaId, dataLimite){
   const c = contaById(contaId); if(!c) return 0;
+  const corte = DB.corteSaldoInicial || '0000-00-00';
+  const baseNoCorte = Number(c.saldoInicial||0);
+  if(dataLimite >= corte){
+    const movs = lancamentosDaConta(contaId).filter(l=>l.data>=corte && l.data<=dataLimite);
+    let saldo = baseNoCorte;
+    movs.forEach(l=>{ if(l.status==='nulo') return; saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
+    return saldo;
+  }
+  // Data pedida é ANTES do corte — o saldoInicial "rebasado" não serve aqui
+  // (ele representa o saldo NO corte, não em datas anteriores). Usa o
+  // saldoInicialOriginal preservado na migração (o valor de antes de
+  // qualquer lançamento) — precisa do(s) ano(s) antigos carregados
+  // (garantirAnosCarregados) pra ficar completo.
   const movs = lancamentosDaConta(contaId).filter(l=>l.data<=dataLimite);
-  let saldo = Number(c.saldoInicial||0);
+  let saldo = Number(c.saldoInicialOriginal ?? c.saldoInicial ?? 0);
   movs.forEach(l=>{ if(l.status==='nulo') return; saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
   return saldo;
 }
@@ -5558,13 +5719,14 @@ function toggleKpi(chave){
   }
 }
 function abrirContaEmLancamentos(contaId){ _filtroLancConta = contaId; irPara('lancamentos'); }
-function abrirContaNoExtrato(contaId){
+async function abrirContaNoExtrato(contaId){
   // Usa o mesmo padrão de 90 dias das demais telas (23/07/2026) — antes essa
   // função específica (clique numa conta no Dashboard) zerava a data e
   // trazia o histórico completo, ignorando o padrão aplicado em outros lugares.
   const de90 = (()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })();
   RelExtrato = { contaId, de:de90, ate:'', fornecedor:'' };
   RLT.cat = 'bancarias'; RLT.tipo = 'extrato_conta';
+  await garantirAnosCarregados(de90, '');
   irPara('relatorios');
 }
 function kpiCard(chave, label, valorHtml, subtitulo, composicaoHtml){
@@ -5770,20 +5932,22 @@ function filtrarLancPorConta(contaId){
   if(sel) sel.value = contaId;
   aplicarFiltroLanc();
 }
-function aplicarFiltroLanc(){
+async function aplicarFiltroLanc(){
   _filtroLancConta = document.getElementById('flc-conta')?.value||'';
   _filtroLancIni = document.getElementById('flc-ini')?.value||'';
   _filtroLancFim = document.getElementById('flc-fim')?.value||'';
   _filtroLancContraparte = document.getElementById('flc-contraparte')?.value.trim()||'';
   _filtroLancCategoria = valorFinalCascata('flc','categoria');
   _filtroLancCC = valorFinalCascata('flc','cc');
+  await garantirAnosCarregados(_filtroLancIni, _filtroLancFim);
   renderAba();
 }
-function limparFiltroLanc(){
+async function limparFiltroLanc(){
   _filtroLancConta=''; _filtroLancIni=''; _filtroLancFim='';
   _filtroLancContraparte=''; _filtroLancCategoria=''; _filtroLancCC='';
   const catMae=document.getElementById('flc-categoria-mae'); if(catMae){ catMae.value=''; aoMudarMaeCascataFixo('flc','categoria'); }
   const ccMae=document.getElementById('flc-cc-mae'); if(ccMae){ ccMae.value=''; aoMudarMaeCascataFixo('flc','cc'); }
+  await garantirAnosCarregados('', ''); // "Todos" — carrega o histórico inteiro
   renderAba();
 }
 // ══════════════════════════════════════════
@@ -7084,13 +7248,15 @@ let _relCacheRelatorios = null;
 // que estar sempre certo).
 let _filtroRelDe = (()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })();
 let _filtroRelAte = '';
-function aplicarFiltroPeriodoRel(){
+async function aplicarFiltroPeriodoRel(){
   _filtroRelDe = document.getElementById('rel-periodo-de')?.value||'';
   _filtroRelAte = document.getElementById('rel-periodo-ate')?.value||'';
+  await garantirAnosCarregados(_filtroRelDe, _filtroRelAte);
   renderAba();
 }
-function limparFiltroPeriodoRel(){
+async function limparFiltroPeriodoRel(){
   _filtroRelDe=''; _filtroRelAte='';
+  await garantirAnosCarregados('', '');
   renderAba();
 }
 function htmlFiltroPeriodoRel(){
@@ -7105,7 +7271,7 @@ function htmlFiltroPeriodoRel(){
     <div style="font-size:10px;color:var(--mut);margin-top:4px">Este período afeta os quadros de fluxo abaixo (por categoria, fornecedor, top lançamentos etc). Saldo das contas sempre reflete o histórico completo.</div>
   </div>`;
 }
-function aplicarFiltroRelExtrato(){
+async function aplicarFiltroRelExtrato(){
   RelExtrato.contaId = document.getElementById('re-conta')?.value||'';
   RelExtrato.de = document.getElementById('re-de')?.value||'';
   RelExtrato.ate = document.getElementById('re-ate')?.value||'';
@@ -7113,10 +7279,12 @@ function aplicarFiltroRelExtrato(){
   RelExtrato.categoriaId = valorFinalCascata('re','categoria');
   RelExtrato.centroCustoId = valorFinalCascata('re','cc');
   RelExtrato.direcionamento = document.getElementById('re-direc')?.value||'';
+  await garantirAnosCarregados(RelExtrato.de, RelExtrato.ate);
   renderAba();
 }
-function limparFiltroRelExtrato(){
+async function limparFiltroRelExtrato(){
   RelExtrato = {contaId:'',de:'',ate:'',fornecedor:'',categoriaId:'',centroCustoId:'',direcionamento:''};
+  await garantirAnosCarregados('', '');
   renderAba();
 }
 // Ao tocar numa célula de Categoria/Centro de Custo/Direcionamento/Fornecedor no extrato — refiltra pelo item,
