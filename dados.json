@@ -30,10 +30,11 @@
       "banco": "Santander",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 320.64,
-      "dataSaldoInicial": "2025-12-31",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-23",
       "ativa": true,
-      "obs": ""
+      "obs": "",
+      "atualizadoEm": "2026-07-23T03:09:27.004Z"
     },
     {
       "id": "mrnty0gh925rf",
