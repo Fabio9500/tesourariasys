@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.76';
+const VERSAO = 'v1.77';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -7053,6 +7053,38 @@ function salvarEdicaoEmMassaExtrato(){
 // PADRÃO: últimos 90 dias, mesmo critério usado em Lançamentos e Relatório
 // Flexível — contas antigas/movimentadas podem ter milhares de lançamentos.
 let RelExtrato = { contaId:'', de:(()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })(), ate:'', fornecedor:'', categoriaId:'', centroCustoId:'', direcionamento:'' };
+
+// PERÍODO GERAL DA TELA DE RELATÓRIOS (23/07/2026, a pedido do Fabio): os
+// quadros de fluxo (por categoria, centro de custo, fornecedor, top
+// lançamentos, transferências internas) somavam o histórico completo — com
+// ~24 mil lançamentos isso pesava bastante. Agora tem um período padrão de
+// 90 dias, VISÍVEL na tela (não é um corte escondido), com opção de trocar
+// pra "Todos" quando quiser o histórico completo de verdade. O saldo das
+// contas continua sempre sendo o histórico completo (isso nunca muda, tem
+// que estar sempre certo).
+let _filtroRelDe = (()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })();
+let _filtroRelAte = '';
+function aplicarFiltroPeriodoRel(){
+  _filtroRelDe = document.getElementById('rel-periodo-de')?.value||'';
+  _filtroRelAte = document.getElementById('rel-periodo-ate')?.value||'';
+  renderAba();
+}
+function limparFiltroPeriodoRel(){
+  _filtroRelDe=''; _filtroRelAte='';
+  renderAba();
+}
+function htmlFiltroPeriodoRel(){
+  const rotulo = _filtroRelDe||_filtroRelAte ? `Período: ${_filtroRelDe?fmtD(_filtroRelDe):'início'} até ${_filtroRelAte?fmtD(_filtroRelAte):'hoje'}` : 'Mostrando: TODO O HISTÓRICO (pode demorar mais pra carregar)';
+  return `<div class="card" style="margin-bottom:14px;padding:10px 14px">
+    <div class="row" style="align-items:flex-end;gap:8px">
+      ${C('De',`<input type="date" id="rel-periodo-de" value="${_filtroRelDe}" onchange="aplicarFiltroPeriodoRel()">`,'1','140')}
+      ${C('Até',`<input type="date" id="rel-periodo-ate" value="${_filtroRelAte}" onchange="aplicarFiltroPeriodoRel()">`,'1','140')}
+      <div class="campo" style="flex:0;min-width:auto"><button type="button" onclick="limparFiltroPeriodoRel()" style="background:var(--sur);color:var(--txt);border:1px solid var(--bor);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Ver Tudo</button></div>
+      <div style="flex:1;font-size:11px;color:${_filtroRelDe||_filtroRelAte?'var(--mut)':'var(--acc)'};font-weight:700">${rotulo}</div>
+    </div>
+    <div style="font-size:10px;color:var(--mut);margin-top:4px">Este período afeta os quadros de fluxo abaixo (por categoria, fornecedor, top lançamentos etc). Saldo das contas sempre reflete o histórico completo.</div>
+  </div>`;
+}
 function aplicarFiltroRelExtrato(){
   RelExtrato.contaId = document.getElementById('re-conta')?.value||'';
   RelExtrato.de = document.getElementById('re-de')?.value||'';
@@ -7559,9 +7591,13 @@ function imprimirFechamentoDiario(){
 
 function htmlRelatorios(){
   const contas = (DB.contas||[]).filter(c=>c.ativa!==false);
-  // Fluxo por categoria (todos os lançamentos)
+  // Base de lançamentos já recortada pelo período selecionado (padrão 90
+  // dias) — usada nos quadros de FLUXO abaixo. Saldo das contas continua
+  // usando o histórico completo (DB.lancamentos direto), nunca essa base.
+  const lancRelBase = (DB.lancamentos||[]).filter(l=>(!_filtroRelDe||l.data>=_filtroRelDe)&&(!_filtroRelAte||l.data<=_filtroRelAte));
+  // Fluxo por categoria (dentro do período selecionado)
   const porCategoria = {};
-  (DB.lancamentos||[]).forEach(l=>{
+  lancRelBase.forEach(l=>{
     const cat = categoriaById(l.categoriaId);
     const nome = cat?nomeCompletoCategoria(cat):'(sem categoria)';
     if(!porCategoria[nome]) porCategoria[nome]={entrada:0,saida:0};
@@ -7575,7 +7611,7 @@ function htmlRelatorios(){
   // Fluxo por centro de custo (todos os lançamentos, histórico completo — mesmo
   // espírito do fluxo por Categoria acima, só que agrupado por Centro de Custo)
   const porCentroCustoGeral = {};
-  (DB.lancamentos||[]).forEach(l=>{
+  lancRelBase.forEach(l=>{
     const cc = centroCustoById(l.centroCustoId);
     const nome = cc?nomeCompletoCentroCusto(cc):'(sem centro de custo)';
     if(!porCentroCustoGeral[nome]) porCentroCustoGeral[nome]={entrada:0,saida:0};
@@ -7635,7 +7671,7 @@ function htmlRelatorios(){
 
   // Movimentação por Cliente/Fornecedor (contraparte) nos Lançamentos
   const porContraparte = {};
-  (DB.lancamentos||[]).filter(l=>l.contraparte).forEach(l=>{
+  lancRelBase.filter(l=>l.contraparte).forEach(l=>{
     if(!porContraparte[l.contraparte]) porContraparte[l.contraparte]={entrada:0,saida:0};
     porContraparte[l.contraparte][l.tipo==='entrada'?'entrada':'saida'] += l.valor;
   });
@@ -7654,7 +7690,7 @@ function htmlRelatorios(){
   const catTarifa = categoriaPorNome('Tarifas Bancárias','despesa');
   const porTarifaConta = {};
   if(catTarifa){
-    (DB.lancamentos||[]).filter(l=>l.categoriaId===catTarifa.id).forEach(l=>{
+    lancRelBase.filter(l=>l.categoriaId===catTarifa.id).forEach(l=>{
       const cta = contaById(l.contaId);
       const nome = cta?cta.titular:'(conta removida)';
       porTarifaConta[nome] = (porTarifaConta[nome]||0) + l.valor;
@@ -7680,7 +7716,7 @@ function htmlRelatorios(){
 
   // Fluxo de Caixa Mensal (evolução mês a mês)
   const porMes = {};
-  (DB.lancamentos||[]).forEach(l=>{
+  lancRelBase.forEach(l=>{
     const mes = (l.data||'').slice(0,7);
     if(!mes) return;
     if(!porMes[mes]) porMes[mes]={entrada:0,saida:0};
@@ -7709,17 +7745,17 @@ function htmlRelatorios(){
   const graficoPareto = grafBarraH(catsOrdenadas.slice(0,8).map(([nome,v])=>({label:nome,valor:v.saida})), '#f85149');
 
   // Maiores Lançamentos (Top 15 entradas + Top 15 saidas)
-  const topEntradas = (DB.lancamentos||[]).filter(l=>l.tipo==='entrada').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
-  const topSaidas = (DB.lancamentos||[]).filter(l=>l.tipo==='saida').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
+  const topEntradas = lancRelBase.filter(l=>l.tipo==='entrada').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
+  const topSaidas = lancRelBase.filter(l=>l.tipo==='saida').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
   const linhasTop = (arr,cor)=>arr.map(l=>{
     const cta = contaById(l.contaId);
     return `<tr><td>${fmtD(l.data)}</td><td>${esc(cta?cta.titular:'-')}</td><td>${esc(l.contraparte||l.descricao||'-')}</td><td style="text-align:right;font-weight:700;color:${cor}">R$ ${fmt(l.valor)}</td></tr>`;
   }).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--mut)">Sem lançamentos</td></tr>`;
 
   // Transferências Entre Contas Próprias (por pareamento real) vs Fluxo de Caixa Real
-  const { idsPareados: idsTransfInternas, suspeitasSemPar } = identificarTransferenciasInternas(DB.lancamentos||[]);
+  const { idsPareados: idsTransfInternas, suspeitasSemPar } = identificarTransferenciasInternas(lancRelBase);
   let transfEntrada=0, transfSaida=0, realEntrada=0, realSaida=0;
-  (DB.lancamentos||[]).forEach(l=>{
+  lancRelBase.forEach(l=>{
     if(idsTransfInternas.has(l.id)){
       if(l.tipo==='entrada') transfEntrada+=l.valor; else transfSaida+=l.valor;
     } else {
@@ -7742,7 +7778,7 @@ function htmlRelatorios(){
   const cartoesPF = _resumoCartoes?.pf?.totalAberto||0;
   const cartoesPJ = _resumoCartoes?.pj?.totalAberto||0;
   const catFatCartao = categoriaPorNome('Fatura Cartão de Crédito','despesa');
-  const lancFatCartao = catFatCartao ? (DB.lancamentos||[]).filter(l=>l.categoriaId===catFatCartao.id) : [];
+  const lancFatCartao = catFatCartao ? lancRelBase.filter(l=>l.categoriaId===catFatCartao.id) : [];
   const totalPagoFaturas = lancFatCartao.reduce((s,l)=>s+l.valor,0);
   const porContaFatura = {};
   lancFatCartao.forEach(l=>{
@@ -8153,6 +8189,7 @@ function htmlRelatorios(){
   ).join('');
 
   return `<div class="titulo acc">📊 Relatórios</div>
+    ${htmlFiltroPeriodoRel()}
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
       ${btnVoltar}
       <span style="font-size:14px;font-weight:800;color:${catAtual.cor}">${catAtual.label}</span>
