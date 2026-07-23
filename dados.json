@@ -5533,20 +5533,6 @@
       "criadoEm": "2026-07-17T12:00:00.000Z"
     },
     {
-      "id": "mr8gwn2iz8ruk",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-03",
-      "tipo": "saida",
-      "valor": 160,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Lucas da Silva Castro",
-      "descricao": "Pagamento Pix",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-17T12:00:00.000Z"
-    },
-    {
       "id": "mr1fp2onnx40p",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-06",
