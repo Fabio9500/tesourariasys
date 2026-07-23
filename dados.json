@@ -4553,20 +4553,6 @@
       "criadoEm": "2026-07-17T12:00:00.000Z"
     },
     {
-      "id": "mrvv30ec4z85c",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-06-11",
-      "tipo": "saida",
-      "valor": 2000,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Jose Celso de Santana",
-      "descricao": "Pagamento Pix",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-17T12:00:00.000Z"
-    },
-    {
       "id": "mrbgl6lggnb5b",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-06-11",
