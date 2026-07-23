@@ -2351,6 +2351,552 @@
       "parentId": "mrwrf6qrgktd8",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof222vuj1",
+      "nome": "10 - RECBT. P. FÍSICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22cnarr",
+      "nome": "Mov. Facktopry",
+      "parentId": "mrwxof222vuj1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22zkdfh",
+      "nome": "6 - DESP. P. JURIDICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22hw4ds",
+      "nome": "Pagamento",
+      "parentId": "mrwxof22zkdfh",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22wr6r7",
+      "nome": "Alugeis Res.",
+      "parentId": "mrwxof222vuj1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22b1i02",
+      "nome": "5 - DESP. FACKTORY",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof226z6tt",
+      "nome": "Devolução Cheques",
+      "parentId": "mrwxof22b1i02",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22j3glz",
+      "nome": "3 - DESP. C-IMOVÉIS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof221p5t6",
+      "nome": "Condomínios",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22304hr",
+      "nome": "12 - RECBT. FACKTORY",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22w5c2u",
+      "nome": "Bc. Bradesco",
+      "parentId": "mrwxof22304hr",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22urt6h",
+      "nome": "Emp. Realizados",
+      "parentId": "mrwxof22b1i02",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof227a07a",
+      "nome": "2 - DESP. ESPORADICAS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof225wnqa",
+      "nome": "Tarifas Bancarias",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22eje4o",
+      "nome": "11 - RECBT. P.JURIDICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22duyzr",
+      "nome": "Caixa Telasul",
+      "parentId": "mrwxof22eje4o",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof226dlev",
+      "nome": "Recbt. Variado",
+      "parentId": "mrwxof222vuj1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof22v7fyk",
+      "nome": "Esporte e Lazer",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof222t5i5",
+      "nome": "Alugeis Com.",
+      "parentId": "mrwxof222vuj1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2291gse",
+      "nome": "Ret. Vistorias",
+      "parentId": "mrwxof222vuj1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23p0j5e",
+      "nome": "4 - PAGT. SEM DESPESAS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23r6rn9",
+      "nome": "Cheque Devolvido",
+      "parentId": "mrwxof23p0j5e",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof236kdk5",
+      "nome": "Consórcios",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof235dw12",
+      "nome": "Jrs. Ch. Especial",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2306ytj",
+      "nome": "CEF Telasul",
+      "parentId": "mrwxof22eje4o",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23jsjbh",
+      "nome": "Bar& Rest.",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23vbk2i",
+      "nome": "IPVA",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23vapuo",
+      "nome": "Transf. Numerários",
+      "parentId": "mrwxof23p0j5e",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23n7oea",
+      "nome": "Aquisição",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23h987m",
+      "nome": "Alimentação",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23kk3oq",
+      "nome": "Chs. Deposito",
+      "parentId": "mrwxof22304hr",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23cpehs",
+      "nome": "Desp. Extras",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23i226x",
+      "nome": "Empréstimo",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof237khb0",
+      "nome": "Ctª Energia",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23swlw1",
+      "nome": "Aquisições",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23g6rnz",
+      "nome": "Água",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23x3clg",
+      "nome": "Retirada Pessoal",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23pgd04",
+      "nome": "Vestuários & Calçados",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23579bw",
+      "nome": "Reforma",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2314xw8",
+      "nome": "Manut. Auto",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2322tuj",
+      "nome": "Moveis & Eletros",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof23350rw",
+      "nome": "Manut. Instalações",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2343ej3",
+      "nome": "Recepção Social",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24la5vb",
+      "nome": "Presentes",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24rar3s",
+      "nome": "13 - RECBT. EXTRAS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof244e1mk",
+      "nome": "Estorno",
+      "parentId": "mrwxof24rar3s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24x1x8u",
+      "nome": "Transferencia",
+      "parentId": "mrwxof24rar3s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24inn6w",
+      "nome": "Sicred Telasul",
+      "parentId": "mrwxof22eje4o",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof242ub19",
+      "nome": "Reforma & Manut.",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24bbq1c",
+      "nome": "Pintura",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24bqpyo",
+      "nome": "Estornos",
+      "parentId": "mrwxof23p0j5e",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24zjesr",
+      "nome": "Seguro Imóveis",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24jy9yy",
+      "nome": "Mão de Obra",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof245q74i",
+      "nome": "IPTU",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24ss5vl",
+      "nome": "Seguro Auto",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2453tgp",
+      "nome": "Atrações Locais",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24am4bp",
+      "nome": "Dividendos",
+      "parentId": "mrwxof24rar3s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2436qt0",
+      "nome": "Movéis & Eletros",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof241c3lk",
+      "nome": "Farmacia",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24g67ea",
+      "nome": "Abastecimento",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24a3yo4",
+      "nome": "Multas",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24z2z4v",
+      "nome": "Milhas",
+      "parentId": "mrwxof222vuj1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof241oel8",
+      "nome": "Corretor",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof24vsfxf",
+      "nome": "Transf. Plicação",
+      "parentId": "mrwxof24rar3s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof243kdkb",
+      "nome": "Capitalições",
+      "parentId": "mrwxof23p0j5e",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof25c4ajn",
+      "nome": "Empréstimo",
+      "parentId": "mrwxof22zkdfh",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof25i979l",
+      "nome": "Jrs. Emp. Recebido",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof25npv3i",
+      "nome": "Pagt. Ct. Crédito",
+      "parentId": "mrwxof23p0j5e",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof25fygx3",
+      "nome": "Férias",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof25s8kbw",
+      "nome": "Compras Viagens",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof25kw7on",
+      "nome": "Corretagem",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof251s42m",
+      "nome": "CEF Constusul",
+      "parentId": "mrwxof22eje4o",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof25rhe45",
+      "nome": "Vinhos",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof259g4j9",
+      "nome": "Consultas Médicas",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof25v9ozu",
+      "nome": "Investimento",
+      "parentId": "mrwxof22b1i02",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof252lunl",
+      "nome": "Emp. Financeiro",
+      "parentId": "mrwxof24rar3s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2553wy6",
+      "nome": "Jrs. Prorrogação",
+      "parentId": "mrwxof22304hr",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxof2535qfq",
+      "nome": "Cuidados Pessoais",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
     }
   ],
   "centrosCusto": [
