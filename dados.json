@@ -15966,20 +15966,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr1rdnwprfl4q",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-30",
-      "tipo": "saida",
-      "valor": 1049.65,
-      "categoriaId": "mrnty0ghjsvgu",
-      "centroCustoId": "",
-      "contraparte": "Sicredi",
-      "descricao": "Debito Arrecadacao DARFC0385",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrrdhfafhkbyl",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-30",
