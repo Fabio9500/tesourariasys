@@ -87964,23 +87964,6 @@
       "criadoEm": "2026-07-23T02:43:15.912Z"
     },
     {
-      "id": "mrwwpnwopwtcl",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-01",
-      "tipo": "saida",
-      "valor": 1.78,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "IOF ADICIONAL PJ-CH. ESPE-Iof.ADic.",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "IOF ADICIONAL PJ-CH. ESPE-Iof.ADic.",
-      "origem": "ofx",
-      "fitid": "22673928460",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwoj076w",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-03",
