@@ -87947,23 +87947,6 @@
       "criadoEm": "2026-07-23T02:43:15.912Z"
     },
     {
-      "id": "mrwwpnwo71gin",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-03",
-      "tipo": "saida",
-      "valor": 160,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "PAGAMENTO PIX-PIX_DEB   05182784503 Lucas da Silva Castro",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "PAGAMENTO PIX-PIX_DEB   05182784503 Lucas da Silva Castro",
-      "origem": "ofx",
-      "fitid": "22700500943",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwo4vwzw",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-06",
