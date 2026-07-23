@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TesourariaSys</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0d1117">
+<link rel="stylesheet" href="styles_teste.css">
+</head>
+<body>
+
+<!-- ====== SEÇÃO: TELA_LOADING - INÍCIO ====== -->
+<div id="tela-loading">
+  <div style="font-size:32px">🏦</div>
+  <div style="font-weight:800;font-size:20px;color:var(--acc)">TesourariaSys</div>
+  <div style="font-size:11px;color:var(--mut);margin-bottom:8px" id="load-versao"></div>
+  <div class="spin"></div>
+  <div style="color:var(--mut);font-size:13px" id="load-msg">Carregando...</div>
+</div>
+<!-- ====== SEÇÃO: TELA_LOADING - FIM ====== -->
+
+<!-- ====== SEÇÃO: TELA_TOKEN - INÍCIO ====== -->
+<div id="tela-token">
+  <div class="card" style="max-width:480px;width:100%;padding:32px;text-align:center">
+    <div style="font-size:40px;margin-bottom:12px">🔐</div>
+    <div style="font-weight:800;font-size:20px;color:var(--acc);margin-bottom:4px">TesourariaSys</div>
+    <div id="login-versao" style="font-size:11px;color:var(--mut);margin-bottom:14px"></div>
+    <p style="color:var(--mut);font-size:13px;margin-bottom:24px;line-height:1.6">
+      Informe seu <strong style="color:var(--txt)">Token do GitHub</strong> para conectar.<br>
+      Será salvo neste dispositivo — não precisa informar de novo.
+    </p>
+    <div class="campo" style="text-align:left;margin-bottom:16px">
+      <label>Token do GitHub</label>
+      <input id="inp-token" type="password" placeholder="github_pat_..." onkeydown="if(event.key==='Enter')entrar()"/>
+    </div>
+    <button type="button" onclick="entrar()"
+      style="background:var(--acc);color:#000;padding:10px 28px;font-size:14px;font-family:'Segoe UI',sans-serif;font-weight:800;border:none;border-radius:var(--r);cursor:pointer;width:100%;margin-bottom:10px">
+      ✅ Conectar e Entrar
+    </button>
+    <div id="err-token" style="color:var(--red);font-size:12px;display:none">Token inválido ou sem conexão. Verifique e tente novamente.</div>
+  </div>
+</div>
+<!-- ====== SEÇÃO: TELA_TOKEN - FIM ====== -->
+
+<!-- ====== SEÇÃO: NAVBAR - INÍCIO ====== -->
+<div id="navbar" style="display:none">
+  <div class="logo">🏦 TesourariaSys <span id="nav-versao" style="font-size:10px;color:var(--mut);font-weight:400;margin-left:2px"></span></div>
+  <div class="tabs" id="tabs"></div>
+  <div id="nav-usuario-info" style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+    <div id="nav-usu-badge" style="display:none;align-items:center;gap:6px">
+      <div id="nav-usu-avatar" style="width:28px;height:28px;border-radius:50%;background:var(--acc);color:#000;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center"></div>
+      <div style="font-size:11px;line-height:1.2">
+        <div id="nav-usu-nome" style="font-weight:700;color:var(--txt)"></div>
+        <div id="nav-usu-perfil" style="color:var(--mut);font-size:10px"></div>
+      </div>
+      <button type="button" onclick="sairUsuario()" title="Trocar usuário" style="background:transparent;color:var(--mut);font-size:11px;padding:3px 7px;border:1px solid var(--bor);border-radius:var(--r);cursor:pointer;font-family:inherit">↩ Sair</button>
+    </div>
+    <button type="button" onclick="desconectar()" style="background:transparent;color:var(--mut);font-size:11px;padding:4px 8px;border:1px solid var(--bor);" title="Trocar token">⚙</button>
+  </div>
+</div>
+<!-- ====== SEÇÃO: NAVBAR - FIM ====== -->
+
+<!-- ====== SEÇÃO: MAIN - INÍCIO ====== -->
+<div id="main" style="display:none"></div>
+<!-- ====== SEÇÃO: MAIN - FIM ====== -->
+<div id="status"></div>
+
+<!-- ====== SEÇÃO: TELA_USUARIO - INÍCIO ====== -->
+<div id="tela-usuario" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9997;align-items:center;justify-content:center;padding:20px">
+  <div class="card" style="max-width:400px;width:100%;padding:32px;text-align:center">
+    <div style="font-size:40px;margin-bottom:8px">🏦</div>
+    <div style="font-weight:800;font-size:20px;color:var(--acc);margin-bottom:2px">TesourariaSys</div>
+    <div id="telausu-versao" style="font-size:10px;color:var(--mut);margin-bottom:20px"></div>
+    <div id="telausu-e1">
+      <div style="font-size:13px;color:var(--mut);font-weight:600;margin-bottom:14px">Quem está acessando?</div>
+      <div id="lista-usuarios-login" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+    <div id="telausu-e2" style="display:none">
+      <div id="telausu-nome-sel" style="font-weight:700;font-size:16px;color:var(--acc);margin-bottom:16px"></div>
+      <div class="campo" style="text-align:left;margin-bottom:10px">
+        <label>Senha</label>
+        <input type="password" id="senha-login-usu" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter')loginUsuario()"/>
+      </div>
+      <div id="err-login-usu" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none">Senha incorreta. Tente novamente.</div>
+      <div style="display:flex;gap:8px">
+        <button type="button" onclick="loginUsuario()" style="flex:1;background:var(--acc);color:#000;padding:10px;font-weight:800;border:none;border-radius:var(--r);cursor:pointer;font-family:inherit;font-size:13px">✅ Entrar</button>
+        <button type="button" onclick="voltarEscolhaUsuario()" style="background:var(--sur);color:var(--txt);padding:10px 16px;border:none;border-radius:var(--r);cursor:pointer;font-family:inherit">← Voltar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ====== SEÇÃO: TELA_USUARIO - FIM ====== -->
+
+<!-- ====== SEÇÃO: MODAL_GENERICO - INÍCIO ====== -->
+<div class="overlay" id="ov">
+  <div class="modal">
+    <div class="modal-head"><span id="m-titulo"></span>
+      <button type="button" onclick="FM()" style="background:var(--bor);color:var(--txt);padding:3px 9px;font-size:11px">✕</button>
+    </div>
+    <div class="modal-body" id="m-corpo"></div>
+  </div>
+</div>
+<!-- ====== SEÇÃO: MODAL_GENERICO - FIM ====== -->
+
+<!-- ====== SEÇÃO: MODAL_CONFIRMACAO - INÍCIO ====== -->
+<div class="overlay" id="ov-cf">
+  <div class="card" style="max-width:360px;width:100%;text-align:center;padding:24px;position:relative">
+    <div class="cf-drag" title="Arraste para mover" style="position:absolute;top:0;left:0;right:0;height:22px;cursor:move"></div>
+    <button type="button" onclick="FCF()" title="Fechar" style="position:absolute;top:10px;right:10px;background:var(--bor);color:var(--txt);padding:3px 9px;font-size:11px">✕</button>
+    <div style="font-size:14px;font-weight:700;margin-bottom:20px" id="cf-msg"></div>
+    <div class="row" style="justify-content:center;gap:10px">
+      <button type="button" id="cf-sim" style="background:var(--red);color:#fff;padding:8px 18px">Sim, confirmar</button>
+      <button type="button" onclick="FCF()" style="background:var(--sur);color:var(--txt);padding:8px 18px">Cancelar</button>
+    </div>
+  </div>
+</div>
+<!-- ====== SEÇÃO: MODAL_CONFIRMACAO - FIM ====== -->
+
+<!-- ====== SEÇÃO: MODAL_CALENDARIO_DIA - INÍCIO ====== -->
+<div class="overlay" id="ov-cal-dia">
+  <div class="modal" style="max-width:760px">
+    <div class="modal-head"><span id="caldia-titulo">Transações agendadas</span>
+      <button type="button" onclick="fecharCalDia()" style="background:var(--bor);color:var(--txt);padding:3px 9px;font-size:11px">✕</button>
+    </div>
+    <div class="modal-body" id="caldia-corpo"></div>
+  </div>
+</div>
+<!-- ====== SEÇÃO: MODAL_CALENDARIO_DIA - FIM ====== -->
+
+<!-- ====== SEÇÃO: MENU_CONTEXTO_LANCAMENTO - INÍCIO ====== -->
+<div id="ctx-menu-lanc" class="no-print"></div>
+<!-- ====== SEÇÃO: MENU_CONTEXTO_LANCAMENTO - FIM ====== -->
+
+<!-- ====== SEÇÃO: FAB_BUTTONS - INÍCIO ====== -->
+<div id="fab-buttons" class="no-print" style="display:none">
+  <div style="position:relative">
+    <button type="button" class="fab fab-dash" onclick="irPara('dashboard')" title="Dashboard">📊<span class="fab-tooltip">Dashboard</span></button>
+  </div>
+  <div style="position:relative">
+    <button type="button" class="fab fab-back" onclick="voltarPagina()" title="Voltar" style="display:none">◀<span class="fab-tooltip">Voltar</span></button>
+  </div>
+</div>
+<!-- ====== SEÇÃO: FAB_BUTTONS - FIM ====== -->
+
+<script src="script_teste.js"></script>
+<!-- Gerado em 16/07/2026 17:30 -->
+</body>
+</html>
