@@ -87947,23 +87947,6 @@
       "criadoEm": "2026-07-23T02:43:15.912Z"
     },
     {
-      "id": "mrwwpnwovh2ym",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-03",
-      "tipo": "saida",
-      "valor": 120,
-      "categoriaId": "mrw0kj4pkqyql",
-      "centroCustoId": "pk6zi4jne78em",
-      "contraparte": "Wesley",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "PAGAMENTO PIX-PIX_DEB   82817057520 Wesley Bento Dos Santos",
-      "origem": "ofx",
-      "fitid": "22700411066",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwo71gin",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-03",
