@@ -13,7 +13,7 @@
 // ══════════════════════════════════════════
 const GH_USER = 'Fabio9500';
 const GH_REPO = 'tesourariasys';
-const GH_FILE = 'dados_teste.json'; // versão _teste: usa dados isolados, nunca o dados.json de produção
+const GH_FILE = 'dados.json';
 const GH_API  = `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${GH_FILE}`;
 
 // Decodifica base64 -> UTF-8 corretamente (o par exato do encode usado em ghSalvar:
@@ -33,8 +33,8 @@ function setToken(t){ localStorage.setItem('tsr_gh_token', t); }
 // NÃO em dados.json. É a mesma fonte usada por Cartões PF/PJ, pra
 // padronizar os lançamentos que se integram entre os sistemas.
 // ══════════════════════════════════════════
-const GH_CADASTRO_PF_FILE = 'cadastros-pf-teste.json'; // versão _teste: isolado do cadastro real (compartilhado com Cartões PF/PJ)
-const GH_CADASTRO_PJ_FILE = 'cadastros-pj-teste.json';
+const GH_CADASTRO_PF_FILE = 'cadastros-pf.json';
+const GH_CADASTRO_PJ_FILE = 'cadastros-pj.json';
 function ghCadastroApi(file){ return `https://api.github.com/repos/${GH_USER}/${GH_REPO}/contents/${file}`; }
 
 let _cadastroSha = { pf:null, pj:null };
@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.71 [TESTE]';
+const VERSAO = 'v1.72';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
