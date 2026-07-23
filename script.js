@@ -223,11 +223,13 @@ async function aplicarResolucaoConflito(opcao){
   if(opcao==='nuvem'){
     limparFilaPendente();
     DB = window._conflitoDadosRemotos;
+    _relCacheVersion++;
     setStatus('ok','☁️ Dados da nuvem mantidos');
   } else {
     limparFilaPendente();
     await ghSalvar(window._conflitoFilaDb);
     DB = window._conflitoFilaDb;
+    _relCacheVersion++;
     setStatus('ok','✅ Suas alterações offline foram salvas');
   }
   delete window._conflitoFilaDb;
@@ -299,6 +301,7 @@ async function ghSalvar(db, pularMesclagem){
       setUltimoSha(res.content.sha);
       limparFilaPendente();
       DB = db;
+      _relCacheVersion++;
       aplicarCadastrosUnicosNaDB(); // repõe categorias/CC/direcionamentos (não gravados em dados.json)
       setStatus('ok','✅ Salvo na nuvem');
     } else {
@@ -852,6 +855,7 @@ async function verificarAtualizacaoRemota(){
       }
       try{ localStorage.setItem('tsr_bkp', JSON.stringify(novosDados)); }catch(e){}
       DB = novosDados;
+      _relCacheVersion++;
       aplicarCadastrosUnicosNaDB();
       renderAba();
       setStatus('ok', '🔄 Dados atualizados de outro dispositivo');
@@ -879,6 +883,7 @@ async function entrar(){
     return;
   }
   DB = dados;
+  _relCacheVersion++;
   await seedInicial();
   const _sessao = localStorage.getItem('tsr_usu');
   if(_sessao){
@@ -928,6 +933,7 @@ function iniciarApp(){
         const dados = JSON.parse(bkp);
         if(dados){
           DB = dados;
+          _relCacheVersion++;
           await seedInicial();
           const _sessaoOff = localStorage.getItem('tsr_usu');
           if(_sessaoOff){
@@ -961,6 +967,7 @@ function iniciarApp(){
     return;
   }
   DB = dados;
+  _relCacheVersion++;
   await seedInicial();
   const _sessaoInit = localStorage.getItem('tsr_usu');
   if(_sessaoInit){
@@ -1046,7 +1053,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.78';
+const VERSAO = 'v1.79';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2652,6 +2659,7 @@ function migrarDirecionamentosParaId(){
   });
   if(mudou){
     DB = {...DB, lancamentos, direcionamentos};
+    _relCacheVersion++;
     ghSalvar(DB);
   }
 }
@@ -2911,7 +2919,7 @@ function excluirCliente(id){
 // ══════════════════════════════════════════
 // SALVAR (persistência central)
 // ══════════════════════════════════════════
-function salvar(novo){ DB=novo; ghSalvar({...DB, categorias:undefined, centrosCusto:undefined, direcionamentos:undefined}); renderAba(); }
+function salvar(novo){ DB=novo; _relCacheVersion++; ghSalvar({...DB, categorias:undefined, centrosCusto:undefined, direcionamentos:undefined}); renderAba(); }
 
 function opcoesContas(selId){
   return (DB.contas||[]).filter(c=>c.ativa!==false).map(c=>`<option value="${c.id}"${c.id===selId?' selected':''}>${esc(nomeConta(c))}</option>`).join('');
@@ -7054,6 +7062,14 @@ function salvarEdicaoEmMassaExtrato(){
 // Flexível — contas antigas/movimentadas podem ter milhares de lançamentos.
 let RelExtrato = { contaId:'', de:(()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })(), ate:'', fornecedor:'', categoriaId:'', centroCustoId:'', direcionamento:'' };
 
+// CACHE DE RELATÓRIOS (23/07/2026, a pedido do Fabio): guarda o resultado
+// das seções não-interativas de Relatórios. _relCacheVersion é incrementado
+// toda vez que os dados são substituídos (salvar/sincronizar) — só então o
+// cache é invalidado de verdade; trocar de aba ou de filtro interativo
+// (conta no extrato, etc.) não mexe nele.
+let _relCacheVersion = 0;
+let _relCacheRelatorios = null;
+
 // PERÍODO GERAL DA TELA DE RELATÓRIOS (23/07/2026, a pedido do Fabio): os
 // quadros de fluxo (por categoria, centro de custo, fornecedor, top
 // lançamentos, transferências internas) somavam o histórico completo — com
@@ -7590,6 +7606,293 @@ function imprimirFechamentoDiario(){
 }
 
 function htmlRelatorios(){
+  // CACHE (23/07/2026, a pedido do Fabio): os quadros de fluxo que NÃO
+  // dependem dos filtros interativos de Extrato/Contas a Pagar/Contas a
+  // Receber (categoria, centro de custo, transferências, top lançamentos,
+  // fluxo mensal, pareto, investimentos, seguros, cartões, ChequeSys) só são
+  // recalculados quando o período do relatório muda ou quando os dados são
+  // salvos — trocar de aba ou de conta dentro de Relatórios não recalcula
+  // mais essa parte pesada, só reaproveita o resultado já pronto.
+  const _relCacheChave = _filtroRelDe+'|'+_filtroRelAte+'|'+_relCacheVersion;
+  let secoes;
+  if(_relCacheRelatorios && _relCacheRelatorios.chave===_relCacheChave){
+    secoes = {..._relCacheRelatorios.secoes};
+  } else {
+    secoes = _montarSecoesNaoInterativasRelatorios();
+    _relCacheRelatorios = {chave:_relCacheChave, secoes:{...secoes}};
+  }
+
+  // ── Extrato por Conta / Período / Fornecedor / Categoria / Direcionamento (Contas Bancárias) ──
+  let extratoLista = (DB.lancamentos||[]).filter(l=>contaTipoOk(l.contaId));
+  if(RelExtrato.contaId) extratoLista = extratoLista.filter(l=>l.contaId===RelExtrato.contaId);
+  if(RelExtrato.de) extratoLista = extratoLista.filter(l=>l.data>=RelExtrato.de);
+  if(RelExtrato.ate) extratoLista = extratoLista.filter(l=>l.data<=RelExtrato.ate);
+  if(RelExtrato.fornecedor) extratoLista = extratoLista.filter(l=>(l.contraparte||'')===RelExtrato.fornecedor);
+  if(RelExtrato.categoriaId) extratoLista = extratoLista.filter(l=>l.categoriaId===RelExtrato.categoriaId || categoriaById(l.categoriaId)?.parentId===RelExtrato.categoriaId);
+  if(RelExtrato.centroCustoId) extratoLista = extratoLista.filter(l=>l.centroCustoId===RelExtrato.centroCustoId || centroCustoById(l.centroCustoId)?.parentId===RelExtrato.centroCustoId);
+  if(RelExtrato.direcionamento) extratoLista = extratoLista.filter(l=>(l.direcionamento||'')===RelExtrato.direcionamento || (l.direcionamento||'').startsWith(RelExtrato.direcionamento+':'));
+  extratoLista = extratoLista.slice().sort((a,b)=>a.data.localeCompare(b.data)||a.criadoEm.localeCompare(b.criadoEm));
+  const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
+  const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
+
+  // REMOVIDO (23/07/2026, a pedido do Fabio): o extrato tinha um cálculo de
+  // "Saldo Anterior/Saldo Atual/Saldo do Dia" que reconstituía o saldo da
+  // conta dia a dia percorrendo TODO o histórico dela toda vez que a conta
+  // era trocada no filtro — pesado e, segundo o Fabio, sem utilidade prática.
+  // O restante do código já lida bem com saldoAcumuladoExtrato=null (as
+  // linhas de saldo simplesmente não aparecem), então manter como null
+  // desativa a funcionalidade sem precisar mexer no resto da tela.
+  const extratoEhRecorteItem = !!(RelExtrato.categoriaId || RelExtrato.centroCustoId || RelExtrato.direcionamento || RelExtrato.fornecedor);
+  let saldoAcumuladoExtrato = null;
+  const nCols = 7 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
+  const saldoAnteriorExtrato = saldoAcumuladoExtrato;
+  const linhaAnterior = saldoAcumuladoExtrato!==null
+    ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo Anterior${RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''}</td><td style="text-align:right;font-weight:800;color:${saldoAnteriorExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAnteriorExtrato)}</td></tr>`
+    : '';
+  const gruposPorDia = {};
+  const ordemDiasAsc = [];
+  extratoLista.forEach(l=>{
+    if(!gruposPorDia[l.data]){ gruposPorDia[l.data]=[]; ordemDiasAsc.push(l.data); }
+    gruposPorDia[l.data].push(l);
+  });
+  // pré-calcula o saldo acumulado ao final de cada dia, em ordem cronológica ascendente
+  // (o cálculo tem que ser feito do mais antigo pro mais recente pra ficar correto,
+  // mesmo que a exibição depois seja do mais recente pro mais antigo)
+  const saldoFinalPorDia = {};
+  let _saldoCalc = saldoAcumuladoExtrato;
+  if(_saldoCalc!==null){
+    ordemDiasAsc.forEach(dia=>{
+      gruposPorDia[dia].forEach(l=>{ _saldoCalc += (l.tipo==='entrada'?l.valor:-l.valor); });
+      saldoFinalPorDia[dia] = _saldoCalc;
+    });
+  }
+  const saldoAtualExtrato = _saldoCalc;
+  const linhaAtual = (saldoAtualExtrato!==null && !_extratoModoEdicao)
+    ? `<tr class="trow" style="border-top:2px solid var(--acc)"><td colspan="${nCols-1}" style="font-weight:800">Saldo Atual</td><td style="text-align:right;font-weight:900;color:${saldoAtualExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAtualExtrato)}</td></tr>`
+    : '';
+  // exibição: do mais recente para o mais antigo (dias e lançamentos dentro do dia)
+  const ordemDias = ordemDiasAsc.slice().reverse();
+  const linhasExtrato = linhaAtual + ordemDias.map(dia=>{
+    const linhasDia = gruposPorDia[dia].slice().reverse().map(l=>{
+      const cta = contaById(l.contaId);
+      const cat = categoriaById(l.categoriaId);
+      const cc = centroCustoById(l.centroCustoId);
+      if(_extratoModoEdicao){
+        const protegido = l.origem && l.origem!=='manual' && l.origem!=='ofx';
+        if(protegido){
+          return `<tr style="opacity:.6">
+            <td>${fmtD(l.data)}</td>
+            ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
+            <td>${esc(l.contraparte||'-')}</td>
+            <td>${esc(l.descricao||'-')} ${T('não editável aqui','cz')}</td>
+            <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
+            <td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
+            <td>${esc(l.direcionamento||'-')}</td>
+            <td>${l.tipo==='entrada'?'Entrada':'Saída'}</td>
+            <td style="text-align:right">R$ ${fmt(l.valor)}</td>
+            <td>${BPerm('excluir','🗑','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1,'Excluir este lançamento')}</td>
+          </tr>`;
+        }
+        return `<tr>
+          <td><input type="date" id="edtx-data-${l.id}" value="${l.data}" style="width:130px;font-size:11px"></td>
+          ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
+          <td><input type="text" id="edtx-forn-${l.id}" value="${esc(l.contraparte||'')}" list="dl-contrapartes-edtx" style="width:130px;font-size:11px"></td>
+          <td><input type="text" id="edtx-desc-${l.id}" value="${esc(l.descricao||'')}" style="width:130px;font-size:11px"></td>
+          <td><div style="display:flex;gap:2px"><select id="edtx${l.id}-categoria-mae" onchange="aoMudarMaeCascataFixo('edtx${l.id}','categoria')" style="font-size:10px;width:80px">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa','','',idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select><select id="edtx${l.id}-categoria-sub" style="font-size:10px;width:70px">${opcoesSubcategoria(idsMaeSub(categoriaById(l.categoriaId)).maeId, idsMaeSub(categoriaById(l.categoriaId)).subId)}</select></div></td>
+          <td><div style="display:flex;gap:2px"><select id="edtx${l.id}-cc-mae" onchange="aoMudarMaeCascataFixo('edtx${l.id}','cc')" style="font-size:10px;width:80px">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</select><select id="edtx${l.id}-cc-sub" style="font-size:10px;width:70px">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(l.centroCustoId)).maeId, idsMaeSub(centroCustoById(l.centroCustoId)).subId)}</select></div></td>
+          <td><input type="text" id="edtx-direc-${l.id}" value="${esc(l.direcionamento||'')}" list="dl-direcionamentos-edtx" style="width:110px;font-size:11px"></td>
+          <td><select id="edtx-tipo-${l.id}" style="font-size:11px"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select></td>
+          <td><input type="text" id="edtx-valor-${l.id}" value="${fmt(l.valor)}" style="width:90px;font-size:11px;text-align:right"></td>
+          <td>${BPerm('excluir','🗑','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1,'Excluir este lançamento')}</td>
+        </tr>`;
+      }
+      return `<tr style="cursor:pointer${l.status==='nulo'?';opacity:.55':''}" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
+        <td>${fmtD(l.data)}${badgeStatusLancamento(l)}</td>
+        ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
+        <td${l.contraparte?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este fornecedor/cliente" onclick="filtrarExtratoPorFornecedor('${esc(l.contraparte).replace(/'/g,"\\'")}')"`:''}>${esc(l.contraparte||'-')}</td>
+        <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}</td>
+        <td${l.categoriaId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só esta categoria" onclick="filtrarExtratoPorCategoria('${l.categoriaId}')"`:''}>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
+        <td${l.centroCustoId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este centro de custo" onclick="filtrarExtratoPorCentroCusto('${l.centroCustoId}')"`:''}>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
+        <td${l.direcionamento?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este direcionamento" onclick="filtrarExtratoPorDirecionamento('${esc(l.direcionamento).replace(/'/g,"\\'")}')"`:''}>${esc(l.direcionamento||'-')}</td>
+        <td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td>
+        <td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td>
+      </tr>`;
+    }).join('');
+    const saldoDoDia = saldoFinalPorDia[dia];
+    const linhaSaldoDia = (saldoDoDia!==undefined && !_extratoModoEdicao)
+      ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo do dia — ${fmtD(dia)}</td><td style="text-align:right;font-weight:800;color:${saldoDoDia<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoDoDia)}</td></tr>`
+      : '';
+    return linhasDia + linhaSaldoDia;
+  }).join('') + linhaAnterior || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
+  const cabecalhoExtrato = _extratoModoEdicao
+    ? `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Centro de Custo</th><th>Direcionamento</th><th>Tipo</th><th style="text-align:right">Valor</th><th></th></tr>`
+    : `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Centro de Custo</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
+  // Dados brutos (não HTML) para a impressão poder escolher colunas dinamicamente
+  const impRows = [];
+  if(saldoAnteriorExtrato!==null) impRows.push({tipo:'saldo', label:'Saldo Anterior'+(RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''), valor:saldoAnteriorExtrato});
+  let _saldoImp = saldoAnteriorExtrato;
+  ordemDias.forEach(dia=>{
+    gruposPorDia[dia].forEach(l=>{
+      const cta = contaById(l.contaId);
+      const cat = categoriaById(l.categoriaId);
+      const cc = centroCustoById(l.centroCustoId);
+      if(_saldoImp!==null) _saldoImp += (l.tipo==='entrada'?l.valor:-l.valor);
+      impRows.push({tipo:'lancamento', data:l.data, conta:cta?cta.titular:'-', contraparte:l.contraparte||'-', descricao:l.descricao||'-', categoria:cat?nomeCompletoCategoria(cat):'-', centroCusto:cc?nomeCompletoCentroCusto(cc):'-', direcionamento:l.direcionamento||'-', valorEntrada:l.tipo==='entrada'?l.valor:null, valorSaida:l.tipo==='saida'?l.valor:null});
+    });
+    if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo do dia — '+fmtD(dia), valor:_saldoImp});
+  });
+  if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo Atual', valor:_saldoImp});
+  _impExtratoEnt = extratoTotEnt; _impExtratoSai = extratoTotSai;
+  _impExtratoCabecalho = cabecalhoExtrato; _impExtratoLinhas = linhasExtrato;
+  _impExtratoRows = impRows; _impExtratoMostraConta = !RelExtrato.contaId;
+  _extratoIdsEditaveis = extratoLista.filter(l=>!l.origem || l.origem==='manual' || l.origem==='ofx').map(l=>l.id);
+  const filtroExtratoHtml = `
+    <div class="row" style="margin-bottom:10px">
+      ${C('Conta',`<select id="re-conta" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesContasFiltradas(RelExtrato.contaId)}</select>`,'1','200')}
+      ${C('De',`<input type="date" id="re-de" value="${RelExtrato.de}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
+      ${C('Até',`<input type="date" id="re-ate" value="${RelExtrato.ate}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
+      ${C('Fornecedor/Cliente',`<select id="re-forn" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${contrapartesExistentes().map(n=>`<option value="${esc(n)}"${n===RelExtrato.fornecedor?' selected':''}>${esc(n)}</option>`).join('')}</select>`,'1','200')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="re-categoria-mae" onchange="aoMudarMaeCascataFixo('re','categoria');aplicarFiltroRelExtrato()" style="flex:1">${opcoesCategoriaMae('','','',idsMaeSub(categoriaById(RelExtrato.categoriaId)).maeId)}</select><select id="re-categoria-sub" onchange="aplicarFiltroRelExtrato()" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(RelExtrato.categoriaId)).maeId, idsMaeSub(categoriaById(RelExtrato.categoriaId)).subId)}</select></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="re-cc-mae" onchange="aoMudarMaeCascataFixo('re','cc');aplicarFiltroRelExtrato()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).maeId)}</select><select id="re-cc-sub" onchange="aplicarFiltroRelExtrato()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).subId)}</select></div>`,'2','260')}
+      ${C('Direcionamento',`<select id="re-direc" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${direcionamentosExistentes().map(d=>`<option value="${esc(d)}"${d===RelExtrato.direcionamento?' selected':''}>${esc(d)}</option>`).join('')}</select>`,'1','180')}
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      ${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}
+      ${B('🖨 Imprimir','abrirOpcoesImpressaoExtrato()','var(--sur)','var(--txt)')}
+      ${!_extratoModoEdicao ? BPerm('lancamentos','➕ Novo Lançamento',`novoLancamento('${RelExtrato.contaId||''}')`,'var(--acc)') : ''}
+      ${_extratoModoEdicao
+        ? BPerm('lancamentos','💾 Salvar Alterações','salvarEdicaoEmMassaExtrato()','var(--grn)','#fff') + B('✕ Cancelar Edição','cancelarEdicaoExtrato()','var(--sur)','var(--mut)')
+        : BPerm('lancamentos','✏️ Editar','alternarEdicaoExtrato()','var(--blu)','#fff')}
+    </div>
+    <datalist id="dl-contrapartes-edtx">${contrapartesExistentes().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+    <datalist id="dl-direcionamentos-edtx">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
+    ${_extratoModoEdicao ? '<div style="font-size:11px;color:#f0a500;margin-bottom:10px">✏️ Modo edição ativo — altere os campos direto na tabela e clique em "Salvar Alterações" quando terminar. Selecione o período/filtros antes de entrar em edição.</div>' : ''}
+    ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}
+    <div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Toque em um Fornecedor, Categoria ou Direcionamento na tabela abaixo para ver só os lançamentos daquele item, mantendo o período filtrado.</div>`;
+
+  // ── Contas a Pagar — Pagas em Período (com filtro CC / texto) ──
+  let pagarLista = (DB.contasPagar||[]).filter(cp=>cp.status==='pago' && contaTipoOk(cp.contaId));
+  if(RelPagarF.de) pagarLista = pagarLista.filter(cp=>(cp.dataPagamento||cp.vencimento)>=RelPagarF.de);
+  if(RelPagarF.ate) pagarLista = pagarLista.filter(cp=>(cp.dataPagamento||cp.vencimento)<=RelPagarF.ate);
+  if(RelPagarF.centroCustoId) pagarLista = pagarLista.filter(cp=>cp.centroCustoId===RelPagarF.centroCustoId);
+  if(RelPagarF.texto) pagarLista = pagarLista.filter(cp=>(cp.favorecido||'').toLowerCase().includes(RelPagarF.texto.toLowerCase()));
+  pagarLista = pagarLista.slice().sort((a,b)=>(b.dataPagamento||b.vencimento).localeCompare(a.dataPagamento||a.vencimento));
+  const pagarTotFiltro = pagarLista.reduce((s,cp)=>s+Number(cp.valorPago||0),0);
+  const linhasPagarPeriodo = pagarLista.map(cp=>{
+    const cc = centroCustoById(cp.centroCustoId);
+    const cta = contaById(cp.contaId);
+    return `<tr><td>${fmtD(cp.dataPagamento||cp.vencimento)}</td><td>${esc(cp.favorecido)}</td><td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cp.valorPago)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum pagamento com esses filtros</td></tr>';
+  const filtroPagarHtml = `
+    <div class="row" style="margin-bottom:10px">
+      ${C('De',`<input type="date" id="rp-de" value="${RelPagarF.de}" onchange="aplicarFiltroRelPagar()">`,'1','150')}
+      ${C('Até',`<input type="date" id="rp-ate" value="${RelPagarF.ate}" onchange="aplicarFiltroRelPagar()">`,'1','150')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="rp-cc-mae" onchange="aoMudarMaeCascataFixo('rp','cc');aplicarFiltroRelPagar()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).maeId)}</select><select id="rp-cc-sub" onchange="aplicarFiltroRelPagar()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).subId)}</select></div>`,'2','260')}
+      ${C('Fornecedor',`<input type="text" id="rp-txt" value="${esc(RelPagarF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelPagar()">`,'1','200')}
+    </div>
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelPagar()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirPagarPeriodo()','var(--sur)','var(--txt)')}</div>`;
+  _impPagarTotal = pagarTotFiltro; _impPagarLinhas = linhasPagarPeriodo;
+
+  // ── Contas a Receber — Recebidas em Período (com filtro CC / texto) ──
+  let receberLista = (DB.contasReceber||[]).filter(cr=>cr.status==='recebido' && contaTipoOk(cr.contaId));
+  if(RelReceberF.de) receberLista = receberLista.filter(cr=>(cr.dataRecebimento||cr.vencimento)>=RelReceberF.de);
+  if(RelReceberF.ate) receberLista = receberLista.filter(cr=>(cr.dataRecebimento||cr.vencimento)<=RelReceberF.ate);
+  if(RelReceberF.centroCustoId) receberLista = receberLista.filter(cr=>cr.centroCustoId===RelReceberF.centroCustoId);
+  if(RelReceberF.texto) receberLista = receberLista.filter(cr=>(cr.cliente||'').toLowerCase().includes(RelReceberF.texto.toLowerCase()));
+  receberLista = receberLista.slice().sort((a,b)=>(b.dataRecebimento||b.vencimento).localeCompare(a.dataRecebimento||a.vencimento));
+  const receberTotFiltro = receberLista.reduce((s,cr)=>s+Number(cr.valorRecebido||0),0);
+  const linhasReceberPeriodo = receberLista.map(cr=>{
+    const cc = centroCustoById(cr.centroCustoId);
+    const cta = contaById(cr.contaId);
+    return `<tr><td>${fmtD(cr.dataRecebimento||cr.vencimento)}</td><td>${esc(cr.cliente)}</td><td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cr.valorRecebido)}</td></tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum recebimento com esses filtros</td></tr>';
+  const filtroReceberHtml = `
+    <div class="row" style="margin-bottom:10px">
+      ${C('De',`<input type="date" id="rr-de" value="${RelReceberF.de}" onchange="aplicarFiltroRelReceber()">`,'1','150')}
+      ${C('Até',`<input type="date" id="rr-ate" value="${RelReceberF.ate}" onchange="aplicarFiltroRelReceber()">`,'1','150')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="rr-cc-mae" onchange="aoMudarMaeCascataFixo('rr','cc');aplicarFiltroRelReceber()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).maeId)}</select><select id="rr-cc-sub" onchange="aplicarFiltroRelReceber()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).subId)}</select></div>`,'2','260')}
+      ${C('Cliente',`<input type="text" id="rr-txt" value="${esc(RelReceberF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelReceber()">`,'1','200')}
+    </div>
+    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelReceber()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirReceberPeriodo()','var(--sur)','var(--txt)')}</div>`;
+  _impReceberTotal = receberTotFiltro; _impReceberLinhas = linhasReceberPeriodo;
+  // Extrato/Contas a Pagar/Contas a Receber por período: dependem de filtros
+  // que mudam a cada interação (conta, fornecedor, categoria...), por isso
+  // são sempre recalculados na hora, mesmo com o cache acima.
+  secoes.extrato_conta = `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">📄 Extrato — por Conta / Período / Fornecedor</div>
+      ${filtroExtratoHtml}
+      <div class="kpis" style="margin-bottom:10px">
+        <div class="card kpi"><div class="kpi-l">Entradas no filtro</div><div class="kpi-v" style="color:#3fb950">R$ ${fmt(extratoTotEnt)}</div></div>
+        <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" style="color:#f85149">R$ ${fmt(extratoTotSai)}</div></div>
+        <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:${(extratoTotEnt-extratoTotSai)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(extratoTotEnt-extratoTotSai)}</div></div>
+      </div>
+      <table><thead class="thead-fixo">${cabecalhoExtrato}</thead><tbody>${linhasExtrato}</tbody></table>
+    </div>`;
+  secoes.pagar_periodo = `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">📅 Pagamentos por Período / Centro de Custo / Fornecedor</div>
+      ${filtroPagarHtml}
+      <div class="card kpi" style="margin-bottom:10px"><div class="kpi-l">Total pago no filtro</div><div class="kpi-v" style="color:var(--acc)">R$ ${fmt(pagarTotFiltro)}</div></div>
+      <table><thead><tr><th>Data Pagamento</th><th>Favorecido</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Pago</th></tr></thead><tbody>${linhasPagarPeriodo}</tbody></table>
+    </div>`;
+  secoes.receber_periodo = `<div class="card">
+      <div style="font-weight:700;margin-bottom:10px">📅 Recebimentos por Período / Centro de Custo / Cliente</div>
+      ${filtroReceberHtml}
+      <div class="card kpi" style="margin-bottom:10px"><div class="kpi-l">Total recebido no filtro</div><div class="kpi-v" style="color:var(--acc)">R$ ${fmt(receberTotFiltro)}</div></div>
+      <table><thead><tr><th>Data Recebimento</th><th>Cliente</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Recebido</th></tr></thead><tbody>${linhasReceberPeriodo}</tbody></table>
+    </div>`;
+
+  const CATS_TR = {
+    geral:      { label:'🌐 Geral',            cor:'var(--acc)', tipos:['resumo_graficos','fluxo_mensal','pareto_despesas','top_entradas','top_saidas','fluxo_categoria','fluxo_centro_custo','mov_contraparte','investimentos','seguros'] },
+    bancarias:  { label:'🏦 Contas Bancárias',  cor:'var(--blu)', tipos:['saldo_conta','extrato_conta','tarifas_conta'] },
+    pagar:      { label:'📤 Contas a Pagar',    cor:'var(--red)', tipos:['pagar_periodo','pagar_cc','pagar_fornecedor','cheques_emitidos'] },
+    receber:    { label:'📥 Contas a Receber',  cor:'#3fb950',    tipos:['receber_periodo','receber_cc','receber_cliente'] },
+    cartoes:    { label:'💳 Cartões',           cor:'var(--pur)', tipos:['cartoes_resumo','cartoes_direcionamento','cartoes_historico'] },
+    chequesys:  { label:'🧾 ChequeSys',         cor:'#f0a500',    tipos:['chq_emitentes','chq_sacados'] },
+  };
+  const rotulos = {
+    resumo_graficos:'🧭 Resumo e Gráficos', fluxo_mensal:'📅 Fluxo Mensal', pareto_despesas:'📉 Pareto de Despesas',
+    top_entradas:'🔝 Top Entradas', top_saidas:'🔝 Top Saídas', fluxo_categoria:'📊 Por Categoria',
+    fluxo_centro_custo:'🏷️ Por Centro de Custo',
+    mov_contraparte:'👥 Por Cliente/Fornecedor', investimentos:'📈 Investimentos', seguros:'🛡️ Seguros',
+    saldo_conta:'💰 Saldo por Conta', extrato_conta:'📄 Extrato (Conta/Período/Fornecedor)', tarifas_conta:'🏦 Tarifas Bancárias',
+    pagar_periodo:'📅 Por Período', pagar_cc:'📤 Por Centro de Custo', pagar_fornecedor:'🏭 Por Fornecedor', cheques_emitidos:'✍️ Cheques Emitidos',
+    receber_periodo:'📅 Por Período', receber_cc:'📥 Por Centro de Custo', receber_cliente:'🤝 Por Cliente',
+    cartoes_resumo:'💳 Resumo', cartoes_direcionamento:'🧭 Por Direcionamento', cartoes_historico:'💳 Histórico de Faturas',
+    chq_emitentes:'🧾 Por Emitente (Cheques)', chq_sacados:'🧾 Por Sacado (Boletos)',
+  };
+
+  if(!RLT.cat){
+    const cards = Object.entries(CATS_TR).map(([k,v])=>`
+      <div onclick="irRelCategoria('${k}','${v.tipos[0]}')"
+        style="cursor:pointer;background:var(--card);border:2px solid ${v.cor};border-radius:12px;padding:32px 24px;text-align:center;transition:transform .15s;display:flex;flex-direction:column;align-items:center;gap:10px;min-width:150px;flex:1"
+        onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
+        <div style="font-size:36px">${v.label.split(' ')[0]}</div>
+        <div style="font-size:16px;font-weight:800;color:${v.cor}">${v.label.split(' ').slice(1).join(' ')}</div>
+        <div style="font-size:11px;color:var(--mut)">${v.tipos.length} relatório${v.tipos.length>1?'s':''}</div>
+      </div>`).join('');
+    return `<div class="titulo acc">📊 Relatórios</div>
+      <p style="color:var(--mut);font-size:13px;margin-bottom:18px">Selecione a categoria:</p>
+      <div style="display:flex;gap:16px;flex-wrap:wrap">${cards}</div>`;
+  }
+
+  const catAtual = CATS_TR[RLT.cat];
+  if(!RLT.tipo || !catAtual.tipos.includes(RLT.tipo)) RLT.tipo = catAtual.tipos[0];
+  const btnVoltar = `<button type="button" onclick="voltarRelCategorias()" style="background:var(--sur);color:var(--mut);border:1px solid var(--bor);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">← Categorias</button>`;
+  const tabsBtns = catAtual.tipos.map(t=>
+    `<button type="button" onclick="irRelTipo('${t}')" style="background:${RLT.tipo===t?catAtual.cor:'var(--sur)'};color:${RLT.tipo===t?'#fff':'var(--mut)'};border:1px solid var(--bor);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin:2px">${rotulos[t]||t}</button>`
+  ).join('');
+
+  return `<div class="titulo acc">📊 Relatórios</div>
+    ${htmlFiltroPeriodoRel()}
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      ${btnVoltar}
+      <span style="font-size:14px;font-weight:800;color:${catAtual.cor}">${catAtual.label}</span>
+    </div>
+    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px">${tabsBtns}</div>
+    ${secoes[RLT.tipo]}
+  `;
+}
+function _montarSecoesNaoInterativasRelatorios(){
   const contas = (DB.contas||[]).filter(c=>c.ativa!==false);
   // Base de lançamentos já recortada pelo período selecionado (padrão 90
   // dias) — usada nos quadros de FLUXO abaixo. Saldo das contas continua
@@ -7799,200 +8102,6 @@ function htmlRelatorios(){
   const totalPagarPend = contasPagarPendentes().reduce((s,cp)=>s+cp.valor,0);
   const posicaoLiquida = saldoTotalGeral() + totalSaldoChequeSys() + totalPatrimonioInvestido() + totalReceberPend - totalPagarPend - chequesEmitidosPendentes().reduce((s,c)=>s+Number(c.valor||0),0) - cartoesPF - cartoesPJ;
 
-  // ── Extrato por Conta / Período / Fornecedor / Categoria / Direcionamento (Contas Bancárias) ──
-  let extratoLista = (DB.lancamentos||[]).filter(l=>contaTipoOk(l.contaId));
-  if(RelExtrato.contaId) extratoLista = extratoLista.filter(l=>l.contaId===RelExtrato.contaId);
-  if(RelExtrato.de) extratoLista = extratoLista.filter(l=>l.data>=RelExtrato.de);
-  if(RelExtrato.ate) extratoLista = extratoLista.filter(l=>l.data<=RelExtrato.ate);
-  if(RelExtrato.fornecedor) extratoLista = extratoLista.filter(l=>(l.contraparte||'')===RelExtrato.fornecedor);
-  if(RelExtrato.categoriaId) extratoLista = extratoLista.filter(l=>l.categoriaId===RelExtrato.categoriaId || categoriaById(l.categoriaId)?.parentId===RelExtrato.categoriaId);
-  if(RelExtrato.centroCustoId) extratoLista = extratoLista.filter(l=>l.centroCustoId===RelExtrato.centroCustoId || centroCustoById(l.centroCustoId)?.parentId===RelExtrato.centroCustoId);
-  if(RelExtrato.direcionamento) extratoLista = extratoLista.filter(l=>(l.direcionamento||'')===RelExtrato.direcionamento || (l.direcionamento||'').startsWith(RelExtrato.direcionamento+':'));
-  extratoLista = extratoLista.slice().sort((a,b)=>a.data.localeCompare(b.data)||a.criadoEm.localeCompare(b.criadoEm));
-  const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
-  const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
-
-  // REMOVIDO (23/07/2026, a pedido do Fabio): o extrato tinha um cálculo de
-  // "Saldo Anterior/Saldo Atual/Saldo do Dia" que reconstituía o saldo da
-  // conta dia a dia percorrendo TODO o histórico dela toda vez que a conta
-  // era trocada no filtro — pesado e, segundo o Fabio, sem utilidade prática.
-  // O restante do código já lida bem com saldoAcumuladoExtrato=null (as
-  // linhas de saldo simplesmente não aparecem), então manter como null
-  // desativa a funcionalidade sem precisar mexer no resto da tela.
-  const extratoEhRecorteItem = !!(RelExtrato.categoriaId || RelExtrato.centroCustoId || RelExtrato.direcionamento || RelExtrato.fornecedor);
-  let saldoAcumuladoExtrato = null;
-  const nCols = 7 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
-  const saldoAnteriorExtrato = saldoAcumuladoExtrato;
-  const linhaAnterior = saldoAcumuladoExtrato!==null
-    ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo Anterior${RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''}</td><td style="text-align:right;font-weight:800;color:${saldoAnteriorExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAnteriorExtrato)}</td></tr>`
-    : '';
-  const gruposPorDia = {};
-  const ordemDiasAsc = [];
-  extratoLista.forEach(l=>{
-    if(!gruposPorDia[l.data]){ gruposPorDia[l.data]=[]; ordemDiasAsc.push(l.data); }
-    gruposPorDia[l.data].push(l);
-  });
-  // pré-calcula o saldo acumulado ao final de cada dia, em ordem cronológica ascendente
-  // (o cálculo tem que ser feito do mais antigo pro mais recente pra ficar correto,
-  // mesmo que a exibição depois seja do mais recente pro mais antigo)
-  const saldoFinalPorDia = {};
-  let _saldoCalc = saldoAcumuladoExtrato;
-  if(_saldoCalc!==null){
-    ordemDiasAsc.forEach(dia=>{
-      gruposPorDia[dia].forEach(l=>{ _saldoCalc += (l.tipo==='entrada'?l.valor:-l.valor); });
-      saldoFinalPorDia[dia] = _saldoCalc;
-    });
-  }
-  const saldoAtualExtrato = _saldoCalc;
-  const linhaAtual = (saldoAtualExtrato!==null && !_extratoModoEdicao)
-    ? `<tr class="trow" style="border-top:2px solid var(--acc)"><td colspan="${nCols-1}" style="font-weight:800">Saldo Atual</td><td style="text-align:right;font-weight:900;color:${saldoAtualExtrato<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoAtualExtrato)}</td></tr>`
-    : '';
-  // exibição: do mais recente para o mais antigo (dias e lançamentos dentro do dia)
-  const ordemDias = ordemDiasAsc.slice().reverse();
-  const linhasExtrato = linhaAtual + ordemDias.map(dia=>{
-    const linhasDia = gruposPorDia[dia].slice().reverse().map(l=>{
-      const cta = contaById(l.contaId);
-      const cat = categoriaById(l.categoriaId);
-      const cc = centroCustoById(l.centroCustoId);
-      if(_extratoModoEdicao){
-        const protegido = l.origem && l.origem!=='manual' && l.origem!=='ofx';
-        if(protegido){
-          return `<tr style="opacity:.6">
-            <td>${fmtD(l.data)}</td>
-            ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
-            <td>${esc(l.contraparte||'-')}</td>
-            <td>${esc(l.descricao||'-')} ${T('não editável aqui','cz')}</td>
-            <td>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
-            <td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
-            <td>${esc(l.direcionamento||'-')}</td>
-            <td>${l.tipo==='entrada'?'Entrada':'Saída'}</td>
-            <td style="text-align:right">R$ ${fmt(l.valor)}</td>
-            <td>${BPerm('excluir','🗑','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1,'Excluir este lançamento')}</td>
-          </tr>`;
-        }
-        return `<tr>
-          <td><input type="date" id="edtx-data-${l.id}" value="${l.data}" style="width:130px;font-size:11px"></td>
-          ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
-          <td><input type="text" id="edtx-forn-${l.id}" value="${esc(l.contraparte||'')}" list="dl-contrapartes-edtx" style="width:130px;font-size:11px"></td>
-          <td><input type="text" id="edtx-desc-${l.id}" value="${esc(l.descricao||'')}" style="width:130px;font-size:11px"></td>
-          <td><div style="display:flex;gap:2px"><select id="edtx${l.id}-categoria-mae" onchange="aoMudarMaeCascataFixo('edtx${l.id}','categoria')" style="font-size:10px;width:80px">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa','','',idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select><select id="edtx${l.id}-categoria-sub" style="font-size:10px;width:70px">${opcoesSubcategoria(idsMaeSub(categoriaById(l.categoriaId)).maeId, idsMaeSub(categoriaById(l.categoriaId)).subId)}</select></div></td>
-          <td><div style="display:flex;gap:2px"><select id="edtx${l.id}-cc-mae" onchange="aoMudarMaeCascataFixo('edtx${l.id}','cc')" style="font-size:10px;width:80px">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</select><select id="edtx${l.id}-cc-sub" style="font-size:10px;width:70px">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(l.centroCustoId)).maeId, idsMaeSub(centroCustoById(l.centroCustoId)).subId)}</select></div></td>
-          <td><input type="text" id="edtx-direc-${l.id}" value="${esc(l.direcionamento||'')}" list="dl-direcionamentos-edtx" style="width:110px;font-size:11px"></td>
-          <td><select id="edtx-tipo-${l.id}" style="font-size:11px"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option></select></td>
-          <td><input type="text" id="edtx-valor-${l.id}" value="${fmt(l.valor)}" style="width:90px;font-size:11px;text-align:right"></td>
-          <td>${BPerm('excluir','🗑','excluirLancamento(\''+l.id+'\')','var(--sur)','var(--red)',1,'Excluir este lançamento')}</td>
-        </tr>`;
-      }
-      return `<tr style="cursor:pointer${l.status==='nulo'?';opacity:.55':''}" ondblclick="editarLancamento('${l.id}')" oncontextmenu="return abrirMenuLancamento(event,'${l.id}')" title="Duplo clique: editar — Clique direito: mais opções">
-        <td>${fmtD(l.data)}${badgeStatusLancamento(l)}</td>
-        ${RelExtrato.contaId?'':`<td>${esc(cta?cta.titular:'-')}</td>`}
-        <td${l.contraparte?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este fornecedor/cliente" onclick="filtrarExtratoPorFornecedor('${esc(l.contraparte).replace(/'/g,"\\'")}')"`:''}>${esc(l.contraparte||'-')}</td>
-        <td${l.origem==='chequesys'?` style="cursor:pointer;text-decoration:underline dotted" title="Abrir no ChequeSys" onclick="editarLancamento('${l.id}')"`:''}>${esc(l.descricao||'-')}</td>
-        <td${l.categoriaId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só esta categoria" onclick="filtrarExtratoPorCategoria('${l.categoriaId}')"`:''}>${esc(cat?nomeCompletoCategoria(cat):'-')}</td>
-        <td${l.centroCustoId?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este centro de custo" onclick="filtrarExtratoPorCentroCusto('${l.centroCustoId}')"`:''}>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td>
-        <td${l.direcionamento?` style="cursor:pointer;text-decoration:underline dotted" title="Ver só este direcionamento" onclick="filtrarExtratoPorDirecionamento('${esc(l.direcionamento).replace(/'/g,"\\'")}')"`:''}>${esc(l.direcionamento||'-')}</td>
-        <td style="text-align:right;color:#3fb950">${l.tipo==='entrada'?'R$ '+fmt(l.valor):''}</td>
-        <td style="text-align:right;color:#f85149">${l.tipo==='saida'?'R$ '+fmt(l.valor):''}</td>
-      </tr>`;
-    }).join('');
-    const saldoDoDia = saldoFinalPorDia[dia];
-    const linhaSaldoDia = (saldoDoDia!==undefined && !_extratoModoEdicao)
-      ? `<tr class="trow"><td colspan="${nCols-1}" style="font-weight:700">Saldo do dia — ${fmtD(dia)}</td><td style="text-align:right;font-weight:800;color:${saldoDoDia<0?'var(--red)':'var(--acc)'}">R$ ${fmt(saldoDoDia)}</td></tr>`
-      : '';
-    return linhasDia + linhaSaldoDia;
-  }).join('') + linhaAnterior || `<tr><td colspan="${nCols}" style="text-align:center;color:var(--mut)">Nenhum lançamento com esses filtros</td></tr>`;
-  const cabecalhoExtrato = _extratoModoEdicao
-    ? `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Centro de Custo</th><th>Direcionamento</th><th>Tipo</th><th style="text-align:right">Valor</th><th></th></tr>`
-    : `<tr><th>Data</th>${RelExtrato.contaId?'':'<th>Conta</th>'}<th>Fornecedor/Cliente</th><th>Descrição</th><th>Categoria</th><th>Centro de Custo</th><th>Direcionamento</th><th style="text-align:right">Entrada</th><th style="text-align:right">Saída</th></tr>`;
-  // Dados brutos (não HTML) para a impressão poder escolher colunas dinamicamente
-  const impRows = [];
-  if(saldoAnteriorExtrato!==null) impRows.push({tipo:'saldo', label:'Saldo Anterior'+(RelExtrato.de?' ('+fmtD(RelExtrato.de)+')':''), valor:saldoAnteriorExtrato});
-  let _saldoImp = saldoAnteriorExtrato;
-  ordemDias.forEach(dia=>{
-    gruposPorDia[dia].forEach(l=>{
-      const cta = contaById(l.contaId);
-      const cat = categoriaById(l.categoriaId);
-      const cc = centroCustoById(l.centroCustoId);
-      if(_saldoImp!==null) _saldoImp += (l.tipo==='entrada'?l.valor:-l.valor);
-      impRows.push({tipo:'lancamento', data:l.data, conta:cta?cta.titular:'-', contraparte:l.contraparte||'-', descricao:l.descricao||'-', categoria:cat?nomeCompletoCategoria(cat):'-', centroCusto:cc?nomeCompletoCentroCusto(cc):'-', direcionamento:l.direcionamento||'-', valorEntrada:l.tipo==='entrada'?l.valor:null, valorSaida:l.tipo==='saida'?l.valor:null});
-    });
-    if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo do dia — '+fmtD(dia), valor:_saldoImp});
-  });
-  if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo Atual', valor:_saldoImp});
-  _impExtratoEnt = extratoTotEnt; _impExtratoSai = extratoTotSai;
-  _impExtratoCabecalho = cabecalhoExtrato; _impExtratoLinhas = linhasExtrato;
-  _impExtratoRows = impRows; _impExtratoMostraConta = !RelExtrato.contaId;
-  _extratoIdsEditaveis = extratoLista.filter(l=>!l.origem || l.origem==='manual' || l.origem==='ofx').map(l=>l.id);
-  const filtroExtratoHtml = `
-    <div class="row" style="margin-bottom:10px">
-      ${C('Conta',`<select id="re-conta" onchange="aplicarFiltroRelExtrato()"><option value="">Todas</option>${opcoesContasFiltradas(RelExtrato.contaId)}</select>`,'1','200')}
-      ${C('De',`<input type="date" id="re-de" value="${RelExtrato.de}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
-      ${C('Até',`<input type="date" id="re-ate" value="${RelExtrato.ate}" onchange="aplicarFiltroRelExtrato()">`,'1','150')}
-      ${C('Fornecedor/Cliente',`<select id="re-forn" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${contrapartesExistentes().map(n=>`<option value="${esc(n)}"${n===RelExtrato.fornecedor?' selected':''}>${esc(n)}</option>`).join('')}</select>`,'1','200')}
-      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="re-categoria-mae" onchange="aoMudarMaeCascataFixo('re','categoria');aplicarFiltroRelExtrato()" style="flex:1">${opcoesCategoriaMae('','','',idsMaeSub(categoriaById(RelExtrato.categoriaId)).maeId)}</select><select id="re-categoria-sub" onchange="aplicarFiltroRelExtrato()" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(RelExtrato.categoriaId)).maeId, idsMaeSub(categoriaById(RelExtrato.categoriaId)).subId)}</select></div>`,'2','260')}
-      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="re-cc-mae" onchange="aoMudarMaeCascataFixo('re','cc');aplicarFiltroRelExtrato()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).maeId)}</select><select id="re-cc-sub" onchange="aplicarFiltroRelExtrato()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelExtrato.centroCustoId)).subId)}</select></div>`,'2','260')}
-      ${C('Direcionamento',`<select id="re-direc" onchange="aplicarFiltroRelExtrato()"><option value="">Todos</option>${direcionamentosExistentes().map(d=>`<option value="${esc(d)}"${d===RelExtrato.direcionamento?' selected':''}>${esc(d)}</option>`).join('')}</select>`,'1','180')}
-    </div>
-    <div class="row" style="margin-bottom:10px">
-      ${B('✕ Limpar Filtros','limparFiltroRelExtrato()','var(--sur)','var(--txt)')}
-      ${B('🖨 Imprimir','abrirOpcoesImpressaoExtrato()','var(--sur)','var(--txt)')}
-      ${!_extratoModoEdicao ? BPerm('lancamentos','➕ Novo Lançamento',`novoLancamento('${RelExtrato.contaId||''}')`,'var(--acc)') : ''}
-      ${_extratoModoEdicao
-        ? BPerm('lancamentos','💾 Salvar Alterações','salvarEdicaoEmMassaExtrato()','var(--grn)','#fff') + B('✕ Cancelar Edição','cancelarEdicaoExtrato()','var(--sur)','var(--mut)')
-        : BPerm('lancamentos','✏️ Editar','alternarEdicaoExtrato()','var(--blu)','#fff')}
-    </div>
-    <datalist id="dl-contrapartes-edtx">${contrapartesExistentes().map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
-    <datalist id="dl-direcionamentos-edtx">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
-    ${_extratoModoEdicao ? '<div style="font-size:11px;color:#f0a500;margin-bottom:10px">✏️ Modo edição ativo — altere os campos direto na tabela e clique em "Salvar Alterações" quando terminar. Selecione o período/filtros antes de entrar em edição.</div>' : ''}
-    ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}
-    <div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Toque em um Fornecedor, Categoria ou Direcionamento na tabela abaixo para ver só os lançamentos daquele item, mantendo o período filtrado.</div>`;
-
-  // ── Contas a Pagar — Pagas em Período (com filtro CC / texto) ──
-  let pagarLista = (DB.contasPagar||[]).filter(cp=>cp.status==='pago' && contaTipoOk(cp.contaId));
-  if(RelPagarF.de) pagarLista = pagarLista.filter(cp=>(cp.dataPagamento||cp.vencimento)>=RelPagarF.de);
-  if(RelPagarF.ate) pagarLista = pagarLista.filter(cp=>(cp.dataPagamento||cp.vencimento)<=RelPagarF.ate);
-  if(RelPagarF.centroCustoId) pagarLista = pagarLista.filter(cp=>cp.centroCustoId===RelPagarF.centroCustoId);
-  if(RelPagarF.texto) pagarLista = pagarLista.filter(cp=>(cp.favorecido||'').toLowerCase().includes(RelPagarF.texto.toLowerCase()));
-  pagarLista = pagarLista.slice().sort((a,b)=>(b.dataPagamento||b.vencimento).localeCompare(a.dataPagamento||a.vencimento));
-  const pagarTotFiltro = pagarLista.reduce((s,cp)=>s+Number(cp.valorPago||0),0);
-  const linhasPagarPeriodo = pagarLista.map(cp=>{
-    const cc = centroCustoById(cp.centroCustoId);
-    const cta = contaById(cp.contaId);
-    return `<tr><td>${fmtD(cp.dataPagamento||cp.vencimento)}</td><td>${esc(cp.favorecido)}</td><td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cp.valorPago)}</td></tr>`;
-  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum pagamento com esses filtros</td></tr>';
-  const filtroPagarHtml = `
-    <div class="row" style="margin-bottom:10px">
-      ${C('De',`<input type="date" id="rp-de" value="${RelPagarF.de}" onchange="aplicarFiltroRelPagar()">`,'1','150')}
-      ${C('Até',`<input type="date" id="rp-ate" value="${RelPagarF.ate}" onchange="aplicarFiltroRelPagar()">`,'1','150')}
-      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="rp-cc-mae" onchange="aoMudarMaeCascataFixo('rp','cc');aplicarFiltroRelPagar()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).maeId)}</select><select id="rp-cc-sub" onchange="aplicarFiltroRelPagar()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelPagarF.centroCustoId)).subId)}</select></div>`,'2','260')}
-      ${C('Fornecedor',`<input type="text" id="rp-txt" value="${esc(RelPagarF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelPagar()">`,'1','200')}
-    </div>
-    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelPagar()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirPagarPeriodo()','var(--sur)','var(--txt)')}</div>`;
-  _impPagarTotal = pagarTotFiltro; _impPagarLinhas = linhasPagarPeriodo;
-
-  // ── Contas a Receber — Recebidas em Período (com filtro CC / texto) ──
-  let receberLista = (DB.contasReceber||[]).filter(cr=>cr.status==='recebido' && contaTipoOk(cr.contaId));
-  if(RelReceberF.de) receberLista = receberLista.filter(cr=>(cr.dataRecebimento||cr.vencimento)>=RelReceberF.de);
-  if(RelReceberF.ate) receberLista = receberLista.filter(cr=>(cr.dataRecebimento||cr.vencimento)<=RelReceberF.ate);
-  if(RelReceberF.centroCustoId) receberLista = receberLista.filter(cr=>cr.centroCustoId===RelReceberF.centroCustoId);
-  if(RelReceberF.texto) receberLista = receberLista.filter(cr=>(cr.cliente||'').toLowerCase().includes(RelReceberF.texto.toLowerCase()));
-  receberLista = receberLista.slice().sort((a,b)=>(b.dataRecebimento||b.vencimento).localeCompare(a.dataRecebimento||a.vencimento));
-  const receberTotFiltro = receberLista.reduce((s,cr)=>s+Number(cr.valorRecebido||0),0);
-  const linhasReceberPeriodo = receberLista.map(cr=>{
-    const cc = centroCustoById(cr.centroCustoId);
-    const cta = contaById(cr.contaId);
-    return `<tr><td>${fmtD(cr.dataRecebimento||cr.vencimento)}</td><td>${esc(cr.cliente)}</td><td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cr.valorRecebido)}</td></tr>`;
-  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum recebimento com esses filtros</td></tr>';
-  const filtroReceberHtml = `
-    <div class="row" style="margin-bottom:10px">
-      ${C('De',`<input type="date" id="rr-de" value="${RelReceberF.de}" onchange="aplicarFiltroRelReceber()">`,'1','150')}
-      ${C('Até',`<input type="date" id="rr-ate" value="${RelReceberF.ate}" onchange="aplicarFiltroRelReceber()">`,'1','150')}
-      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="rr-cc-mae" onchange="aoMudarMaeCascataFixo('rr','cc');aplicarFiltroRelReceber()" style="flex:1">${opcoesCentroCustoMae('',idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).maeId)}</select><select id="rr-cc-sub" onchange="aplicarFiltroRelReceber()" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).maeId, idsMaeSub(centroCustoById(RelReceberF.centroCustoId)).subId)}</select></div>`,'2','260')}
-      ${C('Cliente',`<input type="text" id="rr-txt" value="${esc(RelReceberF.texto)}" placeholder="Buscar por nome..." onchange="aplicarFiltroRelReceber()">`,'1','200')}
-    </div>
-    <div class="row" style="margin-bottom:10px">${B('✕ Limpar Filtros','limparFiltroRelReceber()','var(--sur)','var(--txt)')}${B('🖨 Imprimir','imprimirReceberPeriodo()','var(--sur)','var(--txt)')}</div>`;
-  _impReceberTotal = receberTotFiltro; _impReceberLinhas = linhasReceberPeriodo;
-
   // ── Cartões por Direcionamento (PF + PJ) ──
   const direcPF = _resumoCartoes?.pf?.porDirecionamento || {};
   const direcPJ = _resumoCartoes?.pj?.porDirecionamento || {};
@@ -8010,8 +8119,6 @@ function htmlRelatorios(){
   const linhasSacadoChq = Object.entries(porSacadoChq).sort((a,b)=>b[1].total-a[1].total).map(([nome,v])=>
     `<tr><td>${esc(nome)}</td><td style="text-align:right">${v.qtd}</td><td style="text-align:right;font-weight:700">R$ ${fmt(v.total)}</td></tr>`
   ).join('') || '<tr><td colspan="3" style="text-align:center;color:var(--mut)">Sem dados ainda — abra a aba ChequeSys para carregar</td></tr>';
-
-  // ── Blocos de cada relatório individual ──
   const secoes = {
     resumo_graficos: `
       <div class="card" style="margin-bottom:14px">
@@ -8081,40 +8188,21 @@ function htmlRelatorios(){
       <table><thead><tr><th>Seguradora</th><th>Tipo</th><th style="text-align:right">Prêmio</th><th>Vigência Fim</th><th>Status</th></tr></thead><tbody>${linhasSeg}</tbody></table></div>`,
     saldo_conta: `<div class="card"><div style="font-weight:700;margin-bottom:10px">💰 Saldo Consolidado por Conta (TesourariaSys + ChequeSys)</div>
       <table><thead><tr><th>Conta</th><th style="text-align:right">Saldo</th></tr></thead><tbody>${linhasContas}${(_resumoChequeSys?.contas||[]).map(c=>`<tr><td>${esc(c.nome)} ${T('ChequeSys','pur')}</td><td style="text-align:right;font-weight:700;color:${c.saldo<0?'var(--red)':'inherit'}">R$ ${fmt(c.saldo)}</td></tr>`).join('')}</tbody></table></div>`,
-    extrato_conta: `<div class="card">
-      <div style="font-weight:700;margin-bottom:10px">📄 Extrato — por Conta / Período / Fornecedor</div>
-      ${filtroExtratoHtml}
-      <div class="kpis" style="margin-bottom:10px">
-        <div class="card kpi"><div class="kpi-l">Entradas no filtro</div><div class="kpi-v" style="color:#3fb950">R$ ${fmt(extratoTotEnt)}</div></div>
-        <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" style="color:#f85149">R$ ${fmt(extratoTotSai)}</div></div>
-        <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:${(extratoTotEnt-extratoTotSai)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(extratoTotEnt-extratoTotSai)}</div></div>
-      </div>
-      <table><thead class="thead-fixo">${cabecalhoExtrato}</thead><tbody>${linhasExtrato}</tbody></table>
-    </div>`,
+    extrato_conta: '',
     tarifas_conta: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏦 Tarifas Bancárias por Conta</div>
       <table><thead><tr><th>Conta</th><th style="text-align:right">Total em Tarifas</th></tr></thead><tbody>${linhasTarifa}</tbody></table></div>`,
     pagar_cc: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📤 Contas a Pagar Pendentes por Centro de Custo</div>
       <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Total Pendente</th></tr></thead><tbody>${linhasCC}</tbody></table></div>`,
     pagar_fornecedor: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🏭 Total Pago por Fornecedor</div>
       <table><thead><tr><th>Fornecedor</th><th style="text-align:right">Total Pago</th></tr></thead><tbody>${linhasForn}</tbody></table></div>`,
-    pagar_periodo: `<div class="card">
-      <div style="font-weight:700;margin-bottom:10px">📅 Pagamentos por Período / Centro de Custo / Fornecedor</div>
-      ${filtroPagarHtml}
-      <div class="card kpi" style="margin-bottom:10px"><div class="kpi-l">Total pago no filtro</div><div class="kpi-v" style="color:var(--acc)">R$ ${fmt(pagarTotFiltro)}</div></div>
-      <table><thead><tr><th>Data Pagamento</th><th>Favorecido</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Pago</th></tr></thead><tbody>${linhasPagarPeriodo}</tbody></table>
-    </div>`,
+    pagar_periodo: '',
     cheques_emitidos: `<div class="card"><div style="font-weight:700;margin-bottom:10px">✍️ Cheques Emitidos Aguardando Compensação</div>
       <table><thead><tr><th>Conta Emissora</th><th>Favorecido</th><th>Previsão</th><th style="text-align:right">Valor</th></tr></thead><tbody>${linhasChq}</tbody></table></div>`,
     receber_cc: `<div class="card"><div style="font-weight:700;margin-bottom:10px">📥 Contas a Receber Pendentes por Centro de Custo</div>
       <table><thead><tr><th>Centro de Custo</th><th style="text-align:right">Total Pendente</th></tr></thead><tbody>${linhasCCReceber}</tbody></table></div>`,
     receber_cliente: `<div class="card"><div style="font-weight:700;margin-bottom:10px">🤝 Total Recebido por Cliente</div>
       <table><thead><tr><th>Cliente</th><th style="text-align:right">Total Recebido</th></tr></thead><tbody>${linhasCliente}</tbody></table></div>`,
-    receber_periodo: `<div class="card">
-      <div style="font-weight:700;margin-bottom:10px">📅 Recebimentos por Período / Centro de Custo / Cliente</div>
-      ${filtroReceberHtml}
-      <div class="card kpi" style="margin-bottom:10px"><div class="kpi-l">Total recebido no filtro</div><div class="kpi-v" style="color:var(--acc)">R$ ${fmt(receberTotFiltro)}</div></div>
-      <table><thead><tr><th>Data Recebimento</th><th>Cliente</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Recebido</th></tr></thead><tbody>${linhasReceberPeriodo}</tbody></table>
-    </div>`,
+    receber_periodo: '',
     cartoes_resumo: `<div class="card" style="margin-bottom:14px"><div style="font-weight:700;margin-bottom:10px">💳 Faturas de Cartão em Aberto (integração com CartoesPF/PJ)</div>
       <table><tbody>
         <tr><td>Fatura Cartão PF em Aberto${_resumoCartoes?.erroPf?' <span style="color:var(--mut);font-size:11px">(indisponível)</span>':''}</td><td style="text-align:right;color:#f85149;font-weight:700">R$ ${fmt(cartoesPF)}</td></tr>
@@ -8144,58 +8232,9 @@ function htmlRelatorios(){
       <div style="color:var(--mut);font-size:11px;margin-top:8px">Considera boletos em carteira, enviados, devolvidos ou reapresentados (carteira ativa), exceto boletos em caução.</div>
     </div>`,
   };
-
-  const CATS_TR = {
-    geral:      { label:'🌐 Geral',            cor:'var(--acc)', tipos:['resumo_graficos','fluxo_mensal','pareto_despesas','top_entradas','top_saidas','fluxo_categoria','fluxo_centro_custo','mov_contraparte','investimentos','seguros'] },
-    bancarias:  { label:'🏦 Contas Bancárias',  cor:'var(--blu)', tipos:['saldo_conta','extrato_conta','tarifas_conta'] },
-    pagar:      { label:'📤 Contas a Pagar',    cor:'var(--red)', tipos:['pagar_periodo','pagar_cc','pagar_fornecedor','cheques_emitidos'] },
-    receber:    { label:'📥 Contas a Receber',  cor:'#3fb950',    tipos:['receber_periodo','receber_cc','receber_cliente'] },
-    cartoes:    { label:'💳 Cartões',           cor:'var(--pur)', tipos:['cartoes_resumo','cartoes_direcionamento','cartoes_historico'] },
-    chequesys:  { label:'🧾 ChequeSys',         cor:'#f0a500',    tipos:['chq_emitentes','chq_sacados'] },
-  };
-  const rotulos = {
-    resumo_graficos:'🧭 Resumo e Gráficos', fluxo_mensal:'📅 Fluxo Mensal', pareto_despesas:'📉 Pareto de Despesas',
-    top_entradas:'🔝 Top Entradas', top_saidas:'🔝 Top Saídas', fluxo_categoria:'📊 Por Categoria',
-    fluxo_centro_custo:'🏷️ Por Centro de Custo',
-    mov_contraparte:'👥 Por Cliente/Fornecedor', investimentos:'📈 Investimentos', seguros:'🛡️ Seguros',
-    saldo_conta:'💰 Saldo por Conta', extrato_conta:'📄 Extrato (Conta/Período/Fornecedor)', tarifas_conta:'🏦 Tarifas Bancárias',
-    pagar_periodo:'📅 Por Período', pagar_cc:'📤 Por Centro de Custo', pagar_fornecedor:'🏭 Por Fornecedor', cheques_emitidos:'✍️ Cheques Emitidos',
-    receber_periodo:'📅 Por Período', receber_cc:'📥 Por Centro de Custo', receber_cliente:'🤝 Por Cliente',
-    cartoes_resumo:'💳 Resumo', cartoes_direcionamento:'🧭 Por Direcionamento', cartoes_historico:'💳 Histórico de Faturas',
-    chq_emitentes:'🧾 Por Emitente (Cheques)', chq_sacados:'🧾 Por Sacado (Boletos)',
-  };
-
-  if(!RLT.cat){
-    const cards = Object.entries(CATS_TR).map(([k,v])=>`
-      <div onclick="irRelCategoria('${k}','${v.tipos[0]}')"
-        style="cursor:pointer;background:var(--card);border:2px solid ${v.cor};border-radius:12px;padding:32px 24px;text-align:center;transition:transform .15s;display:flex;flex-direction:column;align-items:center;gap:10px;min-width:150px;flex:1"
-        onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''">
-        <div style="font-size:36px">${v.label.split(' ')[0]}</div>
-        <div style="font-size:16px;font-weight:800;color:${v.cor}">${v.label.split(' ').slice(1).join(' ')}</div>
-        <div style="font-size:11px;color:var(--mut)">${v.tipos.length} relatório${v.tipos.length>1?'s':''}</div>
-      </div>`).join('');
-    return `<div class="titulo acc">📊 Relatórios</div>
-      <p style="color:var(--mut);font-size:13px;margin-bottom:18px">Selecione a categoria:</p>
-      <div style="display:flex;gap:16px;flex-wrap:wrap">${cards}</div>`;
-  }
-
-  const catAtual = CATS_TR[RLT.cat];
-  if(!RLT.tipo || !catAtual.tipos.includes(RLT.tipo)) RLT.tipo = catAtual.tipos[0];
-  const btnVoltar = `<button type="button" onclick="voltarRelCategorias()" style="background:var(--sur);color:var(--mut);border:1px solid var(--bor);border-radius:6px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit">← Categorias</button>`;
-  const tabsBtns = catAtual.tipos.map(t=>
-    `<button type="button" onclick="irRelTipo('${t}')" style="background:${RLT.tipo===t?catAtual.cor:'var(--sur)'};color:${RLT.tipo===t?'#fff':'var(--mut)'};border:1px solid var(--bor);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin:2px">${rotulos[t]||t}</button>`
-  ).join('');
-
-  return `<div class="titulo acc">📊 Relatórios</div>
-    ${htmlFiltroPeriodoRel()}
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
-      ${btnVoltar}
-      <span style="font-size:14px;font-weight:800;color:${catAtual.cor}">${catAtual.label}</span>
-    </div>
-    <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px">${tabsBtns}</div>
-    ${secoes[RLT.tipo]}
-  `;
+  return secoes;
 }
+
 
 // ══════════════════════════════════════════
 // RENDER — CADASTROS (Categorias / Centro de Custo / Usuários)
