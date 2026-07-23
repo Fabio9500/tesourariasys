@@ -15966,20 +15966,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr7bn8l9xye40",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-30",
-      "tipo": "saida",
-      "valor": 924.91,
-      "categoriaId": "mrnty0ghhldot",
-      "centroCustoId": "",
-      "contraparte": "Cef Matriz",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mr8zle8gr56os",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-30",
