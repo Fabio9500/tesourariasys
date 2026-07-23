@@ -5533,20 +5533,6 @@
       "criadoEm": "2026-07-17T12:00:00.000Z"
     },
     {
-      "id": "mr02x8sef0hlv",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-03",
-      "tipo": "saida",
-      "valor": 989.84,
-      "categoriaId": "mrnty0ghhldot",
-      "centroCustoId": "",
-      "contraparte": "Vivo Ba",
-      "descricao": "Debito Convenios",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-17T12:00:00.000Z"
-    },
-    {
       "id": "mr8gwn2iz8ruk",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-03",
