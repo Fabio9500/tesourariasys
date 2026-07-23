@@ -15098,20 +15098,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrsng3xihlbgr",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-05",
-      "tipo": "saida",
-      "valor": 153.66,
-      "categoriaId": "mrnty0ghhldot",
-      "centroCustoId": "",
-      "contraparte": "Clarsp11G",
-      "descricao": "Debito Convenios",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrg3jcsevw9np",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-07",
