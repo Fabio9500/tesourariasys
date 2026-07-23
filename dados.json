@@ -87157,23 +87157,6 @@
       "criadoEm": "2026-07-23T00:17:26.815Z"
     },
     {
-      "id": "mrwri527iw4xg",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-08",
-      "tipo": "saida",
-      "valor": 25,
-      "categoriaId": "mrw0kj4pkqyql",
-      "centroCustoId": "nmk07cd3hlpw0",
-      "contraparte": "Loja",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Loja",
-      "origem": "ofx",
-      "fitid": "csv1011986722",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.815Z"
-    },
-    {
       "id": "mrwri527gcezt",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-09",
