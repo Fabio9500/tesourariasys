@@ -14851,20 +14851,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr0yp8ff59j59",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-29",
-      "tipo": "entrada",
-      "valor": 65112.94,
-      "categoriaId": "mrnty0ghgioaj",
-      "centroCustoId": "",
-      "contraparte": "AV Engenharia Ltda",
-      "descricao": "Pix Recebido",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mreoj1oc99bfc",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-29",
