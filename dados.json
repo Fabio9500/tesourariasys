@@ -15070,20 +15070,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrvtz67p5w6fg",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-12",
-      "tipo": "saida",
-      "valor": 325,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Wenderson Nogueira",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mran6yi51ro7s",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-12",
