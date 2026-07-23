@@ -4368,7 +4368,8 @@
       "descricao": "Pagamento Pix",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-17T12:00:00.000Z"
+      "criadoEm": "2026-07-17T12:00:00.000Z",
+      "fitid": "csv1463065385"
     },
     {
       "id": "mrimagwx04rky",
@@ -4816,7 +4817,8 @@
       "descricao": "Pagamento Pix",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-17T12:00:00.000Z"
+      "criadoEm": "2026-07-17T12:00:00.000Z",
+      "fitid": "csv2029503271"
     },
     {
       "id": "mryruffoa2jx0",
@@ -4886,7 +4888,8 @@
       "descricao": "Recebimento Pix",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-17T12:00:00.000Z"
+      "criadoEm": "2026-07-17T12:00:00.000Z",
+      "fitid": "csv591014044"
     },
     {
       "id": "mrb64o0e8r04y",
@@ -14395,7 +14398,8 @@
       "descricao": "Liquidacao Boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv1075344771"
     },
     {
       "id": "mr0o2tw57m9rn",
@@ -14479,7 +14483,8 @@
       "descricao": "Pix Enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv2061288208"
     },
     {
       "id": "mriz00dcggb14",
@@ -14885,7 +14890,8 @@
       "descricao": "Pix Enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv72781298"
     },
     {
       "id": "mrmv4enf5chfp",
@@ -15221,7 +15227,8 @@
       "descricao": "Liquidacao Boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv539829379"
     },
     {
       "id": "mr0q61k1voe0m",
@@ -15319,7 +15326,8 @@
       "descricao": "Liquidacao Boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv1668705244"
     },
     {
       "id": "mrvfhrd7kqq28",
@@ -15501,7 +15509,8 @@
       "descricao": "Liquidacao Boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv138399903"
     },
     {
       "id": "mr9te5thj6i6t",
@@ -15753,7 +15762,8 @@
       "descricao": "Resgate Aplicacao Financeira Aviso Previo",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv1770978710"
     },
     {
       "id": "mr0cgc1e2vnfm",
@@ -15767,7 +15777,8 @@
       "descricao": "Resgate Aplicacao Financeira Aviso Previo",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv1421269975"
     },
     {
       "id": "mr7pq1ft5fr9e",
@@ -15949,7 +15960,8 @@
       "descricao": "Liquidacao Boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv3463962"
     },
     {
       "id": "mrhc7knduvycr",
@@ -15963,7 +15975,8 @@
       "descricao": "Liquidacao Boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv1942492086"
     },
     {
       "id": "mrckmik29nkny",
@@ -16075,7 +16088,8 @@
       "descricao": "Pix Enviado",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv1943651443"
     },
     {
       "id": "mrnh1ua80qk74",
@@ -16313,7 +16327,8 @@
       "descricao": "Pix Recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv793413809"
     },
     {
       "id": "mrcw4ozj85sqt",
@@ -16397,7 +16412,8 @@
       "descricao": "Pix Recebido",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv488316152"
     },
     {
       "id": "mr8q107m8ra42",
@@ -17391,7 +17407,8 @@
       "descricao": "Liquidacao Boleto",
       "origem": "manual",
       "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
+      "criadoEm": "2026-07-19T00:00:00.000Z",
+      "fitid": "csv35088922"
     },
     {
       "id": "mrtmktel0wlp2",
@@ -84833,23 +84850,6 @@
       "criadoEm": "2026-07-23T00:17:26.816Z"
     },
     {
-      "id": "mrwri528a5man",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-14",
-      "tipo": "saida",
-      "valor": 2010.58,
-      "categoriaId": "",
-      "centroCustoId": "b7d8xixovmos2",
-      "contraparte": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv1075344771",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.816Z"
-    },
-    {
       "id": "mrwri5286fot5",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-15",
@@ -84999,23 +84999,6 @@
       "descricao": "Func. Fernando",
       "origem": "ofx",
       "fitid": "csv1252904879",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.816Z"
-    },
-    {
-      "id": "mrwri528xoxla",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-19",
-      "tipo": "saida",
-      "valor": 1721.3,
-      "categoriaId": "",
-      "centroCustoId": "tscz011fgh381",
-      "contraparte": "Crt.  M. Livre - Telasul [Transferência p/ \"Crt.(20)  M. Livre\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Crt.  M. Livre - Telasul [Transferência p/ \"Crt.(20)  M. Livre\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv2061288208",
       "contaPagarId": null,
       "criadoEm": "2026-07-23T00:17:26.816Z"
     },
@@ -85666,23 +85649,6 @@
       "criadoEm": "2026-07-23T00:17:26.816Z"
     },
     {
-      "id": "mrwri528dfcbi",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-29",
-      "tipo": "saida",
-      "valor": 500,
-      "categoriaId": "",
-      "centroCustoId": "nexjwjmdeqrk9",
-      "contraparte": "Transf. de Valores [Transferência p/ \"Bc. CEF - Construsul\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Transf. de Valores [Transferência p/ \"Bc. CEF - Construsul\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv72781298",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.816Z"
-    },
-    {
       "id": "mrwri528rrknj",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-29",
@@ -86091,23 +86057,6 @@
       "criadoEm": "2026-07-23T00:17:26.816Z"
     },
     {
-      "id": "mrwri528pm8a6",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-02-06",
-      "tipo": "saida",
-      "valor": 2744.13,
-      "categoriaId": "",
-      "centroCustoId": "b7d8xixovmos2",
-      "contraparte": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv1668705244",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.816Z"
-    },
-    {
       "id": "mrwri528ri6hr",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-02-05",
@@ -86121,23 +86070,6 @@
       "descricao": "Claro Fixo - Empresa",
       "origem": "ofx",
       "fitid": "csv590915361",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.816Z"
-    },
-    {
-      "id": "mrwri528g7kdj",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-02-05",
-      "tipo": "saida",
-      "valor": 3837.05,
-      "categoriaId": "",
-      "centroCustoId": "tscz011fgh381",
-      "contraparte": "Ct. C6 Telasul [Transferência p/ \"Crt.(05) C6 - 7185\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Ct. C6 Telasul [Transferência p/ \"Crt.(05) C6 - 7185\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv539829379",
       "contaPagarId": null,
       "criadoEm": "2026-07-23T00:17:26.816Z"
     },
@@ -86550,23 +86482,6 @@
       "criadoEm": "2026-07-23T00:17:26.817Z"
     },
     {
-      "id": "mrwri529xeshh",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-02-13",
-      "tipo": "saida",
-      "valor": 2010.58,
-      "categoriaId": "",
-      "centroCustoId": "b7d8xixovmos2",
-      "contraparte": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv138399903",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.817Z"
-    },
-    {
       "id": "mrwri529q7lol",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-02-13",
@@ -86937,40 +86852,6 @@
       "descricao": "Func. Wenderson",
       "origem": "ofx",
       "fitid": "csv420070942",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.817Z"
-    },
-    {
-      "id": "mrwri529lcn9u",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-03-05",
-      "tipo": "entrada",
-      "valor": 50695.17,
-      "categoriaId": "",
-      "centroCustoId": "nexjwjmdeqrk9",
-      "contraparte": "Transf. de Valores [Transferência p/ \"Aplic. Sicred\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Transf. de Valores [Transferência p/ \"Aplic. Sicred\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv1770978710",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.817Z"
-    },
-    {
-      "id": "mrwri5299mgt1",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-03-05",
-      "tipo": "entrada",
-      "valor": 22761.24,
-      "categoriaId": "",
-      "centroCustoId": "nexjwjmdeqrk9",
-      "contraparte": "Transf. de Valores [Transferência p/ \"Aplic. Sicred\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Transf. de Valores [Transferência p/ \"Aplic. Sicred\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv1421269975",
       "contaPagarId": null,
       "criadoEm": "2026-07-23T00:17:26.817Z"
     },
@@ -87366,40 +87247,6 @@
       "criadoEm": "2026-07-23T00:17:26.817Z"
     },
     {
-      "id": "mrwri529o2s1c",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-03-20",
-      "tipo": "saida",
-      "valor": 2061.63,
-      "categoriaId": "",
-      "centroCustoId": "b7d8xixovmos2",
-      "contraparte": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv3463962",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.817Z"
-    },
-    {
-      "id": "mrwri529swpvz",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-03-20",
-      "tipo": "saida",
-      "valor": 2874.69,
-      "categoriaId": "",
-      "centroCustoId": "b7d8xixovmos2",
-      "contraparte": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Arcelormittal [Transferência p/ \"Conta Boleto\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv1942492086",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.817Z"
-    },
-    {
       "id": "mrwri529xvcbs",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-03-20",
@@ -87464,23 +87311,6 @@
       "descricao": "Func. Jai",
       "origem": "ofx",
       "fitid": "csv156334679",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.817Z"
-    },
-    {
-      "id": "mrwri529f3cdr",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-03-20",
-      "tipo": "saida",
-      "valor": 1663.47,
-      "categoriaId": "",
-      "centroCustoId": "tscz011fgh381",
-      "contraparte": "Crt.  M. Livre - Telasul [Transferência p/ \"Crt.(20)  M. Livre\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Crt.  M. Livre - Telasul [Transferência p/ \"Crt.(20)  M. Livre\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv1943651443",
       "contaPagarId": null,
       "criadoEm": "2026-07-23T00:17:26.817Z"
     },
@@ -87842,23 +87672,6 @@
       "criadoEm": "2026-07-23T00:17:26.817Z"
     },
     {
-      "id": "mrwri529hwli3",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-04-02",
-      "tipo": "entrada",
-      "valor": 3700,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "Transf. de Valores [Transferência p/ \"Bc. CEF - Telasul\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Transf. de Valores [Transferência p/ \"Bc. CEF - Telasul\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv793413809",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.817Z"
-    },
-    {
       "id": "mrwri529grmk4",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-04-02",
@@ -88059,23 +87872,6 @@
       "descricao": "Banco Sicred",
       "origem": "ofx",
       "fitid": "csv7231127",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.817Z"
-    },
-    {
-      "id": "mrwri5295tkaa",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-04-10",
-      "tipo": "entrada",
-      "valor": 8000,
-      "categoriaId": "",
-      "centroCustoId": "nexjwjmdeqrk9",
-      "contraparte": "Transf. de Valores [Transferência p/ \"Bc. CEF - Telasul\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Transf. de Valores [Transferência p/ \"Bc. CEF - Telasul\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv488316152",
       "contaPagarId": null,
       "criadoEm": "2026-07-23T00:17:26.817Z"
     },
@@ -90086,23 +89882,6 @@
       "criadoEm": "2026-07-23T00:17:26.819Z"
     },
     {
-      "id": "mrwri52bck0w9",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-05-18",
-      "tipo": "saida",
-      "valor": 430.19,
-      "categoriaId": "",
-      "centroCustoId": "tscz011fgh381",
-      "contraparte": "Crt.  M. Livre - Telasul [Transferência p/ \"Crt.(20)  M. Livre\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Crt.  M. Livre - Telasul [Transferência p/ \"Crt.(20)  M. Livre\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv35088922",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.819Z"
-    },
-    {
       "id": "mrwri52bm96ip",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-05-18",
@@ -90936,23 +90715,6 @@
       "criadoEm": "2026-07-23T00:17:26.819Z"
     },
     {
-      "id": "mrwri52brl55j",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-06-05",
-      "tipo": "saida",
-      "valor": 5692.28,
-      "categoriaId": "",
-      "centroCustoId": "tscz011fgh381",
-      "contraparte": "Ct. C6 Telasul [Transferência p/ \"Crt.(05) C6 - 7185\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Ct. C6 Telasul [Transferência p/ \"Crt.(05) C6 - 7185\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv1463065385",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.819Z"
-    },
-    {
       "id": "mrwri52bh6nfj",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-06-05",
@@ -91578,23 +91340,6 @@
       "descricao": "Rota Transportes",
       "origem": "ofx",
       "fitid": "csv1203813299",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.820Z"
-    },
-    {
-      "id": "mrwri52c4f29g",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-06-19",
-      "tipo": "saida",
-      "valor": 2000,
-      "categoriaId": "",
-      "centroCustoId": "nexjwjmdeqrk9",
-      "contraparte": "Transf. de Valores [Transferência p/ \"Bc. CEF - Construsul\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Transf. de Valores [Transferência p/ \"Bc. CEF - Construsul\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv2029503271",
       "contaPagarId": null,
       "criadoEm": "2026-07-23T00:17:26.820Z"
     },
@@ -92292,23 +92037,6 @@
       "descricao": "Func. Wesley",
       "origem": "ofx",
       "fitid": "csv78537808",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.820Z"
-    },
-    {
-      "id": "mrwri52caksy4",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-06-26",
-      "tipo": "entrada",
-      "valor": 9000,
-      "categoriaId": "",
-      "centroCustoId": "nexjwjmdeqrk9",
-      "contraparte": "Transf. de Valores [Transferência p/ \"Aplic. Bc. C6 - CDI\" no Money — confira]",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Transf. de Valores [Transferência p/ \"Aplic. Bc. C6 - CDI\" no Money — confira]",
-      "origem": "ofx",
-      "fitid": "csv591014044",
       "contaPagarId": null,
       "criadoEm": "2026-07-23T00:17:26.820Z"
     },
