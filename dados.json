@@ -15070,20 +15070,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrzhjxv1ky7tm",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-09",
-      "tipo": "saida",
-      "valor": 400,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Amauri Sousa dos Santos",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mr9auix78asw8",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-12",
