@@ -15168,20 +15168,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr6jyan29p5ke",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-09",
-      "tipo": "saida",
-      "valor": 17088.17,
-      "categoriaId": "mrnty0ghwv185",
-      "centroCustoId": "",
-      "contraparte": "Maccaferri do Brasil",
-      "descricao": "Liquidacao Boleto",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrcth6oyo1j6z",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-09",
