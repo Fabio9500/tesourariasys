@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.75';
+const VERSAO = 'v1.76';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1205,10 +1205,24 @@ function identificarTransferenciasInternas(lancamentos){
   const saidas = lancamentos.filter(l=>l.tipo==='saida' && contaIds.has(l.contaId) && !idsPareados.has(l.id));
   const entradas = lancamentos.filter(l=>l.tipo==='entrada' && contaIds.has(l.contaId) && !idsPareados.has(l.id));
   const usadas = new Set();
+  // PERFORMANCE CRÍTICA (23/07/2026): antes, para CADA saída, percorria a
+  // lista INTEIRA de entradas procurando um par (.find dentro de .forEach) —
+  // com ~24 mil lançamentos isso virava centenas de milhões de comparações
+  // e travava o navegador por vários segundos. Agora as entradas são
+  // indexadas por valor (em centavos) uma única vez, e cada saída busca só
+  // dentro do grupo de mesmo valor (poucos candidatos, não a lista toda).
+  const entradasPorValor = new Map();
+  entradas.forEach(e=>{
+    const chave = Math.round(e.valor*100);
+    if(!entradasPorValor.has(chave)) entradasPorValor.set(chave, []);
+    entradasPorValor.get(chave).push(e);
+  });
   saidas.forEach(s=>{
-    const cand = entradas.find(e=>
+    const chave = Math.round(s.valor*100);
+    const candidatos = entradasPorValor.get(chave);
+    if(!candidatos) return;
+    const cand = candidatos.find(e=>
       !usadas.has(e.id) && e.contaId!==s.contaId &&
-      Math.abs(e.valor-s.valor)<0.02 &&
       Math.abs(diasEntreDatas(s.data,e.data))<=2
     );
     if(cand){ usadas.add(cand.id); idsPareados.add(s.id); idsPareados.add(cand.id); }
