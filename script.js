@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.72';
+const VERSAO = 'v1.78';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1205,10 +1205,24 @@ function identificarTransferenciasInternas(lancamentos){
   const saidas = lancamentos.filter(l=>l.tipo==='saida' && contaIds.has(l.contaId) && !idsPareados.has(l.id));
   const entradas = lancamentos.filter(l=>l.tipo==='entrada' && contaIds.has(l.contaId) && !idsPareados.has(l.id));
   const usadas = new Set();
+  // PERFORMANCE CRÍTICA (23/07/2026): antes, para CADA saída, percorria a
+  // lista INTEIRA de entradas procurando um par (.find dentro de .forEach) —
+  // com ~24 mil lançamentos isso virava centenas de milhões de comparações
+  // e travava o navegador por vários segundos. Agora as entradas são
+  // indexadas por valor (em centavos) uma única vez, e cada saída busca só
+  // dentro do grupo de mesmo valor (poucos candidatos, não a lista toda).
+  const entradasPorValor = new Map();
+  entradas.forEach(e=>{
+    const chave = Math.round(e.valor*100);
+    if(!entradasPorValor.has(chave)) entradasPorValor.set(chave, []);
+    entradasPorValor.get(chave).push(e);
+  });
   saidas.forEach(s=>{
-    const cand = entradas.find(e=>
+    const chave = Math.round(s.valor*100);
+    const candidatos = entradasPorValor.get(chave);
+    if(!candidatos) return;
+    const cand = candidatos.find(e=>
       !usadas.has(e.id) && e.contaId!==s.contaId &&
-      Math.abs(e.valor-s.valor)<0.02 &&
       Math.abs(diasEntreDatas(s.data,e.data))<=2
     );
     if(cand){ usadas.add(cand.id); idsPareados.add(s.id); idsPareados.add(cand.id); }
@@ -1272,7 +1286,14 @@ function opcoesDatalist(lista){
 }
 
 function lancamentosDaConta(contaId){
-  return (DB.lancamentos||[]).filter(l=>l.contaId===contaId).sort((a,b)=>a.data.localeCompare(b.data));
+  // PERFORMANCE (23/07/2026): removida a ordenação (.sort) que existia aqui —
+  // ela rodava a cada chamada sobre os ~24 mil lançamentos, mas nenhum dos
+  // dois lugares que usam esta função (saldoConta/saldoContaAteData) precisa
+  // da ordem, só da soma. Como saldoConta() é chamada repetidas vezes em
+  // cada render do Dashboard (uma vez por conta), essa ordenação inútil
+  // era o que estava travando a página. Extrato de Conta tem lógica própria
+  // de ordenação, não depende desta função.
+  return (DB.lancamentos||[]).filter(l=>l.contaId===contaId);
 }
 function saldoConta(contaId){
   const c = contaById(contaId); if(!c) return 0;
@@ -5723,7 +5744,10 @@ function htmlContas(){
 // RENDER — LANÇAMENTOS
 // ══════════════════════════════════════════
 let _filtroLancConta = '';
-let _filtroLancIni = '';
+// PADRÃO: últimos 90 dias, para não travar o navegador renderizando os
+// 20+ mil lançamentos de uma vez só. "Todos" continua disponível manualmente
+// (basta apagar a data "De"). A pedido do Fabio (23/07/2026).
+let _filtroLancIni = (()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })();
 let _filtroLancFim = '';
 let _filtroLancContraparte = '';
 let _filtroLancCategoria = '';
@@ -6244,7 +6268,9 @@ function htmlLancamentos(){
 // ══════════════════════════════════════════
 let FRF = {
   colunas: {data:true, conta:true, tipo:true, categoria:true, centroCusto:true, direcionamento:false, contraparte:true, descricao:true, valor:true, origem:false},
-  de:'', ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', direcionamento:'', busca:'', origem:'',
+  // PADRÃO: últimos 90 dias (mesmo motivo de Lançamentos — evitar travar
+  // renderizando a base inteira). "Todos" continua disponível apagando "De".
+  de:(()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })(), ate:'', tipo:'', contaId:'', categoriaId:'', centroCustoId:'', contraparte:'', direcionamento:'', busca:'', origem:'',
   agruparPor:'', gruposAbertos:{}
 };
 const COLUNAS_FRF = [
@@ -6461,7 +6487,7 @@ function htmlRelatorioFlex(){
 
   ${FRF.agruparPor && grupoChart.length ? `<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:8px">Gráfico — Top 10 por ${DIMENSOES_AGRUPAMENTO_FRF.find(d=>d.id===FRF.agruparPor).label}</div>${_svgBarrasGrupos(grupoChart)}</div>` : ''}
 
-  <div class="card"><div class="tabela-mobile-cards" style="overflow-x:auto"><table><thead><tr>${cabecalho}</tr></thead><tbody>${corpoTabela}</tbody></table></div></div>`;
+  <div class="card tabela-mobile-cards" style="overflow-x:auto"><table><thead><tr>${cabecalho}</tr></thead><tbody>${corpoTabela}</tbody></table></div>`;
 }
 function salvarRelatorioFavoritoFRF(){
   const nome = prompt('Nome deste relatório favorito (ex: "Despesas Telasul por Categoria"):');
@@ -7024,7 +7050,41 @@ function salvarEdicaoEmMassaExtrato(){
   setStatus('ok', `✅ ${alterados} lançamento(s) atualizado(s)`);
   setTimeout(()=>{document.getElementById('status').style.display='none';},4000);
 }
-let RelExtrato = { contaId:'', de:'', ate:'', fornecedor:'', categoriaId:'', centroCustoId:'', direcionamento:'' };
+// PADRÃO: últimos 90 dias, mesmo critério usado em Lançamentos e Relatório
+// Flexível — contas antigas/movimentadas podem ter milhares de lançamentos.
+let RelExtrato = { contaId:'', de:(()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })(), ate:'', fornecedor:'', categoriaId:'', centroCustoId:'', direcionamento:'' };
+
+// PERÍODO GERAL DA TELA DE RELATÓRIOS (23/07/2026, a pedido do Fabio): os
+// quadros de fluxo (por categoria, centro de custo, fornecedor, top
+// lançamentos, transferências internas) somavam o histórico completo — com
+// ~24 mil lançamentos isso pesava bastante. Agora tem um período padrão de
+// 90 dias, VISÍVEL na tela (não é um corte escondido), com opção de trocar
+// pra "Todos" quando quiser o histórico completo de verdade. O saldo das
+// contas continua sempre sendo o histórico completo (isso nunca muda, tem
+// que estar sempre certo).
+let _filtroRelDe = (()=>{ const d=new Date(); d.setDate(d.getDate()-90); return d.toISOString().slice(0,10); })();
+let _filtroRelAte = '';
+function aplicarFiltroPeriodoRel(){
+  _filtroRelDe = document.getElementById('rel-periodo-de')?.value||'';
+  _filtroRelAte = document.getElementById('rel-periodo-ate')?.value||'';
+  renderAba();
+}
+function limparFiltroPeriodoRel(){
+  _filtroRelDe=''; _filtroRelAte='';
+  renderAba();
+}
+function htmlFiltroPeriodoRel(){
+  const rotulo = _filtroRelDe||_filtroRelAte ? `Período: ${_filtroRelDe?fmtD(_filtroRelDe):'início'} até ${_filtroRelAte?fmtD(_filtroRelAte):'hoje'}` : 'Mostrando: TODO O HISTÓRICO (pode demorar mais pra carregar)';
+  return `<div class="card" style="margin-bottom:14px;padding:10px 14px">
+    <div class="row" style="align-items:flex-end;gap:8px">
+      ${C('De',`<input type="date" id="rel-periodo-de" value="${_filtroRelDe}" onchange="aplicarFiltroPeriodoRel()">`,'1','140')}
+      ${C('Até',`<input type="date" id="rel-periodo-ate" value="${_filtroRelAte}" onchange="aplicarFiltroPeriodoRel()">`,'1','140')}
+      <div class="campo" style="flex:0;min-width:auto"><button type="button" onclick="limparFiltroPeriodoRel()" style="background:var(--sur);color:var(--txt);border:1px solid var(--bor);border-radius:6px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Ver Tudo</button></div>
+      <div style="flex:1;font-size:11px;color:${_filtroRelDe||_filtroRelAte?'var(--mut)':'var(--acc)'};font-weight:700">${rotulo}</div>
+    </div>
+    <div style="font-size:10px;color:var(--mut);margin-top:4px">Este período afeta os quadros de fluxo abaixo (por categoria, fornecedor, top lançamentos etc). Saldo das contas sempre reflete o histórico completo.</div>
+  </div>`;
+}
 function aplicarFiltroRelExtrato(){
   RelExtrato.contaId = document.getElementById('re-conta')?.value||'';
   RelExtrato.de = document.getElementById('re-de')?.value||'';
@@ -7531,9 +7591,13 @@ function imprimirFechamentoDiario(){
 
 function htmlRelatorios(){
   const contas = (DB.contas||[]).filter(c=>c.ativa!==false);
-  // Fluxo por categoria (todos os lançamentos)
+  // Base de lançamentos já recortada pelo período selecionado (padrão 90
+  // dias) — usada nos quadros de FLUXO abaixo. Saldo das contas continua
+  // usando o histórico completo (DB.lancamentos direto), nunca essa base.
+  const lancRelBase = (DB.lancamentos||[]).filter(l=>(!_filtroRelDe||l.data>=_filtroRelDe)&&(!_filtroRelAte||l.data<=_filtroRelAte));
+  // Fluxo por categoria (dentro do período selecionado)
   const porCategoria = {};
-  (DB.lancamentos||[]).forEach(l=>{
+  lancRelBase.forEach(l=>{
     const cat = categoriaById(l.categoriaId);
     const nome = cat?nomeCompletoCategoria(cat):'(sem categoria)';
     if(!porCategoria[nome]) porCategoria[nome]={entrada:0,saida:0};
@@ -7547,7 +7611,7 @@ function htmlRelatorios(){
   // Fluxo por centro de custo (todos os lançamentos, histórico completo — mesmo
   // espírito do fluxo por Categoria acima, só que agrupado por Centro de Custo)
   const porCentroCustoGeral = {};
-  (DB.lancamentos||[]).forEach(l=>{
+  lancRelBase.forEach(l=>{
     const cc = centroCustoById(l.centroCustoId);
     const nome = cc?nomeCompletoCentroCusto(cc):'(sem centro de custo)';
     if(!porCentroCustoGeral[nome]) porCentroCustoGeral[nome]={entrada:0,saida:0};
@@ -7607,7 +7671,7 @@ function htmlRelatorios(){
 
   // Movimentação por Cliente/Fornecedor (contraparte) nos Lançamentos
   const porContraparte = {};
-  (DB.lancamentos||[]).filter(l=>l.contraparte).forEach(l=>{
+  lancRelBase.filter(l=>l.contraparte).forEach(l=>{
     if(!porContraparte[l.contraparte]) porContraparte[l.contraparte]={entrada:0,saida:0};
     porContraparte[l.contraparte][l.tipo==='entrada'?'entrada':'saida'] += l.valor;
   });
@@ -7626,7 +7690,7 @@ function htmlRelatorios(){
   const catTarifa = categoriaPorNome('Tarifas Bancárias','despesa');
   const porTarifaConta = {};
   if(catTarifa){
-    (DB.lancamentos||[]).filter(l=>l.categoriaId===catTarifa.id).forEach(l=>{
+    lancRelBase.filter(l=>l.categoriaId===catTarifa.id).forEach(l=>{
       const cta = contaById(l.contaId);
       const nome = cta?cta.titular:'(conta removida)';
       porTarifaConta[nome] = (porTarifaConta[nome]||0) + l.valor;
@@ -7652,7 +7716,7 @@ function htmlRelatorios(){
 
   // Fluxo de Caixa Mensal (evolução mês a mês)
   const porMes = {};
-  (DB.lancamentos||[]).forEach(l=>{
+  lancRelBase.forEach(l=>{
     const mes = (l.data||'').slice(0,7);
     if(!mes) return;
     if(!porMes[mes]) porMes[mes]={entrada:0,saida:0};
@@ -7681,17 +7745,17 @@ function htmlRelatorios(){
   const graficoPareto = grafBarraH(catsOrdenadas.slice(0,8).map(([nome,v])=>({label:nome,valor:v.saida})), '#f85149');
 
   // Maiores Lançamentos (Top 15 entradas + Top 15 saidas)
-  const topEntradas = (DB.lancamentos||[]).filter(l=>l.tipo==='entrada').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
-  const topSaidas = (DB.lancamentos||[]).filter(l=>l.tipo==='saida').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
+  const topEntradas = lancRelBase.filter(l=>l.tipo==='entrada').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
+  const topSaidas = lancRelBase.filter(l=>l.tipo==='saida').slice().sort((a,b)=>b.valor-a.valor).slice(0,15);
   const linhasTop = (arr,cor)=>arr.map(l=>{
     const cta = contaById(l.contaId);
     return `<tr><td>${fmtD(l.data)}</td><td>${esc(cta?cta.titular:'-')}</td><td>${esc(l.contraparte||l.descricao||'-')}</td><td style="text-align:right;font-weight:700;color:${cor}">R$ ${fmt(l.valor)}</td></tr>`;
   }).join('') || `<tr><td colspan="4" style="text-align:center;color:var(--mut)">Sem lançamentos</td></tr>`;
 
   // Transferências Entre Contas Próprias (por pareamento real) vs Fluxo de Caixa Real
-  const { idsPareados: idsTransfInternas, suspeitasSemPar } = identificarTransferenciasInternas(DB.lancamentos||[]);
+  const { idsPareados: idsTransfInternas, suspeitasSemPar } = identificarTransferenciasInternas(lancRelBase);
   let transfEntrada=0, transfSaida=0, realEntrada=0, realSaida=0;
-  (DB.lancamentos||[]).forEach(l=>{
+  lancRelBase.forEach(l=>{
     if(idsTransfInternas.has(l.id)){
       if(l.tipo==='entrada') transfEntrada+=l.valor; else transfSaida+=l.valor;
     } else {
@@ -7714,7 +7778,7 @@ function htmlRelatorios(){
   const cartoesPF = _resumoCartoes?.pf?.totalAberto||0;
   const cartoesPJ = _resumoCartoes?.pj?.totalAberto||0;
   const catFatCartao = categoriaPorNome('Fatura Cartão de Crédito','despesa');
-  const lancFatCartao = catFatCartao ? (DB.lancamentos||[]).filter(l=>l.categoriaId===catFatCartao.id) : [];
+  const lancFatCartao = catFatCartao ? lancRelBase.filter(l=>l.categoriaId===catFatCartao.id) : [];
   const totalPagoFaturas = lancFatCartao.reduce((s,l)=>s+l.valor,0);
   const porContaFatura = {};
   lancFatCartao.forEach(l=>{
@@ -7748,16 +7812,15 @@ function htmlRelatorios(){
   const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
   const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
 
-  // Saldo de fechamento do dia — só faz sentido como reconciliação bancária real quando
-  // filtrado por UMA conta específica e sem recorte de categoria/direcionamento/fornecedor
-  // (que são consultas de investigação, não o extrato completo da conta).
+  // REMOVIDO (23/07/2026, a pedido do Fabio): o extrato tinha um cálculo de
+  // "Saldo Anterior/Saldo Atual/Saldo do Dia" que reconstituía o saldo da
+  // conta dia a dia percorrendo TODO o histórico dela toda vez que a conta
+  // era trocada no filtro — pesado e, segundo o Fabio, sem utilidade prática.
+  // O restante do código já lida bem com saldoAcumuladoExtrato=null (as
+  // linhas de saldo simplesmente não aparecem), então manter como null
+  // desativa a funcionalidade sem precisar mexer no resto da tela.
   const extratoEhRecorteItem = !!(RelExtrato.categoriaId || RelExtrato.centroCustoId || RelExtrato.direcionamento || RelExtrato.fornecedor);
   let saldoAcumuladoExtrato = null;
-  if(RelExtrato.contaId && !extratoEhRecorteItem){
-    const contaExt = contaById(RelExtrato.contaId);
-    const anteriores = (DB.lancamentos||[]).filter(l=>l.contaId===RelExtrato.contaId && RelExtrato.de && l.data < RelExtrato.de);
-    saldoAcumuladoExtrato = (contaExt?Number(contaExt.saldoInicial||0):0) + anteriores.reduce((s,l)=>s+(l.tipo==='entrada'?l.valor:-l.valor),0);
-  }
   const nCols = 7 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
   const saldoAnteriorExtrato = saldoAcumuladoExtrato;
   const linhaAnterior = saldoAcumuladoExtrato!==null
@@ -7882,7 +7945,6 @@ function htmlRelatorios(){
     <datalist id="dl-direcionamentos-edtx">${direcionamentosExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>
     ${_extratoModoEdicao ? '<div style="font-size:11px;color:#f0a500;margin-bottom:10px">✏️ Modo edição ativo — altere os campos direto na tabela e clique em "Salvar Alterações" quando terminar. Selecione o período/filtros antes de entrar em edição.</div>' : ''}
     ${!RelExtrato.contaId ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Selecione uma conta específica para ver o saldo de fechamento de cada dia — com "Todas" selecionado, não há um saldo bancário único para mostrar.</div>' : ''}
-    ${extratoEhRecorteItem ? '<div style="font-size:11px;color:var(--mut);margin-bottom:10px">🔎 Filtrando por um item específico (fornecedor/categoria/direcionamento) — o saldo do dia fica oculto porque essa visão mostra só uma parte da conta, não o extrato completo.</div>' : ''}
     <div style="font-size:11px;color:var(--mut);margin-bottom:10px">💡 Toque em um Fornecedor, Categoria ou Direcionamento na tabela abaixo para ver só os lançamentos daquele item, mantendo o período filtrado.</div>`;
 
   // ── Contas a Pagar — Pagas em Período (com filtro CC / texto) ──
@@ -8125,6 +8187,7 @@ function htmlRelatorios(){
   ).join('');
 
   return `<div class="titulo acc">📊 Relatórios</div>
+    ${htmlFiltroPeriodoRel()}
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
       ${btnVoltar}
       <span style="font-size:14px;font-weight:800;color:${catAtual.cor}">${catAtual.label}</span>
