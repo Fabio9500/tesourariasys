@@ -15070,20 +15070,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrbsq0iip1z4t",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-05",
-      "tipo": "saida",
-      "valor": 969.47,
-      "categoriaId": "mrnty0ghhldot",
-      "centroCustoId": "",
-      "contraparte": "Vivo Ba",
-      "descricao": "Debito Convenios",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrg3jcsevw9np",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-07",
