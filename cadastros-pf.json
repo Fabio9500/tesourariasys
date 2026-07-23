@@ -2679,6 +2679,244 @@
       "parentId": "mrwxof227a07a",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw1pipq5",
+      "nome": "Pensão",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw1ejhqn",
+      "nome": "Supermercado",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw2fjn0z",
+      "nome": "Pensão Mainha",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw2syntw",
+      "nome": "Salão",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw25bmun",
+      "nome": "Condomínio",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw2yddgc",
+      "nome": "Tv Aberta",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw276c2m",
+      "nome": "CEF Telasul",
+      "parentId": "mrwxof22zkdfh",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw2f52gh",
+      "nome": "Babá",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw23lk41",
+      "nome": "Cta. Energia",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw28jt41",
+      "nome": "Educação",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw39omx7",
+      "nome": "Secretária",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3i7blq",
+      "nome": "Internet",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw386ezo",
+      "nome": "Impostos",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw312s5j",
+      "nome": "Lazer",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw34dtc7",
+      "nome": "Plano de Saúde",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3vxuqa",
+      "nome": "Padaria",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3gijyc",
+      "nome": "Caseiro",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3x2mdd",
+      "nome": "Culturais",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3149mc",
+      "nome": "Conta Caixa",
+      "parentId": "mrwxof22zkdfh",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw33rc7a",
+      "nome": "Agua e Esgoto",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3vyhl8",
+      "nome": "Veterinário",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3xt33c",
+      "nome": "Eletrica",
+      "parentId": "mrwxof22j3glz",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3hds2h",
+      "nome": "Op. Bolsas",
+      "parentId": "mrwxof24rar3s",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw33ml8n",
+      "nome": "13º Salario",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3gvvcf",
+      "nome": "Imóveis",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw3jdmu6",
+      "nome": "Compra",
+      "parentId": "mrwxof22zkdfh",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw4p0agf",
+      "nome": "Ret. Telasul",
+      "parentId": "mrwxof222vuj1",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw46wbuf",
+      "nome": "Utilidades do Lar",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw48fcgk",
+      "nome": "Hospedagens",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw4auafi",
+      "nome": "Rescisão",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw4dhgeb",
+      "nome": "Telefone",
+      "parentId": "mrw0kj4o476cu",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw4pb5e4",
+      "nome": "Sicred Telasul",
+      "parentId": "mrwxof22zkdfh",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw4yejy0",
+      "nome": "Datas Especiais",
+      "parentId": "mrwxof227a07a",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwxxtw4m86mi",
+      "nome": "C6 Telasul",
+      "parentId": "mrwxof22eje4o",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
     }
   ],
   "centrosCusto": [
