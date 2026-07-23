@@ -14880,20 +14880,6 @@
       "fitid": "csv72781298"
     },
     {
-      "id": "mrmv4enf5chfp",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-29",
-      "tipo": "saida",
-      "valor": 1100,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Iago Santos Ramos",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mri2l163bqdev",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-29",
