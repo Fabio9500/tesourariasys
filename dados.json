@@ -14767,20 +14767,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrgnqv4pk9r3z",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-23",
-      "tipo": "saida",
-      "valor": 700,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Lindomar Leao Costa",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrvsxbeip5ilj",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-23",
