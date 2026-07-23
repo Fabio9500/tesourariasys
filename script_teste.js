@@ -1046,7 +1046,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v1.74';
+const VERSAO = 'v1.75';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1272,7 +1272,14 @@ function opcoesDatalist(lista){
 }
 
 function lancamentosDaConta(contaId){
-  return (DB.lancamentos||[]).filter(l=>l.contaId===contaId).sort((a,b)=>a.data.localeCompare(b.data));
+  // PERFORMANCE (23/07/2026): removida a ordenação (.sort) que existia aqui —
+  // ela rodava a cada chamada sobre os ~24 mil lançamentos, mas nenhum dos
+  // dois lugares que usam esta função (saldoConta/saldoContaAteData) precisa
+  // da ordem, só da soma. Como saldoConta() é chamada repetidas vezes em
+  // cada render do Dashboard (uma vez por conta), essa ordenação inútil
+  // era o que estava travando a página. Extrato de Conta tem lógica própria
+  // de ordenação, não depende desta função.
+  return (DB.lancamentos||[]).filter(l=>l.contaId===contaId);
 }
 function saldoConta(contaId){
   const c = contaById(contaId); if(!c) return 0;
