@@ -87930,23 +87930,6 @@
       "criadoEm": "2026-07-23T02:43:15.912Z"
     },
     {
-      "id": "mrwwpnwobwnu0",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-03",
-      "tipo": "saida",
-      "valor": 120,
-      "categoriaId": "",
-      "centroCustoId": "",
-      "contraparte": "PAGAMENTO PIX-PIX_DEB   58587667572 Neilton Soares Oliveira",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "PAGAMENTO PIX-PIX_DEB   58587667572 Neilton Soares Oliveira",
-      "origem": "ofx",
-      "fitid": "22697467765",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T02:43:15.912Z"
-    },
-    {
       "id": "mrwwpnwo4vwzw",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-06",
