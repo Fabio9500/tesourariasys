@@ -88211,23 +88211,6 @@
       "criadoEm": "2026-07-23T00:17:26.816Z"
     },
     {
-      "id": "mrwri528hgrpc",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-30",
-      "tipo": "saida",
-      "valor": 10000,
-      "categoriaId": "mrnty0ghhldot",
-      "centroCustoId": "",
-      "contraparte": "Fabio Oliveira dos Santos",
-      "direcionamento": "",
-      "direcionamentoId": null,
-      "descricao": "Fábio Oliveira",
-      "origem": "ofx",
-      "fitid": "csv185142577",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-23T00:17:26.816Z"
-    },
-    {
       "id": "mrwri528nt9e5",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-29",
