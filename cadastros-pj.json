@@ -2015,6 +2015,342 @@
       "parentId": "mrw0kj4oc9d61",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qq05gid",
+      "nome": "7- FOLHA DE PAGTº",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qqwpb09",
+      "nome": "Func. Wenderson",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrtezmz",
+      "nome": "Func. Fernando",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrnxx92",
+      "nome": "10- RECBT. P.JURÍDICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrzbk62",
+      "nome": "Obra Execução",
+      "parentId": "mrwrf6qrnxx92",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrgktd8",
+      "nome": "2- DESP. ESPORÁDICAS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrgwrqn",
+      "nome": "Tarifas Bancárias",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrpci65",
+      "nome": "Func. Wesley",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qr77idg",
+      "nome": "6- DESP. P.FÍSICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrbf6mr",
+      "nome": "Bc. Santander",
+      "parentId": "mrwrf6qr77idg",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrjoe0k",
+      "nome": "Func. Davison",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qrsda0a",
+      "nome": "Vendas Telas",
+      "parentId": "mrwrf6qrnxx92",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qroqk1w",
+      "nome": "Func. Jai",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qs89vuz",
+      "nome": "func. Ito",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qs9wox3",
+      "nome": "Func. Adilson",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qsr4q2m",
+      "nome": "Func. Andrey",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qsz2fop",
+      "nome": "Func. Riquelme",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qsod3ny",
+      "nome": "Func. Adeilton",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qsik70o",
+      "nome": "Venda Serviços",
+      "parentId": "mrwrf6qrnxx92",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qsgqjlb",
+      "nome": "Cx.Pessoal",
+      "parentId": "mrwrf6qr77idg",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qs9j2ir",
+      "nome": "Func. Meire",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qskocm5",
+      "nome": "Recbt. Variado",
+      "parentId": "mrwrf6qrnxx92",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qsqsdy1",
+      "nome": "Bc. Bradesco",
+      "parentId": "mrwrf6qr77idg",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qs295rt",
+      "nome": "Maqu.e Equip.",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qsa5mho",
+      "nome": "Manut. Instalações",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qs8l0i5",
+      "nome": "Décimo Terceiro",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qs6pt7t",
+      "nome": "Func. Alice",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qs6ziu5",
+      "nome": "Func. Jeovane",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qssqrxz",
+      "nome": "Pagamentos",
+      "parentId": "mrwrf6qr77idg",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qt2axr0",
+      "nome": "Empréstimo",
+      "parentId": "mrwrf6qr77idg",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qta09h4",
+      "nome": "Tercerizados",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qt1octi",
+      "nome": "Func. Val",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qt8d58i",
+      "nome": "Equipamentos EPIs",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qts0j52",
+      "nome": "Func. Cleobio",
+      "parentId": "mrwrf6qq05gid",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qt28sgn",
+      "nome": "Bc. CEF Shopping",
+      "parentId": "mrwrf6qr77idg",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qt31xg6",
+      "nome": "Fretes",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qtb8okf",
+      "nome": "09- RECBT. DIVERSOS",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qtqvyah",
+      "nome": "C6",
+      "parentId": "mrwrf6qtb8okf",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qtzfpns",
+      "nome": "Recisão",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qt8gyly",
+      "nome": "11- RECBTº P.FISICA",
+      "parentId": null,
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qtk05sv",
+      "nome": "Bc. Santander",
+      "parentId": "mrwrf6qt8gyly",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qt6q140",
+      "nome": "Juros C.Especial",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qtkx5lx",
+      "nome": "CEF Shoping",
+      "parentId": "mrwrf6qt8gyly",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qtl5dp3",
+      "nome": "Rede Proteção",
+      "parentId": "mrwrf6qrnxx92",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qt3s63n",
+      "nome": "Ct. BRA (01)",
+      "parentId": "mrwrf6qr77idg",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qteeb3p",
+      "nome": "Bc. Sicred Construsul",
+      "parentId": "mrwrf6qt8gyly",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qta9rmg",
+      "nome": "Sicred Construsul",
+      "parentId": "mrwrf6qr77idg",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
+    },
+    {
+      "id": "mrwrf6qtyemqt",
+      "nome": "Manut. Automóveis",
+      "parentId": "mrwrf6qrgktd8",
+      "tipo": "despesa",
+      "tipoPFPJ": "ambos"
     }
   ],
   "centrosCusto": [
