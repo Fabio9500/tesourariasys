@@ -113,10 +113,11 @@
       "banco": "SICRED",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 82296.97,
-      "dataSaldoInicial": "2025-12-31",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2024-12-10",
       "ativa": true,
-      "obs": ""
+      "obs": "",
+      "atualizadoEm": "2026-07-23T00:23:51.033Z"
     },
     {
       "id": "mrnty0ghn85rn",
