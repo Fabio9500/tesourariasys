@@ -15042,20 +15042,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrg3jcsevw9np",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-07",
-      "tipo": "saida",
-      "valor": 400,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Rykellmy Almeida",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mr5lyqj76z9my",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-08",
