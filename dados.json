@@ -15070,20 +15070,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mrjlr2ubkks2y",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-13",
-      "tipo": "saida",
-      "valor": 50,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Andrey Lins Miranda",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrzqiiwd7vd4w",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-14",
