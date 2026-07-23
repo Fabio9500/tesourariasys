@@ -15070,20 +15070,6 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
-      "id": "mr3qyk2ppn5ct",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-01-09",
-      "tipo": "saida",
-      "valor": 350,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Cosme Oliveira Miranda",
-      "descricao": "Pix Enviado",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-19T00:00:00.000Z"
-    },
-    {
       "id": "mrzhjxv1ky7tm",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-09",
