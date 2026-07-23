@@ -15154,6 +15154,20 @@
       "criadoEm": "2026-07-19T00:00:00.000Z"
     },
     {
+      "id": "mr5lyqj76z9my",
+      "contaId": "mrnty0ghfjohr",
+      "data": "2026-01-08",
+      "tipo": "saida",
+      "valor": 100,
+      "categoriaId": "mrnty0ghwv185",
+      "centroCustoId": "",
+      "contraparte": "Simoes e Goncalves",
+      "descricao": "Pix Enviado",
+      "origem": "manual",
+      "contaPagarId": null,
+      "criadoEm": "2026-07-19T00:00:00.000Z"
+    },
+    {
       "id": "mr1wvweqno6qi",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-01-09",
