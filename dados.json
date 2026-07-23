@@ -5547,20 +5547,6 @@
       "criadoEm": "2026-07-17T12:00:00.000Z"
     },
     {
-      "id": "mrz05umxituz5",
-      "contaId": "mrnty0ghfjohr",
-      "data": "2026-07-03",
-      "tipo": "saida",
-      "valor": 120,
-      "categoriaId": "mrnty0ghusttx",
-      "centroCustoId": "",
-      "contraparte": "Neilton Soares Oliveira",
-      "descricao": "Pagamento Pix",
-      "origem": "manual",
-      "contaPagarId": null,
-      "criadoEm": "2026-07-17T12:00:00.000Z"
-    },
-    {
       "id": "mrc392te3lu7g",
       "contaId": "mrnty0ghfjohr",
       "data": "2026-07-03",
