@@ -44,11 +44,10 @@ tr:hover td{background:#1e2a3a22}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
 .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;align-items:start;margin-bottom:14px}
 .kpi{width:100%}
-/* Dentro dos cartões de KPI expandidos, a tabela fica numa caixinha com
-   rolagem própria (não a página) — por isso o cabeçalho fixo tem que colar
-   no topo DESSA caixa (top:0), não 50px abaixo do navbar como no resto do
-   sistema. (23/07/2026) */
-.comp-scroll thead th{position:sticky;top:0}
+/* Dentro dos cartões de KPI expandidos a tabela é curta (até 15 linhas) —
+   o cabeçalho fixo não é necessário aqui e estava duplicando visualmente
+   dentro dessa caixa pequena, então fica desligado só neste contexto. (23/07/2026) */
+.comp-scroll thead th{position:static}
 .kpi-l{font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:5px;letter-spacing:.07em}
 .kpi-v{font-size:20px;font-weight:800}
 .kpi-s{font-size:11px;color:var(--mut);margin-top:2px}
