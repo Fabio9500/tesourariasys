@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.5';
+const VERSAO = 'v3.6';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3897,12 +3897,10 @@ function novoLancamento(contaIdPre){
       <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
     <div id="lc-dica-contraparte" style="display:none;font-size:11px;color:var(--acc);margin:-6px 0 8px">🔁 Categoria/direcionamento sugeridos com base no histórico desse beneficiário — pode trocar à vontade.</div>
     <div class="row" id="lc-categoria-wrap">
-      ${C('Categoria',`<select id="lc-categoria-mae" onchange="aoMudarMaeCascata('lc','categoria')">${opcoesCategoriaMae('receita', tipoDaConta(contaIdPre), '', '')}</select>`,'1','160')}
-      ${C('Subcategoria',`<select id="lc-categoria-sub">${opcoesSubcategoria('', '')}</select>`,'1','160')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="lc-categoria-mae" onchange="aoMudarMaeCascata('lc','categoria')" style="flex:1">${opcoesCategoriaMae('receita', tipoDaConta(contaIdPre), '', '')}</select><select id="lc-categoria-sub" style="flex:1">${opcoesSubcategoria('', '')}</select></div>`,'2','260')}
     </div>
     <div class="row">
-      ${C('Centro de Custo',`<select id="lc-cc-mae" onchange="aoMudarMaeCascata('lc','cc')">${opcoesCentroCustoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
-      ${C('Sub-Centro de Custo',`<select id="lc-cc-sub">${opcoesSubCentroCusto('', '')}</select>`,'1','160')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="lc-cc-mae" onchange="aoMudarMaeCascata('lc','cc')" style="flex:1">${opcoesCentroCustoMae(tipoDaConta(contaIdPre), '')}</select><select id="lc-cc-sub" style="flex:1">${opcoesSubCentroCusto('', '')}</select></div>`,'2','260')}
     </div>
     <div class="row">
       ${C('Direcionamento',`<select id="lc-direc-mae" onchange="aoMudarMaeCascata('lc','direc')">${opcoesDirecionamentoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
@@ -4255,12 +4253,10 @@ function editarLancamento(id){
     ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
       <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
     <div class="row" id="elc-categoria-wrap">
-      ${C('Categoria',`<select id="elc-categoria-mae" onchange="aoMudarMaeCascata('elc','categoria')">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa', tipoDaConta(l.contaId), l.centroCustoId, idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select>`,'1','160')}
-      ${C('Subcategoria',`<select id="elc-categoria-sub">${opcoesSubcategoria(idsMaeSub(categoriaById(l.categoriaId)).maeId, idsMaeSub(categoriaById(l.categoriaId)).subId)}</select>`,'1','160')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><select id="elc-categoria-mae" onchange="aoMudarMaeCascata('elc','categoria')" style="flex:1">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa', tipoDaConta(l.contaId), l.centroCustoId, idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select><select id="elc-categoria-sub" style="flex:1">${opcoesSubcategoria(idsMaeSub(categoriaById(l.categoriaId)).maeId, idsMaeSub(categoriaById(l.categoriaId)).subId)}</select></div>`,'2','260')}
     </div>
     <div class="row">
-      ${C('Centro de Custo',`<select id="elc-cc-mae" onchange="aoMudarMaeCascata('elc','cc')">${opcoesCentroCustoMae(tipoDaConta(l.contaId), idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</select>`,'1','160')}
-      ${C('Sub-Centro de Custo',`<select id="elc-cc-sub">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(l.centroCustoId)).maeId, idsMaeSub(centroCustoById(l.centroCustoId)).subId)}</select>`,'1','160')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><select id="elc-cc-mae" onchange="aoMudarMaeCascata('elc','cc')" style="flex:1">${opcoesCentroCustoMae(tipoDaConta(l.contaId), idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</select><select id="elc-cc-sub" style="flex:1">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(l.centroCustoId)).maeId, idsMaeSub(centroCustoById(l.centroCustoId)).subId)}</select></div>`,'2','260')}
     </div>
     <div style="font-size:11px;color:var(--mut);margin:-6px 0 10px">Escolher "🔀 Transferência" aqui substitui este lançamento por um par de Transferência entre as contas escolhidas (remove o lançamento único, cria origem + destino vinculados).</div>
     <div class="row">
