@@ -120,11 +120,27 @@ function carregarCadastrosUnicosOffline(){
   }catch(e){}
 }
 
+// Itens "ambos" ficam gravados fisicamente nos dois arquivos (pf e pj) com o
+// mesmo id — quando o registro é 100% idêntico nos dois (mesmo nome e mesma
+// mãe), a junção só precisa dele uma vez; se divergiu entre os arquivos (ex:
+// mesma sub-categoria pendurada numa mãe diferente em cada lado), mantém as
+// duas por segurança em vez de escolher uma e perder a outra silenciosamente.
+function juntarSemDuplicarId(listaPf, listaPj){
+  const vistos = new Map();
+  const resultado = [];
+  [...listaPf, ...listaPj].forEach(item=>{
+    const anterior = vistos.get(item.id);
+    if(anterior && anterior.nome===item.nome && anterior.parentId===item.parentId) return; // idêntico, já incluído
+    vistos.set(item.id, item);
+    resultado.push(item);
+  });
+  return resultado;
+}
 function aplicarCadastrosUnicosNaDB(){
   const marcar = (lista, padrao) => (lista||[]).map(i => ({...i, tipoPFPJ: i.tipoPFPJ || padrao}));
-  DB.categorias       = [...marcar(CADASTRO_PF.categorias,'PF'),       ...marcar(CADASTRO_PJ.categorias,'PJ')];
-  DB.centrosCusto      = [...marcar(CADASTRO_PF.centrosCusto,'PF'),     ...marcar(CADASTRO_PJ.centrosCusto,'PJ')];
-  DB.direcionamentos  = [...marcar(CADASTRO_PF.direcionamentos,'PF'),  ...marcar(CADASTRO_PJ.direcionamentos,'PJ')];
+  DB.categorias       = juntarSemDuplicarId(marcar(CADASTRO_PF.categorias,'PF'),      marcar(CADASTRO_PJ.categorias,'PJ'));
+  DB.centrosCusto      = juntarSemDuplicarId(marcar(CADASTRO_PF.centrosCusto,'PF'),    marcar(CADASTRO_PJ.centrosCusto,'PJ'));
+  DB.direcionamentos  = juntarSemDuplicarId(marcar(CADASTRO_PF.direcionamentos,'PF'), marcar(CADASTRO_PJ.direcionamentos,'PJ'));
 }
 
 // Grava um item (categoria / centro de custo / direcionamento) no(s)
@@ -1190,7 +1206,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.11';
+const VERSAO = 'v3.12';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
