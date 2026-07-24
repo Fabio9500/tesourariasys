@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.8';
+const VERSAO = 'v3.9';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -2703,12 +2703,78 @@ async function salvarEdicaoCategoria(id){
   FM(); renderAba();
 }
 function excluirCategoria(id){
-  const emUso = (DB.lancamentos||[]).some(l=>l.categoriaId===id) || (DB.contasPagar||[]).some(cp=>cp.categoriaId===id);
-  if(emUso){ ME('e-cat-ed','Esta categoria já está em uso em lançamentos ou contas a pagar e não pode ser excluída.'); return; }
   const temFilhas = (DB.categorias||[]).some(c=>c.parentId===id);
   if(temFilhas){ ME('e-cat-ed','Esta categoria tem subcategorias — exclua ou mova as subcategorias primeiro.'); return; }
+  const emUso = (DB.lancamentos||[]).some(l=>l.categoriaId===id) || (DB.contasPagar||[]).some(cp=>cp.categoriaId===id) || (DB.contasReceber||[]).some(cr=>cr.categoriaId===id) || (DB.chequesEmitidos||[]).some(ce=>ce.categoriaId===id);
+  if(emUso){ abrirSubstituirEExcluir('categoria', id); return; }
   const c = categoriaById(id);
   CF('Excluir esta categoria?', async ()=>{ setStatus('saving','⏳ Excluindo...'); await salvarItemCadastroUnico('categorias', c, true); FM(); renderAba(); });
+}
+// ══════════════════════════════════════════
+// SUBSTITUIR E EXCLUIR (24/07/2026, a pedido do Fabio) — quando Categoria,
+// Centro de Custo ou Direcionamento (mãe ou sub) já está em uso e por isso
+// não pode ser simplesmente excluído, esta tela deixa escolher por qual
+// substituir: todos os lançamentos/contas a pagar/contas a receber/cheques
+// emitidos que usam o item antigo passam a usar o novo (mesmo nome exibido
+// se o novo for equivalente — é assim que se resolve categoria duplicada
+// sem perder a classificação já feita), e só então o item antigo é
+// removido do cadastro único.
+// ══════════════════════════════════════════
+function _cfgSubstituir(tipo){
+  return {
+    categoria: {campo:'categorias', campoLanc:'categoriaId', getById:categoriaById, opcoesMae:opcoesCategoriaMae, opcoesSub:opcoesSubcategoria, nomeCompleto:nomeCompletoCategoria, titulo:'Nova Categoria'},
+    cc:        {campo:'centrosCusto', campoLanc:'centroCustoId', getById:centroCustoById, opcoesMae:opcoesCentroCustoMae, opcoesSub:opcoesSubCentroCusto, nomeCompleto:nomeCompletoCentroCusto, titulo:'Novo Centro de Custo'},
+    direc:     {campo:'direcionamentos', campoLanc:'direcionamentoId', getById:direcionamentoById, opcoesMae:opcoesDirecionamentoMae, opcoesSub:opcoesSubDirecionamento, nomeCompleto:nomeCompletoDirecionamento, titulo:'Novo Direcionamento'},
+  }[tipo];
+}
+function abrirSubstituirEExcluir(tipo, id){
+  const cfg = _cfgSubstituir(tipo);
+  const item = cfg.getById(id);
+  if(!item) return;
+  const nomeAtual = cfg.nomeCompleto(item);
+  AM(`🔀 Substituir "${esc(nomeAtual)}"`,`
+    ${EH('e-sub')}
+    <div style="font-size:12px;color:var(--mut);margin-bottom:14px;line-height:1.5">
+      "${esc(nomeAtual)}" já está em uso e por isso não pode ser simplesmente excluído. Escolha por qual substituir — todos os lançamentos, contas a pagar/receber e cheques emitidos que usam "${esc(nomeAtual)}" passam a usar o escolhido, e o item antigo é removido do cadastro. Essa ação não pode ser desfeita.
+    </div>
+    <div class="row">
+      ${C(cfg.titulo, `<select id="sub-${tipo}-mae" onchange="aoMudarMaeCascataFixo('sub','${tipo}')">${cfg.opcoesMae('', '')}</select>`,'1','160')}
+      ${C('Sub', `<select id="sub-${tipo}-sub">${cfg.opcoesSub('', '')}</select>`,'1','160')}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      ${B('✅ Substituir e Excluir','confirmarSubstituirEExcluir(\''+tipo+'\',\''+id+'\')','var(--acc)')}
+      ${B('Cancelar','FM()','var(--sur)','var(--txt)')}
+    </div>
+  `);
+}
+async function confirmarSubstituirEExcluir(tipo, idAntigo){
+  const cfg = _cfgSubstituir(tipo);
+  const idNovo = valorFinalCascata('sub', tipo);
+  if(!idNovo){ ME('e-sub','Escolha o item que vai substituir.'); return; }
+  if(idNovo===idAntigo){ ME('e-sub','Escolha um item diferente do que está sendo excluído.'); return; }
+  const item = cfg.getById(idAntigo);
+  if(!item) return;
+  const nomeAtual = cfg.nomeCompleto(item);
+  const nomeNovo = cfg.nomeCompleto(cfg.getById(idNovo));
+  CF(`Substituir "${nomeAtual}" por "${nomeNovo}" em todos os lançamentos e contas, e excluir "${nomeAtual}" do cadastro?`, async ()=>{
+    setStatus('saving','⏳ Carregando histórico completo...');
+    await garantirAnosCarregados('','');
+    setStatus('saving','⏳ Substituindo...');
+    const campoLanc = cfg.campoLanc;
+    const lancamentos = (DB.lancamentos||[]).map(l=>{
+      if(l[campoLanc]!==idAntigo) return l;
+      const patch = {...l, [campoLanc]:idNovo};
+      if(tipo==='direc') patch.direcionamento = nomeNovo; // campo texto legado, mantido em paralelo
+      return patch;
+    });
+    const contasPagar = (DB.contasPagar||[]).map(x=>x[campoLanc]===idAntigo?{...x,[campoLanc]:idNovo}:x);
+    const contasReceber = (DB.contasReceber||[]).map(x=>x[campoLanc]===idAntigo?{...x,[campoLanc]:idNovo}:x);
+    const chequesEmitidos = (DB.chequesEmitidos||[]).map(x=>x[campoLanc]===idAntigo?{...x,[campoLanc]:idNovo}:x);
+    salvar({...DB, lancamentos, contasPagar, contasReceber, chequesEmitidos});
+    setStatus('saving','⏳ Removendo do cadastro...');
+    await salvarItemCadastroUnico(cfg.campo, item, true);
+    FM(); renderAba();
+  });
 }
 
 function novoCentroCusto(){
@@ -2796,10 +2862,10 @@ async function salvarEdicaoCC(id){
   FM(); renderAba();
 }
 function excluirCC(id){
-  const emUso = (DB.lancamentos||[]).some(l=>l.centroCustoId===id) || (DB.contasPagar||[]).some(cp=>cp.centroCustoId===id);
-  if(emUso){ ME('e-cc-ed','Este centro de custo já está em uso e não pode ser excluído.'); return; }
   const temFilhos = (DB.centrosCusto||[]).some(c=>c.parentId===id);
   if(temFilhos){ ME('e-cc-ed','Este centro de custo tem sub-centros — exclua ou mova os sub-centros primeiro.'); return; }
+  const emUso = (DB.lancamentos||[]).some(l=>l.centroCustoId===id) || (DB.contasPagar||[]).some(cp=>cp.centroCustoId===id) || (DB.contasReceber||[]).some(cr=>cr.centroCustoId===id) || (DB.chequesEmitidos||[]).some(ce=>ce.centroCustoId===id);
+  if(emUso){ abrirSubstituirEExcluir('cc', id); return; }
   const cc = centroCustoById(id);
   CF('Excluir este centro de custo?', async ()=>{ setStatus('saving','⏳ Excluindo...'); await salvarItemCadastroUnico('centrosCusto', cc, true); FM(); renderAba(); });
 }
@@ -2976,9 +3042,8 @@ function excluirDirecionamento(id){
   const d = direcionamentoById(id); if(!d) return;
   const temFilhos = (DB.direcionamentos||[]).some(x=>x.parentId===id);
   if(temFilhos){ ME('e-drc-ed','Este direcionamento tem subdirecionamentos — exclua ou mova os subdirecionamentos primeiro.'); return; }
-  const nomeCompleto = nomeCompletoDirecionamento(d);
-  const emUso = (DB.lancamentos||[]).some(l=>l.direcionamento===nomeCompleto);
-  if(emUso){ ME('e-drc-ed','Este direcionamento já está em uso em lançamentos e não pode ser excluído. Você pode editá-lo se quiser só renomear.'); return; }
+  const emUso = (DB.lancamentos||[]).some(l=>l.direcionamentoId===id) || (DB.contasPagar||[]).some(cp=>cp.direcionamentoId===id) || (DB.contasReceber||[]).some(cr=>cr.direcionamentoId===id) || (DB.chequesEmitidos||[]).some(ce=>ce.direcionamentoId===id);
+  if(emUso){ abrirSubstituirEExcluir('direc', id); return; }
   CF('Excluir este direcionamento?', async ()=>{ setStatus('saving','⏳ Excluindo...'); await salvarItemCadastroUnico('direcionamentos', d, true); FM(); renderAba(); });
 }
 
