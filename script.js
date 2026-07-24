@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.7';
+const VERSAO = 'v3.8';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -7403,7 +7403,7 @@ function imprimirReceberPeriodo(){
   const kpis = `<div class="kpi-print"><div>Total Recebido no Filtro<b style="color:#0a7d33">R$ ${fmt(_impReceberTotal)}</b></div></div>`;
   imprimirRelatorio('Contas a Receber — Recebimentos por Período', partes.join(' · ')||'Todos os recebimentos', kpis+`<table><thead><tr><th>Data Recebimento</th><th>Cliente</th><th>C. Custo</th><th>Conta</th><th style="text-align:right">Valor Recebido</th></tr></thead><tbody>${_impReceberLinhas}</tbody></table>`);
 }
-let _impExtratoEnt = 0, _impExtratoSai = 0, _impExtratoCabecalho = '', _impExtratoLinhas = '';
+let _impExtratoEnt = 0, _impExtratoSai = 0, _impExtratoResultado = 0, _impExtratoCabecalho = '', _impExtratoLinhas = '';
 let _impExtratoRows = [], _impExtratoMostraConta = false;
 let PrefsImpressaoExtrato = { conta:true, fornecedor:true, descricao:true, categoria:true, centroCusto:true, direcionamento:true, orientacao:'landscape' };
 function abrirOpcoesImpressaoExtrato(){
@@ -7453,7 +7453,7 @@ function imprimirExtrato(){
   const kpis = `<div class="kpi-print">
     <div>Entradas<b style="color:#0a7d33">R$ ${fmt(_impExtratoEnt)}</b></div>
     <div>Saídas<b style="color:#b3261e">R$ ${fmt(_impExtratoSai)}</b></div>
-    <div>Resultado<b>R$ ${fmt(_impExtratoEnt-_impExtratoSai)}</b></div>
+    <div>Resultado<b>R$ ${fmt(_impExtratoResultado)}</b></div>
   </div>`;
   // Se nenhuma coluna opcional estiver marcada, sai completo (todas)
   const p = PrefsImpressaoExtrato;
@@ -7955,6 +7955,7 @@ function htmlRelatorios(){
   });
   if(_saldoImp!==null) impRows.push({tipo:'saldo', label:'Saldo Atual', valor:_saldoImp});
   _impExtratoEnt = extratoTotEnt; _impExtratoSai = extratoTotSai;
+  _impExtratoResultado = (saldoAnteriorExtrato!==null) ? (saldoAnteriorExtrato + extratoTotEnt - extratoTotSai) : (extratoTotEnt - extratoTotSai);
   _impExtratoCabecalho = cabecalhoExtrato; _impExtratoLinhas = linhasExtrato;
   _impExtratoRows = impRows; _impExtratoMostraConta = !RelExtrato.contaId;
   _extratoIdsEditaveis = extratoLista.filter(l=>!l.origem || l.origem==='manual' || l.origem==='ofx').map(l=>l.id);
@@ -8036,7 +8037,15 @@ function htmlRelatorios(){
       <div class="kpis" style="margin-bottom:10px">
         <div class="card kpi"><div class="kpi-l">Entradas no filtro</div><div class="kpi-v" style="color:#3fb950">R$ ${fmt(extratoTotEnt)}</div></div>
         <div class="card kpi"><div class="kpi-l">Saídas no filtro</div><div class="kpi-v" style="color:#f85149">R$ ${fmt(extratoTotSai)}</div></div>
-        <div class="card kpi"><div class="kpi-l">Resultado</div><div class="kpi-v" style="color:${(extratoTotEnt-extratoTotSai)<0?'var(--red)':'var(--acc)'}">R$ ${fmt(extratoTotEnt-extratoTotSai)}</div></div>
+      ${(()=>{
+        // RESULTADO CONSIDERANDO SALDO INICIAL (24/07/2026, a pedido do Fabio): quando o
+        // extrato está filtrado por UMA conta específica (saldoAnteriorExtrato disponível),
+        // o Resultado passa a somar o saldo inicial daquela conta — assim bate com o Saldo
+        // Atual mostrado embaixo, em vez de mostrar só a soma dos lançamentos do período
+        // (que ignorava o saldo inicial não coberto por lançamento registrado).
+        const resultadoExibido = (saldoAnteriorExtrato!==null) ? (saldoAnteriorExtrato + extratoTotEnt - extratoTotSai) : (extratoTotEnt - extratoTotSai);
+        return `<div class="card kpi"><div class="kpi-l">Resultado${saldoAnteriorExtrato!==null?' (com saldo inicial)':''}</div><div class="kpi-v" style="color:${resultadoExibido<0?'var(--red)':'var(--acc)'}">R$ ${fmt(resultadoExibido)}</div></div>`;
+      })()}
       </div>
       <table><thead class="thead-fixo">${cabecalhoExtrato}</thead><tbody>${linhasExtrato}</tbody></table>
     </div>`;
