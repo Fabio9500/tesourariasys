@@ -48,8 +48,12 @@ tr:hover td{background:#1e2a3a22}
    sistema, só que relativo à caixinha pequena (top:0) em vez do navbar.
    white-space:nowrap impede o texto de quebrar em 2 linhas (isso que
    parecia "caixa dupla" — era o cabeçalho dobrando de altura). (23/07/2026) */
-.comp-scroll thead,.tabela-mobile-cards thead{position:sticky;top:0;z-index:20;background:var(--card)}
-.comp-scroll thead th,.tabela-mobile-cards thead th{position:sticky;top:0;white-space:nowrap;z-index:20;background:var(--card)}
+/* Cabeçalho fixo (sticky) causava duplicação visual nessas duas tabelas
+   específicas mesmo depois de várias tentativas de correção — a pedido do
+   Fabio, desistimos do "congelado" aqui: cabeçalho normal, simples, uma
+   linha só, rola junto com o conteúdo. (23/07/2026) */
+.comp-scroll thead,.tabela-mobile-cards thead{position:static}
+.comp-scroll thead th,.tabela-mobile-cards thead th{position:static;white-space:nowrap}
 /* Bug conhecido do Chrome: cabeçalho fixo (sticky) em conjunto com bordas
    "coladas" (border-collapse:collapse, usado no resto do sistema) faz a
    primeira linha de dados "fantasmar" atrás do cabeçalho. Nessas duas
