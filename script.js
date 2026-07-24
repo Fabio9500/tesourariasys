@@ -1206,7 +1206,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.12';
+const VERSAO = 'v3.13';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -8699,10 +8699,16 @@ function htmlCadastros(){
     `<button type="button" class="tab${sub===a.id?' ativo':''}" style="background:${sub===a.id?'var(--acc)':'var(--sur)'};color:${sub===a.id?'#000':'var(--txt)'};padding:6px 14px" onclick="irParaCadastro('${a.id}')">${a.r}</button>`
   ).join('')}<button type="button" class="tab" style="background:var(--pur);color:#fff;padding:6px 14px" onclick="abrirClassificacaoPFPJ()">🔀 Classificar PF/PJ</button></div>`;
 
+  // Mesmo filtro global PF/PJ do Dashboard (afeta Contas, Lançamentos, Contas a
+  // Pagar/Receber) — aqui também, pra não misturar cadastro de um tipo com o
+  // do outro quando o Fabio já escolheu "Somente PF" ou "Somente PJ".
+  const filtroTipo = _filtroDashPFPJ==='todos' ? null : _filtroDashPFPJ;
+  const soDoTipo = lista => (lista||[]).filter(i=>itemValidoParaPFPJ(i, filtroTipo));
+
   let corpo = '';
   if(sub==='categorias'){
-    const receitas = (DB.categorias||[]).filter(c=>c.tipo==='receita');
-    const despesas = (DB.categorias||[]).filter(c=>c.tipo==='despesa');
+    const receitas = soDoTipo(DB.categorias).filter(c=>c.tipo==='receita');
+    const despesas = soDoTipo(DB.categorias).filter(c=>c.tipo==='despesa');
     const vinculoTxt = c => (c.centrosCustoIds||[]).length ? (c.centrosCustoIds||[]).map(id=>{const cc=centroCustoById(id); return cc?esc(nomeCompletoCentroCusto(cc)):'';}).filter(Boolean).join(', ') : '<span style="color:var(--mut)">Todos</span>';
     const linha = (c, sub) => `<tr${sub?' style="background:var(--bg)"':''}><td>${sub?'&nbsp;&nbsp;— ':''}${esc(c.nome)}</td><td>${badgePFPJ(c.tipoPFPJ)}</td><td style="font-size:11px">${vinculoTxt(c)}</td><td>${B('✏','editarCategoria(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
     const arvore = lista => {
@@ -8725,8 +8731,8 @@ function htmlCadastros(){
       </div>`;
   } else if(sub==='centrocusto'){
     const linhaCC = (cc, subN) => `<tr${subN?' style="background:var(--bg)"':''}><td>${subN?'&nbsp;&nbsp;— ':''}${esc(cc.nome)}</td><td>${badgePFPJ(cc.tipoPFPJ)}</td><td>${esc(cc.obs||'-')}</td><td>${B('✏','editarCentroCusto(\''+cc.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
-    const paisCC = (DB.centrosCusto||[]).filter(c=>!c.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
-    const filhosDeCC = pid => (DB.centrosCusto||[]).filter(c=>c.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    const paisCC = soDoTipo(DB.centrosCusto).filter(c=>!c.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    const filhosDeCC = pid => soDoTipo(DB.centrosCusto).filter(c=>c.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
     const linhas = paisCC.map(p=>linhaCC(p,false)+filhosDeCC(p.id).map(f=>linhaCC(f,true)).join('')).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum centro de custo cadastrado</td></tr>';
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Novo Centro de Custo','novoCentroCusto()','var(--acc)')}</div>
@@ -8734,15 +8740,15 @@ function htmlCadastros(){
       <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='direcionamentos'){
     const linhaDrc = (d, subN) => `<tr${subN?' style="background:var(--bg)"':''}><td>${subN?'&nbsp;&nbsp;— ':''}${esc(d.nome)}</td><td>${badgePFPJ(d.tipoPFPJ)}</td><td>${esc(d.obs||'-')}</td><td>${B('✏','editarDirecionamento(\''+d.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`;
-    const paisDrc = (DB.direcionamentos||[]).filter(d=>!d.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
-    const filhosDeDrc = pid => (DB.direcionamentos||[]).filter(d=>d.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    const paisDrc = soDoTipo(DB.direcionamentos).filter(d=>!d.parentId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+    const filhosDeDrc = pid => soDoTipo(DB.direcionamentos).filter(d=>d.parentId===pid).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
     const linhas = paisDrc.map(p=>linhaDrc(p,false)+filhosDeDrc(p.id).map(f=>linhaDrc(f,true)).join('')).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--mut)">Nenhum direcionamento cadastrado</td></tr>';
     corpo = `
       <div class="row" style="margin-bottom:12px">${B('➕ Novo Direcionamento','novoDirecionamento()','var(--acc)')}</div>
       <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Direcionamentos cadastrados aqui aparecem como sugestão no campo "Direcionamento" dos Lançamentos (ex: Obra X, Setor Y). Direcionamentos indentados com "—" são subdirecionamentos — a sugestão vem no formato "Mãe: Sub".</div>
       <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>Observações</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='fornecedores'){
-    const linhas = (DB.fornecedores||[]).map(f=>`<tr>
+    const linhas = soDoTipo(DB.fornecedores).map(f=>`<tr>
       <td>${esc(f.nome)}</td><td>${badgePFPJ(f.tipoPFPJ)}</td><td>${esc(f.cpfCnpj||'-')}</td><td>${esc(f.telefone||'-')}</td><td>${esc(f.email||'-')}</td>
       <td>${B('✏','editarFornecedor(\''+f.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--mut)">Nenhum fornecedor cadastrado</td></tr>';
     corpo = `
@@ -8750,7 +8756,7 @@ function htmlCadastros(){
       <div style="font-size:11px;color:var(--mut);margin-bottom:10px">Fornecedores cadastrados aqui aparecem como sugestão automática no campo "Favorecido" das Contas a Pagar — só para contas do mesmo PF/PJ (ou "Ambos").</div>
       <div class="card"><table><thead><tr><th>Nome</th><th>PF/PJ</th><th>CPF/CNPJ</th><th>Telefone</th><th>E-mail</th><th></th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   } else if(sub==='clientes'){
-    const linhas = (DB.clientes||[]).map(c=>`<tr>
+    const linhas = soDoTipo(DB.clientes).map(c=>`<tr>
       <td>${esc(c.nome)}</td><td>${badgePFPJ(c.tipoPFPJ)}</td><td>${esc(c.cpfCnpj||'-')}</td><td>${esc(c.telefone||'-')}</td><td>${esc(c.email||'-')}</td>
       <td>${B('✏','editarCliente(\''+c.id+'\')','var(--sur)','var(--txt)',1)}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--mut)">Nenhum cliente cadastrado</td></tr>';
     corpo = `
@@ -8810,7 +8816,7 @@ function htmlCadastros(){
       </div>`;
   }
 
-  return `<div class="titulo acc">🗂 Cadastros</div>${tabsHtml}${corpo}`;
+  return `<div class="titulo acc">🗂 Cadastros</div>${barraFiltroPFPJGlobal()}${tabsHtml}${corpo}`;
 }
 
 // ── CRUD Usuários (Master/Operador/Consulta) ──
