@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v2.3';
+const VERSAO = 'v2.4';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -5744,7 +5744,7 @@ function kpiCard(chave, label, valorHtml, subtitulo, composicaoHtml){
       <div class="kpi-l">${label}</div>
     </div>`;
   }
-  return `<div class="card kpi" onclick="toggleKpi('${chave}')" style="cursor:pointer">
+  return `<div class="card kpi" onclick="toggleKpi('${chave}')" style="cursor:pointer${aberto?';grid-column:span 2':''}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start">
       <div style="flex:1">
         <div class="kpi-l">${label}</div>
@@ -5753,7 +5753,7 @@ function kpiCard(chave, label, valorHtml, subtitulo, composicaoHtml){
       </div>
       <span style="font-size:11px;color:var(--mut);margin-left:6px">${aberto?'▲':'▼'}</span>
     </div>
-    ${aberto&&composicaoHtml ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bor)" onclick="event.stopPropagation()">${composicaoHtml}</div>` : ''}
+    ${aberto&&composicaoHtml ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bor);max-height:340px;overflow-y:auto" onclick="event.stopPropagation()">${composicaoHtml}</div>` : ''}
   </div>`;
 }
 function htmlDashboard(){
@@ -5826,9 +5826,18 @@ function htmlDashboard(){
   <div style="font-size:11px;color:var(--mut);margin-top:6px">Toque em uma conta acima para ver o extrato dela (com saldo do dia).</div>`;
   const compSaldoPF = `<table><tbody>${contasTodasAtivas.filter(c=>c.tipo==='PF').map(c=>`<tr onclick="abrirContaNoExtrato('${c.id}')" style="cursor:pointer"><td>${esc(c.titular)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}</tbody></table>`;
   const compSaldoPJ = `<table><tbody>${contasTodasAtivas.filter(c=>c.tipo==='PJ').map(c=>`<tr onclick="abrirContaNoExtrato('${c.id}')" style="cursor:pointer"><td>${esc(c.titular)}</td><td style="text-align:right;font-weight:700">R$ ${fmt(saldoConta(c.id))}</td></tr>`).join('')}</tbody></table>`;
-  const compPagar = pendentes.length ? `<table><tbody>${pendentes.slice(0,10).map(cp=>`<tr><td>${esc(cp.favorecido)}</td><td>${fmtD(cp.vencimento)}</td><td style="text-align:right;color:${diffDias(cp.vencimento)<0?'var(--red)':'inherit'}">R$ ${fmt(cp.valor)}</td></tr>`).join('')}</tbody></table>${pendentes.length>10?`<div style="font-size:11px;color:var(--mut);margin-top:6px">+ ${pendentes.length-10} outra(s) — veja a aba Contas a Pagar</div>`:''}` : '';
-  const compReceber = receberPendentes.length ? `<table><tbody>${receberPendentes.slice(0,10).map(cr=>`<tr><td>${esc(cr.cliente)}</td><td>${fmtD(cr.vencimento)}</td><td style="text-align:right;color:${diffDias(cr.vencimento)<0?'var(--red)':'inherit'}">R$ ${fmt(cr.valor)}</td></tr>`).join('')}</tbody></table>${receberPendentes.length>10?`<div style="font-size:11px;color:var(--mut);margin-top:6px">+ ${receberPendentes.length-10} outra(s) — veja a aba Contas a Receber</div>`:''}` : '';
-  const compCheques = chequesPend.length ? `<table><tbody>${chequesPend.slice(0,10).map(c=>`<tr><td>${esc(c.favorecido)}</td><td>${fmtD(c.dataPrevista)}</td><td style="text-align:right">R$ ${fmt(c.valor)}</td></tr>`).join('')}</tbody></table>` : '';
+  const compPagar = pendentes.length ? `<table><thead><tr><th>Fornecedor</th><th>Vencimento</th><th>Centro de Custo</th><th>Conta</th><th style="text-align:right">Valor</th></tr></thead><tbody>${pendentes.slice(0,15).map(cp=>{
+    const cc = centroCustoById(cp.centroCustoId); const cta = contaById(cp.contaId);
+    return `<tr onclick="event.stopPropagation();irPara('contaspagar')" style="cursor:pointer"><td>${esc(cp.favorecido)}</td><td style="color:${diffDias(cp.vencimento)<0?'var(--red)':'inherit'}">${fmtD(cp.vencimento)}</td><td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cp.valor)}</td></tr>`;
+  }).join('')}</tbody></table>${pendentes.length>15?`<div style="font-size:11px;color:var(--mut);margin-top:6px">+ ${pendentes.length-15} outra(s) — veja a aba Contas a Pagar</div>`:''}` : '';
+  const compReceber = receberPendentes.length ? `<table><thead><tr><th>Cliente</th><th>Vencimento</th><th>Centro de Custo</th><th>Conta</th><th style="text-align:right">Valor</th></tr></thead><tbody>${receberPendentes.slice(0,15).map(cr=>{
+    const cc = centroCustoById(cr.centroCustoId); const cta = contaById(cr.contaId);
+    return `<tr onclick="event.stopPropagation();irPara('contasreceber')" style="cursor:pointer"><td>${esc(cr.cliente)}</td><td style="color:${diffDias(cr.vencimento)<0?'var(--red)':'inherit'}">${fmtD(cr.vencimento)}</td><td>${esc(cc?nomeCompletoCentroCusto(cc):'-')}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(cr.valor)}</td></tr>`;
+  }).join('')}</tbody></table>${receberPendentes.length>15?`<div style="font-size:11px;color:var(--mut);margin-top:6px">+ ${receberPendentes.length-15} outra(s) — veja a aba Contas a Receber</div>`:''}` : '';
+  const compCheques = chequesPend.length ? `<table><thead><tr><th>Favorecido</th><th>Previsão</th><th>Conta Emissora</th><th style="text-align:right">Valor</th></tr></thead><tbody>${chequesPend.slice(0,15).map(c=>{
+    const cta = contaById(c.contaId);
+    return `<tr><td>${esc(c.favorecido)}</td><td>${fmtD(c.dataPrevista)}</td><td>${esc(cta?cta.titular:'-')}</td><td style="text-align:right;font-weight:700">R$ ${fmt(c.valor)}</td></tr>`;
+  }).join('')}</tbody></table>` : '';
   const compPatrimonio = `<table><tbody>
     ${(DB.investimentos||[]).map(i=>`<tr><td>${esc(i.instituicao)} (${esc(i.tipo)})</td><td style="text-align:right">R$ ${fmt(i.valorAtual)}</td></tr>`).join('')}
     ${(DB.previdencias||[]).map(p=>`<tr><td>${esc(p.instituicao)} (${esc(p.tipo)})</td><td style="text-align:right">R$ ${fmt(p.valorAtual)}</td></tr>`).join('')}
