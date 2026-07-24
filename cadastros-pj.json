@@ -55,20 +55,6 @@
       "tipo": "despesa"
     },
     {
-      "id": "mrw0kj4oet80i",
-      "nome": "2- DESP. ESPOR�DICAS",
-      "parentId": null,
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
-      "id": "mrw0kj4oal2yn",
-      "nome": "Tarifas Banc�rias",
-      "parentId": "mrw0kj4oet80i",
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
       "id": "mrw0kj4oilclp",
       "nome": "[Caixa Telasul]",
       "parentId": null,
@@ -83,13 +69,6 @@
       "tipoPFPJ": "ambos"
     },
     {
-      "id": "mrw0kj4oc9d61",
-      "nome": "6- DESP. P.F�SICA",
-      "parentId": null,
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
       "id": "mrw0kj4oggfyo",
       "nome": "Pagamentos",
       "parentId": "mrw0kj4oc9d61",
@@ -98,7 +77,7 @@
     },
     {
       "id": "mrw0kj4pn6c5i",
-      "nome": "M�o de Obra Extra",
+      "nome": "Mão de Obra Extra",
       "parentId": "jj3f8pt3f2h3e",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -139,13 +118,6 @@
       "tipoPFPJ": "ambos"
     },
     {
-      "id": "mrw0kj4p0f4lo",
-      "nome": "10- RECBT. P.JUR�DICA",
-      "parentId": null,
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
       "id": "mrw0kj4pcgshe",
       "nome": "Vendas Telas",
       "parentId": "mrw0kj4p0f4lo",
@@ -161,8 +133,8 @@
     },
     {
       "id": "mrw0kj4py80xu",
-      "nome": "Emp. Banc�rio",
-      "parentId": "mrw0kj4oet80i",
+      "nome": "Emp. Bancário",
+      "parentId": "zzrrdyanjbu30",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
@@ -189,7 +161,7 @@
     },
     {
       "id": "mrw0kj4pti6oy",
-      "nome": "Alimenta��o",
+      "nome": "Alimentação",
       "parentId": "jj3f8pt3f2h3e",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -238,8 +210,8 @@
     },
     {
       "id": "mrw0kj4qpkpya",
-      "nome": "Obra Conclu�da",
-      "parentId": "mrw0kj4p0f4lo",
+      "nome": "Obra Concluída",
+      "parentId": "mrwrf6qrnxx92",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
@@ -251,30 +223,9 @@
       "tipoPFPJ": "ambos"
     },
     {
-      "id": "mrw0kj4qwowe5",
-      "nome": "[Conta Cart�o]",
-      "parentId": null,
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
-      "id": "mrw0kj4q84eah",
-      "nome": "[Conv. It�o Corrente]",
-      "parentId": null,
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
       "id": "mrw0kj4q8ib7m",
-      "nome": "Cons. Cr�dito",
+      "nome": "Cons. Crédito",
       "parentId": "o38mz449dr4hg",
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
-      "id": "mrw0kj4q3sgvz",
-      "nome": "Venda Servi�os",
-      "parentId": "mrw0kj4p0f4lo",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
@@ -295,13 +246,6 @@
     {
       "id": "mrw0kj4qx3fys",
       "nome": "Recbt. Variado",
-      "parentId": "mrw0kj4p0f4lo",
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
-      "id": "mrw0kj4qb81it",
-      "nome": "Obra Execu��o",
       "parentId": "mrw0kj4p0f4lo",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -329,7 +273,7 @@
     },
     {
       "id": "mrw0kj4qpbme4",
-      "nome": "Mat. Escrit�rio",
+      "nome": "Mat. Escritório",
       "parentId": "o38mz449dr4hg",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -359,13 +303,6 @@
       "id": "mrw0kj4qgdn7z",
       "nome": "Abastecimento",
       "parentId": "o38mz449dr4hg",
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
-      "id": "mrw0kj4q28ev8",
-      "nome": "Recis�o",
-      "parentId": "mrw0kj4oet80i",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
@@ -406,7 +343,7 @@
     },
     {
       "id": "mrw0kj4rf6ku7",
-      "nome": "Material Acess�rios",
+      "nome": "Material Acessórios",
       "parentId": "jj3f8pt3f2h3e",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -454,20 +391,6 @@
       "tipoPFPJ": "ambos"
     },
     {
-      "id": "mrw0kj4rzahfa",
-      "nome": "Empr�stimo",
-      "parentId": "mrw0kj4oc9d61",
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
-      "id": "mrw0kj4rya4yo",
-      "nome": "[Conta F�bio]",
-      "parentId": null,
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
       "id": "mrw0kj4rz039b",
       "nome": "Func. Alessandro",
       "parentId": "3fbdzhcmga2ll",
@@ -476,7 +399,7 @@
     },
     {
       "id": "mrw0kj4rjk093",
-      "nome": "Rede Prote��o",
+      "nome": "Rede Proteção",
       "parentId": "jj3f8pt3f2h3e",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -490,7 +413,7 @@
     },
     {
       "id": "mrw0kj4sgnbsu",
-      "nome": "Jur�dico",
+      "nome": "Jurídico",
       "parentId": "o38mz449dr4hg",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -532,8 +455,8 @@
     },
     {
       "id": "mrw0kj4sjhc74",
-      "nome": "13� Sal�rio",
-      "parentId": "mrw0kj4oet80i",
+      "nome": "13º Salário",
+      "parentId": "zzrrdyanjbu30",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
@@ -567,15 +490,8 @@
     },
     {
       "id": "mrw0kj4th6i66",
-      "nome": "Alvar�",
+      "nome": "Alvará",
       "parentId": "o38mz449dr4hg",
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
-      "id": "mrw0kj4tbnhwx",
-      "nome": "Rede Prote��o",
-      "parentId": "mrw0kj4p0f4lo",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
@@ -595,7 +511,7 @@
     },
     {
       "id": "mrw0kj4tsf6mv",
-      "nome": "Ct. Cart�o",
+      "nome": "Ct. Cartão",
       "parentId": "mrwxof222vuj1",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -609,7 +525,7 @@
     },
     {
       "id": "mrw0kj4tdrxmo",
-      "nome": "Bc. Ita�",
+      "nome": "Bc. Itaú",
       "parentId": "mrwxof222vuj1",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -629,13 +545,6 @@
       "tipoPFPJ": "ambos"
     },
     {
-      "id": "mrw0kj4t73i8v",
-      "nome": "Manut. Autom�veis",
-      "parentId": "mrw0kj4oet80i",
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
       "id": "mrw0kj4t5ksw6",
       "nome": "Material Telhado",
       "parentId": "jj3f8pt3f2h3e",
@@ -644,7 +553,7 @@
     },
     {
       "id": "mrw0kj4tzj0f3",
-      "nome": "Material El�trico",
+      "nome": "Material Elétrico",
       "parentId": "jj3f8pt3f2h3e",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
@@ -672,8 +581,8 @@
     },
     {
       "id": "mrw0kj4tfbvvq",
-      "nome": "Juros C.Cr�dito",
-      "parentId": "mrw0kj4oet80i",
+      "nome": "Juros C.Crédito",
+      "parentId": "zzrrdyanjbu30",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
@@ -695,13 +604,6 @@
       "id": "mrw0kj4tbmer1",
       "nome": "Func. Arruda",
       "parentId": "3fbdzhcmga2ll",
-      "tipo": "despesa",
-      "tipoPFPJ": "ambos"
-    },
-    {
-      "id": "mrw0kj4tj81xu",
-      "nome": "Manut. Instala��es",
-      "parentId": "mrw0kj4oet80i",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
@@ -742,8 +644,8 @@
     },
     {
       "id": "mrw0kj4ulbf5c",
-      "nome": "F�rias",
-      "parentId": "mrw0kj4oet80i",
+      "nome": "Férias",
+      "parentId": "zzrrdyanjbu30",
       "tipo": "despesa",
       "tipoPFPJ": "ambos"
     },
