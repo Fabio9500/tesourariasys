@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.4';
+const VERSAO = 'v3.5';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3893,6 +3893,9 @@ function novoLancamento(contaIdPre){
       ${C('Tipo *',`<select id="lc-tipo" onchange="atualizarSugestoesConta('lc');atualizarLabelRecorrencia();atualizarUITipoLancamento('lc')"><option value="entrada">Entrada</option><option value="saida">Saída</option><option value="transferencia">Transferência</option></select>`,'1','140')}
       ${C('Valor (R$) *',`<input id="lc-valor" placeholder="0,00">`,'1','150')}
     </div>
+    ${C('Cliente / Fornecedor (opcional)',`<input id="lc-contraparte" list="dl-contrapartes" placeholder="Quem pagou ou recebeu" oninput="sugerirPorContraparteLC('lc')">
+      <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
+    <div id="lc-dica-contraparte" style="display:none;font-size:11px;color:var(--acc);margin:-6px 0 8px">🔁 Categoria/direcionamento sugeridos com base no histórico desse beneficiário — pode trocar à vontade.</div>
     <div class="row" id="lc-categoria-wrap">
       ${C('Categoria',`<select id="lc-categoria-mae" onchange="aoMudarMaeCascata('lc','categoria')">${opcoesCategoriaMae('receita', tipoDaConta(contaIdPre), '', '')}</select>`,'1','160')}
       ${C('Subcategoria',`<select id="lc-categoria-sub">${opcoesSubcategoria('', '')}</select>`,'1','160')}
@@ -3901,9 +3904,6 @@ function novoLancamento(contaIdPre){
       ${C('Centro de Custo',`<select id="lc-cc-mae" onchange="aoMudarMaeCascata('lc','cc')">${opcoesCentroCustoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
       ${C('Sub-Centro de Custo',`<select id="lc-cc-sub">${opcoesSubCentroCusto('', '')}</select>`,'1','160')}
     </div>
-    ${C('Cliente / Fornecedor (opcional)',`<input id="lc-contraparte" list="dl-contrapartes" placeholder="Quem pagou ou recebeu" oninput="sugerirPorContraparteLC('lc')">
-      <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
-    <div id="lc-dica-contraparte" style="display:none;font-size:11px;color:var(--acc);margin:-6px 0 8px">🔁 Categoria/direcionamento sugeridos com base no histórico desse beneficiário — pode trocar à vontade.</div>
     <div class="row">
       ${C('Direcionamento',`<select id="lc-direc-mae" onchange="aoMudarMaeCascata('lc','direc')">${opcoesDirecionamentoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
       ${C('Sub-Direcionamento',`<select id="lc-direc-sub">${opcoesSubDirecionamento('', '')}</select>`,'1','160')}
@@ -4252,6 +4252,8 @@ function editarLancamento(id){
       ${C('Tipo *',`<select id="elc-tipo" onchange="atualizarSugestoesConta('elc');atualizarLabelRecorrencia('elc');atualizarUITipoLancamento('elc')"><option value="entrada"${l.tipo==='entrada'?' selected':''}>Entrada</option><option value="saida"${l.tipo==='saida'?' selected':''}>Saída</option><option value="transferencia">🔀 Transferência</option></select>`,'1','140')}
       ${C('Valor (R$) *',`<input id="elc-valor" value="${fmt(l.valor)}">`,'1','150')}
     </div>
+    ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
+      <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
     <div class="row" id="elc-categoria-wrap">
       ${C('Categoria',`<select id="elc-categoria-mae" onchange="aoMudarMaeCascata('elc','categoria')">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa', tipoDaConta(l.contaId), l.centroCustoId, idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select>`,'1','160')}
       ${C('Subcategoria',`<select id="elc-categoria-sub">${opcoesSubcategoria(idsMaeSub(categoriaById(l.categoriaId)).maeId, idsMaeSub(categoriaById(l.categoriaId)).subId)}</select>`,'1','160')}
@@ -4261,8 +4263,6 @@ function editarLancamento(id){
       ${C('Sub-Centro de Custo',`<select id="elc-cc-sub">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(l.centroCustoId)).maeId, idsMaeSub(centroCustoById(l.centroCustoId)).subId)}</select>`,'1','160')}
     </div>
     <div style="font-size:11px;color:var(--mut);margin:-6px 0 10px">Escolher "🔀 Transferência" aqui substitui este lançamento por um par de Transferência entre as contas escolhidas (remove o lançamento único, cria origem + destino vinculados).</div>
-    ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
-      <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
     <div class="row">
       ${C('Direcionamento',`<select id="elc-direc-mae" onchange="aoMudarMaeCascata('elc','direc')">${opcoesDirecionamentoMae(tipoDaConta(l.contaId), idsMaeSub(direcionamentoById(l.direcionamentoId)).maeId)}</select>`,'1','160')}
       ${C('Sub-Direcionamento',`<select id="elc-direc-sub">${opcoesSubDirecionamento(idsMaeSub(direcionamentoById(l.direcionamentoId)).maeId, idsMaeSub(direcionamentoById(l.direcionamentoId)).subId)}</select>`,'1','160')}
