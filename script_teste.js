@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v2.4';
+const VERSAO = 'v2.5';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -5753,7 +5753,7 @@ function kpiCard(chave, label, valorHtml, subtitulo, composicaoHtml){
       </div>
       <span style="font-size:11px;color:var(--mut);margin-left:6px">${aberto?'▲':'▼'}</span>
     </div>
-    ${aberto&&composicaoHtml ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bor);max-height:340px;overflow-y:auto" onclick="event.stopPropagation()">${composicaoHtml}</div>` : ''}
+    ${aberto&&composicaoHtml ? `<div class="comp-scroll" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bor);max-height:340px;overflow-y:auto" onclick="event.stopPropagation()">${composicaoHtml}</div>` : ''}
   </div>`;
 }
 function htmlDashboard(){
