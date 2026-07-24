@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.2';
+const VERSAO = 'v3.3';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -5804,8 +5804,8 @@ function htmlDashboard(){
     ${B('🔍 Relatório de Filtragem','irParaRelatorioFlex()','var(--sur)','var(--acc)',0,'Monte um relatório sob medida escolhendo colunas e filtros')}
     ${B('📈 Patrimônio Evolução','irPara(\'patrimonio_evol\')','var(--sur)','var(--acc)',0,'Veja a evolução do saldo em contas ao longo do tempo')}
     <span style="width:1px;background:var(--bor);margin:2px 4px"></span>
-    ${B('💳 Cartões PF ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPF.html\',\'tsr_janela_cartoespf\')','var(--sur)','var(--blu)',0,'Abrir o sistema CartõesPF (reaproveita a mesma aba)')}
-    ${B('💳 Cartões PJ ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPJ.html\',\'tsr_janela_cartoespj\')','var(--sur)','var(--pur)',0,'Abrir o sistema CartõesPJ (reaproveita a mesma aba)')}
+    ${B('💳 Cartões PF ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPF.html\',\'tsr_janela_cartoespf\')','var(--sur)','var(--lar)',0,'Abrir o sistema CartõesPF (reaproveita a mesma aba)')}
+    ${B('💳 Cartões PJ ↗','window.open(\'https://fabio9500.github.io/Cartoes/CartoesPJ.html\',\'tsr_janela_cartoespj\')','var(--sur)','var(--blu)',0,'Abrir o sistema CartõesPJ (reaproveita a mesma aba)')}
     ${B('🧾 ChequeSys ↗','window.open(\'https://fabio9500.github.io/chequesys/chequesys.html\',\'tsr_janela_chequesys\')','var(--sur)','#f0a500',0,'Abrir o ChequeSys (reaproveita a mesma aba)')}
   </div>
   <div style="font-size:11px;color:var(--mut);margin-bottom:14px">Os botões com ↗ abrem o sistema original em outra aba — nenhuma funcionalidade deles muda aqui. Toque em qualquer conta da tabela abaixo para ver a movimentação dela.</div>`;
