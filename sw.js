@@ -11,7 +11,7 @@
 // atual). Se um dia parar de atualizar de novo, aumente o número da
 // CACHE_NAME (ex: v2 -> v3) pra forçar a troca.
 
-const CACHE_NAME = 'tesourariasys-v2';
+const CACHE_NAME = 'tesourariasys-v3';
 const ARQUIVOS_CACHE = [
   './tesourariasys.html',
   './styles.css',

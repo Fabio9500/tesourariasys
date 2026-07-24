@@ -48,17 +48,23 @@ tr:hover td{background:#1e2a3a22}
    sistema, só que relativo à caixinha pequena (top:0) em vez do navbar.
    white-space:nowrap impede o texto de quebrar em 2 linhas (isso que
    parecia "caixa dupla" — era o cabeçalho dobrando de altura). (23/07/2026) */
-/* Cabeçalho fixo (sticky) causava duplicação visual nessas duas tabelas
-   específicas mesmo depois de várias tentativas de correção — a pedido do
-   Fabio, desistimos do "congelado" aqui: cabeçalho normal, simples, uma
-   linha só, rola junto com o conteúdo. (23/07/2026) */
-.comp-scroll thead,.tabela-mobile-cards thead{position:static}
-.comp-scroll thead th,.tabela-mobile-cards thead th{position:static;white-space:nowrap}
+/* Cabeçalho fixo (sticky) causava duplicação visual nessa tabela específica
+   (composição expandida do Dashboard) mesmo depois de várias tentativas de
+   correção — a pedido do Fabio, desistimos do "congelado" aqui: cabeçalho
+   normal, simples, uma linha só, rola junto com o conteúdo. (23/07/2026) */
+.comp-scroll thead{position:static}
+.comp-scroll thead th{position:static;white-space:nowrap}
 /* Bug conhecido do Chrome: cabeçalho fixo (sticky) em conjunto com bordas
    "coladas" (border-collapse:collapse, usado no resto do sistema) faz a
    primeira linha de dados "fantasmar" atrás do cabeçalho. Nessas duas
    tabelas específicas usamos bordas separadas pra evitar o bug. (23/07/2026) */
 .comp-scroll table,.tabela-mobile-cards table{border-collapse:separate;border-spacing:0}
+/* Relatório de Filtragem: cabeçalho voltou a ficar congelado (24/07/2026).
+   O card que envolve a tabela tem padding-top:16px (regra .card), que
+   empurrava o cabeçalho pra baixo e deixava uma "linha vazia" acima dos
+   títulos assim que ele virava sticky — removendo só o padding-top desse
+   card específico o cabeçalho sobe e cola no topo, sem faixa em branco. */
+.card.tabela-mobile-cards{padding-top:0}
 .kpi-l{font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:5px;letter-spacing:.07em}
 .kpi-v{font-size:20px;font-weight:800}
 .kpi-s{font-size:11px;color:var(--mut);margin-top:2px}
