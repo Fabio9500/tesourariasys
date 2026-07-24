@@ -114,11 +114,12 @@
       "banco": "Bradesco",
       "agencia": "",
       "conta": "",
-      "saldoInicial": -47.67,
-      "dataSaldoInicial": "2026-07-16",
+      "saldoInicial": 0,
+      "dataSaldoInicial": "2026-07-01",
       "ativa": true,
       "obs": "",
-      "saldoInicialOriginal": -47.67
+      "saldoInicialOriginal": -47.67,
+      "atualizadoEm": "2026-07-24T10:58:20.122Z"
     },
     {
       "id": "mrnty0ghfjohr",
