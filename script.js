@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.10';
+const VERSAO = 'v3.11';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -6218,6 +6218,10 @@ function abrirMenuLancamento(ev, id){
     {label:(l.tipo==='entrada'?'● ':'○ ')+'Entrada', fn:()=>alterarTipoLancamento(id,'entrada')},
     {label:(l.origem==='transferencia'?'● ':'○ ')+'Transferência', fn:()=>alterarTipoLancamento(id,'transferencia')},
   ]});
+  if(l.origem==='transferencia'){
+    const parInv = (DB.lancamentos||[]).find(x=>x.transferenciaId===l.transferenciaId && x.id!==l.id);
+    if(parInv) acoes.push({label:`🔀 Inverter contas (${nomeConta(contaById(l.contaId))} ⇄ ${nomeConta(contaById(parInv.contaId))})`, fn:()=>{ fecharMenuLancamento(); inverterContasTransferencia(id); }});
+  }
   acoes.push({sep:true});
   acoes.push({label:'➕ Adicionar a Contas a pagar e depósitos...', fn:()=>{ fecharMenuLancamento(); adicionarContasAPagarDepositos(id); }});
   acoes.push({label:'↪ Mover para conta...', fn:()=>{ fecharMenuLancamento(); moverLancamentoParaConta(id); }});
@@ -6322,6 +6326,36 @@ function confirmarAlterarParaTransferencia(id){
   }:x).concat(pareado);
   salvar({...DB, lancamentos});
   FM();
+}
+// Inverte a conta de origem/destino de uma transferência já lançada (ex: creditou "A" e
+// debitou "B", mas era pra ser o contrário). Só troca contaId<->contaVinculadaId nos dois
+// lançamentos pareados — mantém tipo (entrada/saida), valor, data, categoria etc. Se a
+// descrição ainda for a automática ("Transferência para/de <conta>"), regenera com o nome
+// da conta certa; se o Fabio editou a descrição, deixa como está.
+function inverterContasTransferencia(id){
+  const l = (DB.lancamentos||[]).find(x=>x.id===id); if(!l || l.origem!=='transferencia') return;
+  const par = (DB.lancamentos||[]).find(x=>x.transferenciaId===l.transferenciaId && x.id!==l.id);
+  if(!par){ showToast('Não achei o lançamento pareado desta transferência.'); return; }
+  const nomeAtualA = nomeConta(contaById(l.contaId));
+  const nomeAtualB = nomeConta(contaById(par.contaId));
+  CF(`Inverter esta transferência? "${nomeAtualA}" deixa de ser ${l.tipo==='saida'?'debitada':'creditada'} e passa a ser ${l.tipo==='saida'?'creditada':'debitada'} (e vice-versa em "${nomeAtualB}").`, ()=>{
+    const nomeNovoDestinoSaida = t => `Transferência para ${nomeConta(contaById(t))}`;
+    const nomeNovoOrigemEntrada = t => `Transferência de ${nomeConta(contaById(t))}`;
+    const inverte = x => {
+      const novoContaId = x.contaVinculadaId, novaContaVinculadaId = x.contaId;
+      let descricao = x.descricao;
+      if(x.tipo==='saida' && descricao===nomeNovoDestinoSaida(x.contaVinculadaId)) descricao = nomeNovoDestinoSaida(novaContaVinculadaId);
+      else if(x.tipo==='entrada' && descricao===nomeNovoOrigemEntrada(x.contaVinculadaId)) descricao = nomeNovoOrigemEntrada(novaContaVinculadaId);
+      return {...x, contaId:novoContaId, contaVinculadaId:novaContaVinculadaId, descricao};
+    };
+    const lancamentos = (DB.lancamentos||[]).map(x=>{
+      if(x.id===l.id) return inverte(x);
+      if(x.id===par.id) return inverte(x);
+      return x;
+    });
+    salvar({...DB, lancamentos});
+    showToast('Contas da transferência invertidas.');
+  });
 }
 // "Adicionar a Contas a pagar e depósitos": agenda um novo lançamento futuro
 // (conta a pagar/receber) já pré-preenchido com os dados deste lançamento —
