@@ -59,7 +59,7 @@
       "banco": "PicPay",
       "agencia": "",
       "conta": "",
-      "saldoInicial": -0.0,
+      "saldoInicial": 0,
       "dataSaldoInicial": "2026-07-23",
       "ativa": true,
       "obs": "",
@@ -101,7 +101,7 @@
       "banco": "Bradesco",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 0.0,
+      "saldoInicial": 0,
       "dataSaldoInicial": "2026-07-16",
       "ativa": true,
       "obs": "",
@@ -154,7 +154,7 @@
       "banco": "Inter",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 0.0,
+      "saldoInicial": 0,
       "dataSaldoInicial": "2026-07-16",
       "ativa": true,
       "obs": "",
@@ -167,7 +167,7 @@
       "banco": "Santander 2",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 0.0,
+      "saldoInicial": 0,
       "dataSaldoInicial": "2026-07-23",
       "ativa": true,
       "obs": "",
@@ -194,7 +194,7 @@
       "banco": "Cef",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 1230.0,
+      "saldoInicial": 1230,
       "dataSaldoInicial": "2026-05-31",
       "ativa": true,
       "obs": "",
@@ -222,7 +222,7 @@
       "banco": "PagSeg",
       "agencia": "",
       "conta": "",
-      "saldoInicial": 0.0,
+      "saldoInicial": 0,
       "dataSaldoInicial": "2026-07-16",
       "ativa": true,
       "obs": "",
@@ -235,7 +235,7 @@
       "banco": "Itaú",
       "agencia": "9690",
       "conta": "004718-9",
-      "saldoInicial": 0.0,
+      "saldoInicial": 0,
       "dataSaldoInicial": "2026-07-23",
       "ativa": true,
       "obs": "",
@@ -547,31 +547,38 @@
       },
       "mrmdz1lg3jkn": {
         "lancId": "mroc2ed1xer7g",
-        "fingerprint": "entrada|4950|2026-07-15|Liquidação cheque 00000059 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000059 — Emitente: J V Santana (Colégio Divina)|CHQ0089|"
+        "fingerprint": "entrada|4950|2026-07-15|Liquidação cheque 00000059 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque||CHQ0089|",
+        "ausenteDesde": null
       },
       "mrmdz8fc2hcc": {
         "lancId": "mroc2ed184jp7",
-        "fingerprint": "entrada|5000|2026-07-15|Liquidação cheque 00000048 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000048 — Emitente: J V Santana (Colégio Divina)|CHQ0082|"
+        "fingerprint": "entrada|5000|2026-07-15|Liquidação cheque 00000048 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque||CHQ0082|",
+        "ausenteDesde": null
       },
       "mrmdzhplv2nl": {
         "lancId": "mroc2ed1z1jiz",
-        "fingerprint": "entrada|8200|2026-07-15|Liquidação cheque 00000037 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque|Cheque nº 00000037 — Emitente: J V Santana (Colégio Divina)|CHQ0080|"
+        "fingerprint": "entrada|8200|2026-07-15|Liquidação cheque 00000037 — J V Santana (Colégio Divina)|mrnty0gh0cojz|J V Santana (Colégio Divina)|recebimento_cheque||CHQ0080|",
+        "ausenteDesde": null
       },
       "mrmtymjh083j": {
         "lancId": "mroc2ed1slhnf",
-        "fingerprint": "entrada|900|2026-07-16|Compensação cheque 3 — Marcus Vinicius Oliveira dos Santos|mrntzv0bzlw1q|Marcus Vinicius Oliveira dos Santos|recebimento_cheque|Cheque nº 3 — Emitente: Rosilda Oliveira Santos|mqmz7rlqcoza|"
+        "fingerprint": "entrada|900|2026-07-16|Compensação cheque 3 — Marcus Vinicius Oliveira dos Santos|mrntzv0bzlw1q|Marcus Vinicius Oliveira dos Santos|recebimento_cheque||mqmz7rlqcoza|",
+        "ausenteDesde": null
       },
       "mrneojp5md4r": {
         "lancId": "mroc2ed1lxxqt",
-        "fingerprint": "entrada|3000|2026-07-15|Compensação cheque 00000906 — Philison|mrnty0gh9748t|Philison|recebimento_cheque|Cheque nº 00000906 — Emitente: Francisco Lucas Andrade de Morais|CHQ0012|"
+        "fingerprint": "entrada|3000|2026-07-15|Compensação cheque 00000906 — Philison|mrnty0gh9748t|Philison|recebimento_cheque||CHQ0012|",
+        "ausenteDesde": null
       },
       "mrnepbtdqsuk": {
         "lancId": "mroc2ed14of9v",
-        "fingerprint": "entrada|2950|2026-07-16|Compensação cheque 164 — Philison|mrnty0gh9748t|Philison|recebimento_cheque|Cheque nº 164 — Emitente: Carlos Alberto de Jesus|mqidwfyyer0z|"
+        "fingerprint": "entrada|2950|2026-07-16|Compensação cheque 164 — Philison|mrnty0gh9748t|Philison|recebimento_cheque||mqidwfyyer0z|",
+        "ausenteDesde": null
       },
       "mrnesszrdwk8": {
         "lancId": "mroc2ed1qfdpb",
-        "fingerprint": "entrada|2300|2026-07-14|Compensação cheque 00000035 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000035 — Emitente: Blue Com. Representação Ltda|CHQ0064|"
+        "fingerprint": "entrada|2300|2026-07-14|Compensação cheque 00000035 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque||CHQ0064|",
+        "ausenteDesde": null
       },
       "mrqzbfe0z24h": {
         "lancId": "mrr3eg158a10y",
@@ -579,43 +586,47 @@
       },
       "mrqzc2et2y5m": {
         "lancId": "mrr3eg15quezi",
-        "fingerprint": "entrada|3000|2026-07-17|Resgate cheque 3 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 3 — Emitente: Jamile Oliveira santos|mqidfv4pgutr|"
+        "fingerprint": "entrada|3000|2026-07-17|Resgate cheque 3 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque||mqidfv4pgutr|",
+        "ausenteDesde": null
       },
       "mrqzd2jjv8gc": {
         "lancId": "mrr3eg15ybkzq",
-        "fingerprint": "entrada|5000|2026-07-17|Liquidação cheque 00000258 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000258 — Emitente: Fausto Auto Eletrica|CHQ0036|"
+        "fingerprint": "entrada|5000|2026-07-17|Liquidação cheque 00000258 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque||CHQ0036|",
+        "ausenteDesde": null
       },
       "mrqzdj8v959s": {
         "lancId": "mrr3eg160v0z9",
-        "fingerprint": "entrada|2750|2026-07-17|Liquidação cheque 00000028 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque|Cheque nº 00000028 — Emitente: Arena Prime Eventos|CHQ0039|"
+        "fingerprint": "entrada|2750|2026-07-17|Liquidação cheque 00000028 — Philison|mrnty0ghvteo1|Philison|recebimento_cheque||CHQ0039|",
+        "ausenteDesde": null
       },
       "mrtuxfemi18d": {
         "lancId": "mrui3xzcltsjg",
-        "fingerprint": "entrada|20721|2026-07-20|Depósito — Cheque 00000127 — Emitente: HD Santos Filho — Venc: 20/07/2026|mrnty0gh9748t|Infinity Comercio  Atac.De Prod. LTD|recebimento_cheque|Cheque nº 00000127 — Emitente: HD Santos Filho|CHQ0109|"
+        "fingerprint": "entrada|20721|2026-07-20|Depósito — Cheque 00000127 — Emitente: HD Santos Filho — Venc: 20/07/2026|mrnty0gh9748t|Infinity Comercio  Atac.De Prod. LTD|recebimento_cheque||CHQ0109|",
+        "ausenteDesde": null
       },
       "mruqe8zmi2uv": {
         "lancId": "mruqhu5ol50zn",
-        "fingerprint": "entrada|110|2026-07-21|Juros renovação cheque 123 — Philison|mrnty0gh0cojz|Philison|recebimento_cheque|Cheque nº 123 — Emitente: Alex Santos de Oliveira|mqv1kfwsmh5a|",
+        "fingerprint": "entrada|110|2026-07-21|Juros renovação cheque 123 — Philison|mrnty0gh0cojz|Philison|recebimento_cheque||mqv1kfwsmh5a|",
         "ausenteDesde": null
       },
       "mrxdbhr57d56": {
         "lancId": "mrxnry2hmzc5d",
-        "fingerprint": "entrada|248|2026-07-23|Juros renovação cheque 00000030 — Ednaldo Carvalho de Andrade|mrntzv0bzlw1q|Ednaldo Carvalho de Andrade|recebimento_cheque|Cheque nº 00000030 — Emitente: MW de Souza Pinto Serv. Gráficos|CHQ0092|",
+        "fingerprint": "entrada|248|2026-07-23|Juros renovação cheque 00000030 — Ednaldo Carvalho de Andrade|mrntzv0bzlw1q|Ednaldo Carvalho de Andrade|recebimento_cheque||CHQ0092|",
         "ausenteDesde": null
       },
       "mrxdc565o36h": {
         "lancId": "mrxnry2hupdbi",
-        "fingerprint": "entrada|300|2026-07-23|Juros renovação cheque 00000041 — Ednaldo Carvalho de Andrade|mrntzv0bzlw1q|Ednaldo Carvalho de Andrade|recebimento_cheque|Cheque nº 00000041 — Emitente: MW de Souza Pinto Serv. Gráficos|CHQ0093|",
+        "fingerprint": "entrada|300|2026-07-23|Juros renovação cheque 00000041 — Ednaldo Carvalho de Andrade|mrntzv0bzlw1q|Ednaldo Carvalho de Andrade|recebimento_cheque||CHQ0093|",
         "ausenteDesde": null
       },
       "mrxdcrd9z6dk": {
         "lancId": "mrxnry2h0f7g6",
-        "fingerprint": "entrada|300|2026-07-23|Juros renovação cheque 00000042 — Ednaldo Carvalho de Andrade|mrntzv0bzlw1q|Ednaldo Carvalho de Andrade|recebimento_cheque|Cheque nº 00000042 — Emitente: MW de Souza Pinto Serv. Gráficos|CHQ0094|",
+        "fingerprint": "entrada|300|2026-07-23|Juros renovação cheque 00000042 — Ednaldo Carvalho de Andrade|mrntzv0bzlw1q|Ednaldo Carvalho de Andrade|recebimento_cheque||CHQ0094|",
         "ausenteDesde": null
       },
       "mrxdd4rmw6nq": {
         "lancId": "mrxnry2hb3373",
-        "fingerprint": "entrada|300|2026-07-23|Juros renovação cheque 00000043 — Ednaldo Carvalho de Andrade|mrntzv0bzlw1q|Ednaldo Carvalho de Andrade|recebimento_cheque|Cheque nº 00000043 — Emitente: MW de Souza Pinto Serv. Gráficos|CHQ0095|",
+        "fingerprint": "entrada|300|2026-07-23|Juros renovação cheque 00000043 — Ednaldo Carvalho de Andrade|mrntzv0bzlw1q|Ednaldo Carvalho de Andrade|recebimento_cheque||CHQ0095|",
         "ausenteDesde": null
       }
     }
