@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v2.1';
+const VERSAO = 'v2.2';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -5705,7 +5705,15 @@ function confirmarRenovarSeguro(id){
 // RENDER — DASHBOARD
 // ══════════════════════════════════════════
 let _filtroDashPFPJ = 'todos';
-function mudarFiltroDashPFPJ(tipo){ _filtroDashPFPJ = tipo; _cartaoSelecionadoDash = null; renderAba(); }
+// A cor de destaque central do sistema (--acc) é usada em quase todos os
+// botões/abas ativas (Lançamentos, Contas a Pagar, Contas a Receber etc.).
+// Ao trocar pra "Somente PF", ela vira laranja; em "Somente PJ" ou "Ver
+// Tudo" volta ao azul padrão — assim o layout inteiro reflete o filtro,
+// não só os botões específicos de Saldo PF/PJ. (23/07/2026, a pedido do Fabio)
+function aplicarCorTemaPFPJ(){
+  document.documentElement.style.setProperty('--acc', _filtroDashPFPJ==='PF' ? '#f0883e' : '#2f81f7');
+}
+function mudarFiltroDashPFPJ(tipo){ _filtroDashPFPJ = tipo; _cartaoSelecionadoDash = null; aplicarCorTemaPFPJ(); renderAba(); }
 let _dashSoTitulos = false;
 let _kpiAberto = null;
 function alternarDashSoTitulos(){ _dashSoTitulos = !_dashSoTitulos; _kpiAberto=null; renderAba(); }
