@@ -42,8 +42,8 @@ tr:hover td{background:#1e2a3a22}
 .titulo{font-weight:800;font-size:17px;margin-bottom:14px}
 .titulo.acc{color:var(--acc)}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
-.kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-.kpi{flex:1 1 150px;min-width:140px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;align-items:start;margin-bottom:14px}
+.kpi{width:100%}
 .kpi-l{font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:5px;letter-spacing:.07em}
 .kpi-v{font-size:20px;font-weight:800}
 .kpi-s{font-size:11px;color:var(--mut);margin-top:2px}
