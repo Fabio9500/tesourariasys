@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.9';
+const VERSAO = 'v3.10';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -3192,8 +3192,10 @@ function sugerirPorContraparteLC(prefix){
     const selMae = document.getElementById(prefix+'-categoria-mae');
     if(selMae && [...selMae.options].some(o=>o.value===maeId)){
       selMae.value = maeId;
-      const selSub = document.getElementById(prefix+'-categoria-sub');
-      if(selSub) selSub.innerHTML = opcoesSubcategoria(maeId, subId);
+      const dl = document.getElementById('dl-'+prefix+'-categoria-sub');
+      if(dl) dl.innerHTML = opcoesSubcategoriaDatalist(maeId);
+      const inputSub = document.getElementById(prefix+'-categoria-sub');
+      if(inputSub) inputSub.value = subId ? (categoriaById(subId)?.nome||'') : '';
       aplicouAlgo = true;
     }
   }
@@ -3202,8 +3204,10 @@ function sugerirPorContraparteLC(prefix){
     const selMae = document.getElementById(prefix+'-cc-mae');
     if(selMae && [...selMae.options].some(o=>o.value===maeId)){
       selMae.value = maeId;
-      const selSub = document.getElementById(prefix+'-cc-sub');
-      if(selSub) selSub.innerHTML = opcoesSubCentroCusto(maeId, subId);
+      const dl = document.getElementById('dl-'+prefix+'-cc-sub');
+      if(dl) dl.innerHTML = opcoesSubCentroCustoDatalist(maeId);
+      const inputSub = document.getElementById(prefix+'-cc-sub');
+      if(inputSub) inputSub.value = subId ? (centroCustoById(subId)?.nome||'') : '';
       aplicouAlgo = true;
     }
   }
@@ -3212,8 +3216,10 @@ function sugerirPorContraparteLC(prefix){
     const selMae = document.getElementById(prefix+'-direc-mae');
     if(selMae && [...selMae.options].some(o=>o.value===maeId)){
       selMae.value = maeId;
-      const selSub = document.getElementById(prefix+'-direc-sub');
-      if(selSub) selSub.innerHTML = opcoesSubDirecionamento(maeId, subId);
+      const dl = document.getElementById('dl-'+prefix+'-direc-sub');
+      if(dl) dl.innerHTML = opcoesSubDirecionamentoDatalist(maeId);
+      const inputSub = document.getElementById(prefix+'-direc-sub');
+      if(inputSub) inputSub.value = subId ? (direcionamentoById(subId)?.nome||'') : '';
       aplicouAlgo = true;
     }
   }
@@ -3923,6 +3929,79 @@ function direcionamentoFinal(prefixo){
   const id = valorFinalCascata(prefixo,'direc');
   return { direcionamentoId: id||null, direcionamento: id?nomeCompletoDirecionamento(direcionamentoById(id)):'' };
 }
+// ══════════════════════════════════════════
+// CRIAR AO DIGITAR (24/07/2026, a pedido do Fabio) — no Novo/Editar Lançamento,
+// os campos de Sub-Categoria/Sub-Centro de Custo/Sub-Direcionamento viraram
+// texto digitável (com sugestão automática das que já existem, via
+// <datalist>) em vez de só um select fixo. Se o que foi digitado não bater
+// com nenhuma sub já cadastrada dentro da mãe escolhida, pergunta se quer
+// criar — evita ficar preso à lista e evita digitar errado sem perceber.
+// ══════════════════════════════════════════
+function opcoesSubcategoriaDatalist(maeId){
+  if(!maeId) return '';
+  return (DB.categorias||[]).filter(c=>c.parentId===maeId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(c=>`<option value="${esc(c.nome)}">`).join('');
+}
+function opcoesSubCentroCustoDatalist(maeId){
+  if(!maeId) return '';
+  return (DB.centrosCusto||[]).filter(c=>c.parentId===maeId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(c=>`<option value="${esc(c.nome)}">`).join('');
+}
+function opcoesSubDirecionamentoDatalist(maeId){
+  if(!maeId) return '';
+  return (DB.direcionamentos||[]).filter(d=>d.parentId===maeId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')).map(d=>`<option value="${esc(d.nome)}">`).join('');
+}
+// Troca de mãe pro par mãe(select)+sub(texto+datalist) — repopula o datalist
+// da sub e limpa o texto digitado (evita ficar um sub da mãe anterior escrito
+// depois de trocar a mãe). Usada em Novo/Editar Lançamento.
+function aoMudarMaeCascataTexto(prefixo, campo){
+  const maeSel = document.getElementById(`${prefixo}-${campo}-mae`);
+  const subDl = document.getElementById(`dl-${prefixo}-${campo}-sub`);
+  const subInput = document.getElementById(`${prefixo}-${campo}-sub`);
+  if(!maeSel || !subDl) return;
+  if(subInput) subInput.value = '';
+  if(campo==='categoria') subDl.innerHTML = opcoesSubcategoriaDatalist(maeSel.value);
+  else if(campo==='cc') subDl.innerHTML = opcoesSubCentroCustoDatalist(maeSel.value);
+  else if(campo==='direc') subDl.innerHTML = opcoesSubDirecionamentoDatalist(maeSel.value);
+  if(campo==='categoria' || campo==='cc') atualizarSugestoesConta(prefixo);
+}
+// Resolve o texto digitado no campo de Sub pro id correspondente — usa o já
+// cadastrado se o nome bater (ignorando maiúsculas/espaços), ou pergunta se
+// quer criar um novo (nesse caso grava no cadastro único antes de retornar
+// o id). Retorna '' se o campo veio vazio (usa só a mãe, como já era), ou
+// null se o usuário cancelou a criação — quem chamou deve abortar o salvamento.
+async function resolverOuCriarSub(tipo, maeId, textoDigitado){
+  const texto = (textoDigitado||'').trim();
+  if(!texto) return '';
+  if(!maeId) return null;
+  const cfg = {
+    categoria: {campo:'categorias', lista:()=>DB.categorias||[]},
+    cc: {campo:'centrosCusto', lista:()=>DB.centrosCusto||[]},
+    direc: {campo:'direcionamentos', lista:()=>DB.direcionamentos||[]},
+  }[tipo];
+  const norm = s=>(s||'').trim().toLowerCase();
+  const existente = cfg.lista().find(c=>c.parentId===maeId && norm(c.nome)===norm(texto));
+  if(existente) return existente.id;
+  const maeItem = cfg.lista().find(c=>c.id===maeId);
+  const nomeMae = maeItem ? maeItem.nome : '';
+  if(!window.confirm(`"${texto}" ainda não existe em "${nomeMae}". Deseja criar e salvar?`)) return null;
+  const novo = {id:uid(), nome:texto, parentId:maeId, tipoPFPJ:(maeItem&&maeItem.tipoPFPJ)||'ambos', obs:''};
+  if(tipo==='categoria'){ novo.tipo = (maeItem&&maeItem.tipo)||'despesa'; novo.centrosCustoIds = []; delete novo.obs; }
+  setStatus('saving','⏳ Criando...');
+  await salvarItemCadastroUnico(cfg.campo, novo, false);
+  return novo.id;
+}
+// Lê mãe(select) + sub(texto) de um dos 3 campos do Lançamento e resolve pro
+// id final — cria a sub se preciso (ver resolverOuCriarSub). Retorna null se
+// o usuário cancelou a criação de uma sub nova (aborta o salvamento).
+async function resolverCascataTexto(prefixo, campo){
+  const maeId = document.getElementById(`${prefixo}-${campo}-mae`)?.value || '';
+  const subTexto = document.getElementById(`${prefixo}-${campo}-sub`)?.value || '';
+  const subId = await resolverOuCriarSub(campo, maeId, subTexto);
+  if(subId===null) return null;
+  return subId || maeId;
+}
+function direcionamentoFinalComId(id){
+  return { direcionamentoId: id||null, direcionamento: id?nomeCompletoDirecionamento(direcionamentoById(id)):'' };
+}
 // Dado um item com parentId (categoria, centro de custo ou direcionamento),
 // resolve o par {maeId, subId} pra pré-selecionar os dois dropdowns em
 // cascata ao editar.
@@ -3962,14 +4041,14 @@ function novoLancamento(contaIdPre){
       <datalist id="dl-contrapartes">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(contaIdPre)))}</datalist>`)}
     <div id="lc-dica-contraparte" style="display:none;font-size:11px;color:var(--acc);margin:-6px 0 8px">🔁 Categoria/direcionamento sugeridos com base no histórico desse beneficiário — pode trocar à vontade.</div>
     <div class="row" id="lc-categoria-wrap">
-      ${C('Categoria',`<div style="display:flex;gap:5px"><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;visibility:hidden">.</label><select id="lc-categoria-mae" onchange="aoMudarMaeCascata('lc','categoria')">${opcoesCategoriaMae('receita', tipoDaConta(contaIdPre), '', '')}</select></div><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Sub-Categoria</label><select id="lc-categoria-sub">${opcoesSubcategoria('', '')}</select></div></div>`,'2','260')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;visibility:hidden">.</label><select id="lc-categoria-mae" onchange="aoMudarMaeCascataTexto('lc','categoria')">${opcoesCategoriaMae('receita', tipoDaConta(contaIdPre), '', '')}</select></div><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Sub-Categoria</label><input id="lc-categoria-sub" list="dl-lc-categoria-sub" placeholder="Digite ou escolha..."><datalist id="dl-lc-categoria-sub"></datalist></div></div>`,'2','260')}
     </div>
     <div class="row">
-      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;visibility:hidden">.</label><select id="lc-cc-mae" onchange="aoMudarMaeCascata('lc','cc')">${opcoesCentroCustoMae(tipoDaConta(contaIdPre), '')}</select></div><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Sub-Centro de Custo</label><select id="lc-cc-sub">${opcoesSubCentroCusto('', '')}</select></div></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;visibility:hidden">.</label><select id="lc-cc-mae" onchange="aoMudarMaeCascataTexto('lc','cc')">${opcoesCentroCustoMae(tipoDaConta(contaIdPre), '')}</select></div><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Sub-Centro de Custo</label><input id="lc-cc-sub" list="dl-lc-cc-sub" placeholder="Digite ou escolha..."><datalist id="dl-lc-cc-sub"></datalist></div></div>`,'2','260')}
     </div>
     <div class="row">
-      ${C('Direcionamento',`<select id="lc-direc-mae" onchange="aoMudarMaeCascata('lc','direc')">${opcoesDirecionamentoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
-      ${C('Sub-Direcionamento',`<select id="lc-direc-sub">${opcoesSubDirecionamento('', '')}</select>`,'1','160')}
+      ${C('Direcionamento',`<select id="lc-direc-mae" onchange="aoMudarMaeCascataTexto('lc','direc')">${opcoesDirecionamentoMae(tipoDaConta(contaIdPre), '')}</select>`,'1','160')}
+      ${C('Sub-Direcionamento',`<input id="lc-direc-sub" list="dl-lc-direc-sub" placeholder="Digite ou escolha..."><datalist id="dl-lc-direc-sub"></datalist>`,'1','160')}
     </div>
     ${C('Descrição / Histórico',`<input id="lc-desc" list="dl-descricoes" placeholder="Ex: recebimento cliente X">
       <datalist id="dl-descricoes">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
@@ -4079,10 +4158,10 @@ function atualizarSugestoesConta(prefixo){
     const ccAtual = ccMaeEl.value;
     ccMaeEl.innerHTML = opcoesCentroCustoMae(tipoConta, ccAtual);
     if(![...ccMaeEl.options].some(o=>o.value===ccAtual)) ccMaeEl.value='';
-    const ccSubEl = document.getElementById(prefixo+'-cc-sub');
-    if(ccSubEl) ccSubEl.innerHTML = opcoesSubCentroCusto(ccMaeEl.value, ccSubEl.value);
+    const ccSubDl = document.getElementById('dl-'+prefixo+'-cc-sub');
+    if(ccSubDl) ccSubDl.innerHTML = opcoesSubCentroCustoDatalist(ccMaeEl.value);
   }
-  const centroCustoId = valorFinalCascata(prefixo,'cc');
+  const centroCustoId = document.getElementById(prefixo+'-cc-mae')?.value||'';
 
   // Categoria (mãe → sub) — refiltra por tipo receita/despesa, tipo de conta e CC
   const catMaeEl = document.getElementById(prefixo+'-categoria-mae');
@@ -4090,8 +4169,8 @@ function atualizarSugestoesConta(prefixo){
     const catAtual = catMaeEl.value;
     catMaeEl.innerHTML = opcoesCategoriaMae(tipoLanc, tipoConta, centroCustoId, catAtual);
     if(![...catMaeEl.options].some(o=>o.value===catAtual)) catMaeEl.value='';
-    const catSubEl = document.getElementById(prefixo+'-categoria-sub');
-    if(catSubEl) catSubEl.innerHTML = opcoesSubcategoria(catMaeEl.value, catSubEl.value);
+    const catSubDl = document.getElementById('dl-'+prefixo+'-categoria-sub');
+    if(catSubDl) catSubDl.innerHTML = opcoesSubcategoriaDatalist(catMaeEl.value);
   }
 
   // Direcionamento (mãe → sub) — refiltra pelo tipo de conta
@@ -4100,8 +4179,8 @@ function atualizarSugestoesConta(prefixo){
     const direcAtual = direcMaeEl.value;
     direcMaeEl.innerHTML = opcoesDirecionamentoMae(tipoConta, direcAtual);
     if(![...direcMaeEl.options].some(o=>o.value===direcAtual)) direcMaeEl.value='';
-    const direcSubEl = document.getElementById(prefixo+'-direc-sub');
-    if(direcSubEl) direcSubEl.innerHTML = opcoesSubDirecionamento(direcMaeEl.value, direcSubEl.value);
+    const direcSubDl = document.getElementById('dl-'+prefixo+'-direc-sub');
+    if(direcSubDl) direcSubDl.innerHTML = opcoesSubDirecionamentoDatalist(direcMaeEl.value);
   }
 
   const info = document.getElementById(prefixo+'-tipo-info');
@@ -4155,22 +4234,33 @@ function salvarNovaTransferencia(){
   salvar(novoDB);
   FM();
 }
-function salvarNovoLancamento(){
+async function salvarNovoLancamento(){
   const tipo = document.getElementById('lc-tipo').value;
   if(tipo==='transferencia'){ salvarNovaTransferencia(); return; }
   const contaId = document.getElementById('lc-conta').value;
   const valor = parseValor(document.getElementById('lc-valor').value);
   if(!contaId){ ME('e-lanc','Selecione a conta.'); return; }
   if(!valor||valor<=0){ ME('e-lanc','Informe um valor válido maior que zero.'); return; }
+  for(const campo of ['categoria','cc','direc']){
+    const maeVal = document.getElementById(`lc-${campo}-mae`)?.value||'';
+    const subVal = document.getElementById(`lc-${campo}-sub`)?.value?.trim()||'';
+    if(subVal && !maeVal){ ME('e-lanc', `Escolha a ${campo==='categoria'?'Categoria':campo==='cc'?'Centro de Custo':'o Direcionamento'} antes de digitar a subcategoria.`); return; }
+  }
+  const categoriaId = await resolverCascataTexto('lc','categoria');
+  if(categoriaId===null) return; // cancelou a criação de uma sub-categoria nova
+  const centroCustoId = await resolverCascataTexto('lc','cc');
+  if(centroCustoId===null) return;
+  const direcId = await resolverCascataTexto('lc','direc');
+  if(direcId===null) return;
   const novo = {
     id:uid(), contaId,
     data: document.getElementById('lc-data').value||hoje(),
     tipo: document.getElementById('lc-tipo').value,
     valor,
-    categoriaId: valorFinalCascata('lc','categoria'),
-    centroCustoId: valorFinalCascata('lc','cc'),
+    categoriaId,
+    centroCustoId,
     contraparte: document.getElementById('lc-contraparte').value.trim(),
-    ...direcionamentoFinal('lc'),
+    ...direcionamentoFinalComId(direcId),
     descricao: document.getElementById('lc-desc').value.trim(),
     origem:'manual', contaPagarId:null,
     criadoEm: new Date().toISOString()
@@ -4318,15 +4408,15 @@ function editarLancamento(id){
     ${C('Cliente / Fornecedor (opcional)',`<input id="elc-contraparte" list="dl-contrapartes-ed" value="${esc(l.contraparte||'')}">
       <datalist id="dl-contrapartes-ed">${opcoesDatalist(contrapartesPorTipoConta(tipoDaConta(l.contaId)))}</datalist>`)}
     <div class="row" id="elc-categoria-wrap">
-      ${C('Categoria',`<div style="display:flex;gap:5px"><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;visibility:hidden">.</label><select id="elc-categoria-mae" onchange="aoMudarMaeCascata('elc','categoria')">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa', tipoDaConta(l.contaId), l.centroCustoId, idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select></div><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Sub-Categoria</label><select id="elc-categoria-sub">${opcoesSubcategoria(idsMaeSub(categoriaById(l.categoriaId)).maeId, idsMaeSub(categoriaById(l.categoriaId)).subId)}</select></div></div>`,'2','260')}
+      ${C('Categoria',`<div style="display:flex;gap:5px"><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;visibility:hidden">.</label><select id="elc-categoria-mae" onchange="aoMudarMaeCascataTexto('elc','categoria')">${opcoesCategoriaMae(l.tipo==='entrada'?'receita':'despesa', tipoDaConta(l.contaId), l.centroCustoId, idsMaeSub(categoriaById(l.categoriaId)).maeId)}</select></div><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Sub-Categoria</label><input id="elc-categoria-sub" list="dl-elc-categoria-sub" value="${esc(idsMaeSub(categoriaById(l.categoriaId)).subId?categoriaById(idsMaeSub(categoriaById(l.categoriaId)).subId).nome:'')}" placeholder="Digite ou escolha..."><datalist id="dl-elc-categoria-sub">${opcoesSubcategoriaDatalist(idsMaeSub(categoriaById(l.categoriaId)).maeId)}</datalist></div></div>`,'2','260')}
     </div>
     <div class="row">
-      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;visibility:hidden">.</label><select id="elc-cc-mae" onchange="aoMudarMaeCascata('elc','cc')">${opcoesCentroCustoMae(tipoDaConta(l.contaId), idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</select></div><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Sub-Centro de Custo</label><select id="elc-cc-sub">${opcoesSubCentroCusto(idsMaeSub(centroCustoById(l.centroCustoId)).maeId, idsMaeSub(centroCustoById(l.centroCustoId)).subId)}</select></div></div>`,'2','260')}
+      ${C('Centro de Custo',`<div style="display:flex;gap:5px"><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;visibility:hidden">.</label><select id="elc-cc-mae" onchange="aoMudarMaeCascataTexto('elc','cc')">${opcoesCentroCustoMae(tipoDaConta(l.contaId), idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</select></div><div style="flex:1"><label style="display:block;font-size:10px;color:var(--mut);margin-bottom:4px;font-weight:700;text-transform:uppercase;letter-spacing:.07em">Sub-Centro de Custo</label><input id="elc-cc-sub" list="dl-elc-cc-sub" value="${esc(idsMaeSub(centroCustoById(l.centroCustoId)).subId?centroCustoById(idsMaeSub(centroCustoById(l.centroCustoId)).subId).nome:'')}" placeholder="Digite ou escolha..."><datalist id="dl-elc-cc-sub">${opcoesSubCentroCustoDatalist(idsMaeSub(centroCustoById(l.centroCustoId)).maeId)}</datalist></div></div>`,'2','260')}
     </div>
     <div style="font-size:11px;color:var(--mut);margin:-6px 0 10px">Escolher "🔀 Transferência" aqui substitui este lançamento por um par de Transferência entre as contas escolhidas (remove o lançamento único, cria origem + destino vinculados).</div>
     <div class="row">
-      ${C('Direcionamento',`<select id="elc-direc-mae" onchange="aoMudarMaeCascata('elc','direc')">${opcoesDirecionamentoMae(tipoDaConta(l.contaId), idsMaeSub(direcionamentoById(l.direcionamentoId)).maeId)}</select>`,'1','160')}
-      ${C('Sub-Direcionamento',`<select id="elc-direc-sub">${opcoesSubDirecionamento(idsMaeSub(direcionamentoById(l.direcionamentoId)).maeId, idsMaeSub(direcionamentoById(l.direcionamentoId)).subId)}</select>`,'1','160')}
+      ${C('Direcionamento',`<select id="elc-direc-mae" onchange="aoMudarMaeCascataTexto('elc','direc')">${opcoesDirecionamentoMae(tipoDaConta(l.contaId), idsMaeSub(direcionamentoById(l.direcionamentoId)).maeId)}</select>`,'1','160')}
+      ${C('Sub-Direcionamento',`<input id="elc-direc-sub" list="dl-elc-direc-sub" value="${esc(idsMaeSub(direcionamentoById(l.direcionamentoId)).subId?direcionamentoById(idsMaeSub(direcionamentoById(l.direcionamentoId)).subId).nome:'')}" placeholder="Digite ou escolha..."><datalist id="dl-elc-direc-sub">${opcoesSubDirecionamentoDatalist(idsMaeSub(direcionamentoById(l.direcionamentoId)).maeId)}</datalist>`,'1','160')}
     </div>
     ${C('Descrição / Histórico',`<input id="elc-desc" list="dl-descricoes-ed" value="${esc(l.descricao||'')}">
       <datalist id="dl-descricoes-ed">${descricoesExistentes().map(d=>`<option value="${esc(d)}">`).join('')}</datalist>`)}
@@ -4356,20 +4446,31 @@ function editarLancamento(id){
   atualizarLabelRecorrencia('elc');
   atualizarUITipoLancamento('elc');
 }
-function salvarEdicaoLancamento(id){
+async function salvarEdicaoLancamento(id){
   const tipoSel = document.getElementById('elc-tipo').value;
   if(tipoSel==='transferencia'){ salvarConversaoParaTransferencia(id); return; }
   const valor = parseValor(document.getElementById('elc-valor').value);
   if(!valor||valor<=0){ ME('e-lanc-ed','Informe um valor válido maior que zero.'); return; }
+  for(const campo of ['categoria','cc','direc']){
+    const maeVal = document.getElementById(`elc-${campo}-mae`)?.value||'';
+    const subVal = document.getElementById(`elc-${campo}-sub`)?.value?.trim()||'';
+    if(subVal && !maeVal){ ME('e-lanc-ed', `Escolha a ${campo==='categoria'?'Categoria':campo==='cc'?'Centro de Custo':'o Direcionamento'} antes de digitar a subcategoria.`); return; }
+  }
+  const categoriaId = await resolverCascataTexto('elc','categoria');
+  if(categoriaId===null) return;
+  const centroCustoId = await resolverCascataTexto('elc','cc');
+  if(centroCustoId===null) return;
+  const direcId = await resolverCascataTexto('elc','direc');
+  if(direcId===null) return;
   const patch = {
     contaId: document.getElementById('elc-conta').value,
     data: document.getElementById('elc-data').value||hoje(),
     tipo: document.getElementById('elc-tipo').value,
     valor,
-    categoriaId: valorFinalCascata('elc','categoria'),
-    centroCustoId: valorFinalCascata('elc','cc'),
+    categoriaId,
+    centroCustoId,
     contraparte: document.getElementById('elc-contraparte').value.trim(),
-    ...direcionamentoFinal('elc'),
+    ...direcionamentoFinalComId(direcId),
     descricao: document.getElementById('elc-desc').value.trim()
   };
   let novoDB = {...DB, lancamentos:(DB.lancamentos||[]).map(l=>l.id===id?{...l,...patch}:l)};
