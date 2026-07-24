@@ -1190,7 +1190,7 @@ function renderAba(){
 // ══════════════════════════════════════════
 // MODAL / ERRO / CONFIRM / HELPERS DE UI
 // ══════════════════════════════════════════
-const VERSAO = 'v3.3';
+const VERSAO = 'v3.4';
 document.addEventListener('DOMContentLoaded', ()=>{
   ['nav-versao','load-versao','login-versao'].forEach(id=>{
     const el = document.getElementById(id);
@@ -1477,6 +1477,30 @@ function saldoContaAteData(contaId, dataLimite){
   // qualquer lançamento) — precisa do(s) ano(s) antigos carregados
   // (garantirAnosCarregados) pra ficar completo.
   const movs = lancamentosDaConta(contaId).filter(l=>l.data<=dataLimite);
+  let saldo = Number(c.saldoInicialOriginal ?? c.saldoInicial ?? 0);
+  movs.forEach(l=>{ if(l.status==='nulo') return; saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
+  return saldo;
+}
+// Saldo da conta IMEDIATAMENTE ANTES de uma data (fim do dia anterior) — usado pelo
+// Extrato como "Saldo Anterior" do período filtrado. RESTAURADO em 24/07/2026 (o cálculo
+// tinha sido desativado em 23/07/2026 por travar, quando somava o histórico inteiro da
+// conta a cada troca de filtro). Agora reaproveita o mesmo corte/saldoInicial rebasado já
+// usado por saldoConta()/saldoContaAteData() — soma só os lançamentos entre o corte do
+// arquivamento e a data "De" do filtro (tipicamente dias/semanas, não décadas de histórico).
+function saldoAnteriorContaEmData(contaId, dataDe){
+  const c = contaById(contaId); if(!c) return 0;
+  if(!dataDe) return Number(c.saldoInicial||0);
+  const corte = DB.corteSaldoInicial || '0000-00-00';
+  if(dataDe > corte){
+    const movs = lancamentosDaConta(contaId).filter(l=>l.data>=corte && l.data<dataDe);
+    let saldo = Number(c.saldoInicial||0);
+    movs.forEach(l=>{ if(l.status==='nulo') return; saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
+    return saldo;
+  }
+  // dataDe está no corte ou antes dele — o saldoInicial rebasado não serve aqui, soma a
+  // partir do saldoInicialOriginal (pré-migração); depende dos anos antigos carregados,
+  // o que aplicarFiltroRelExtrato() já garante via garantirAnosCarregados antes de chamar isto.
+  const movs = lancamentosDaConta(contaId).filter(l=>l.data<dataDe);
   let saldo = Number(c.saldoInicialOriginal ?? c.saldoInicial ?? 0);
   movs.forEach(l=>{ if(l.status==='nulo') return; saldo += (l.tipo==='entrada'?1:-1)*Number(l.valor||0); });
   return saldo;
@@ -7824,15 +7848,18 @@ function htmlRelatorios(){
   const extratoTotEnt = extratoLista.filter(l=>l.tipo==='entrada').reduce((s,l)=>s+l.valor,0);
   const extratoTotSai = extratoLista.filter(l=>l.tipo==='saida').reduce((s,l)=>s+l.valor,0);
 
-  // REMOVIDO (23/07/2026, a pedido do Fabio): o extrato tinha um cálculo de
-  // "Saldo Anterior/Saldo Atual/Saldo do Dia" que reconstituía o saldo da
-  // conta dia a dia percorrendo TODO o histórico dela toda vez que a conta
-  // era trocada no filtro — pesado e, segundo o Fabio, sem utilidade prática.
-  // O restante do código já lida bem com saldoAcumuladoExtrato=null (as
-  // linhas de saldo simplesmente não aparecem), então manter como null
-  // desativa a funcionalidade sem precisar mexer no resto da tela.
+  // RESTAURADO (24/07/2026): saldo de fechamento do dia — só faz sentido como
+  // reconciliação bancária real quando filtrado por UMA conta específica e sem
+  // recorte de categoria/centro de custo/direcionamento/fornecedor (que são
+  // consultas de investigação, não o extrato completo da conta). Usa
+  // saldoAnteriorContaEmData(), que parte do saldoInicial já rebasado no corte
+  // do arquivamento por ano em vez de somar o histórico inteiro (era isso que
+  // travava o sistema antes de 23/07/2026 — agora a soma cobre só o intervalo
+  // entre o corte e a data "De" do filtro).
   const extratoEhRecorteItem = !!(RelExtrato.categoriaId || RelExtrato.centroCustoId || RelExtrato.direcionamento || RelExtrato.fornecedor);
-  let saldoAcumuladoExtrato = null;
+  let saldoAcumuladoExtrato = (RelExtrato.contaId && !extratoEhRecorteItem)
+    ? saldoAnteriorContaEmData(RelExtrato.contaId, RelExtrato.de)
+    : null;
   const nCols = 7 + (RelExtrato.contaId?0:1) + (saldoAcumuladoExtrato!==null?1:0);
   const saldoAnteriorExtrato = saldoAcumuladoExtrato;
   const linhaAnterior = saldoAcumuladoExtrato!==null
