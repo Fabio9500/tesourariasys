@@ -25,7 +25,7 @@ th{text-align:left;padding:7px 10px;color:var(--txt);font-weight:800;border-bott
    cabeçalho fixo no topo — mesma correção já aplicada no ChequeSys/Cartões. */
 @media (min-width:769px){
   .tabela-mobile-cards{overflow:auto!important;max-height:calc(100vh - 230px);}
-  .tabela-mobile-cards thead th,.tabela-mobile-cards th{position:static;}
+  .tabela-mobile-cards thead th,.tabela-mobile-cards th{position:sticky;top:0;white-space:nowrap;}
 }
 /* Cabeçalho congelado ao rolar (telas de Lançamentos e Extrato de Conta) — fica logo abaixo do navbar (50px), que também é sticky. */
 .thead-fixo th{position:sticky;top:50px;background:var(--card);z-index:5}
@@ -44,10 +44,11 @@ tr:hover td{background:#1e2a3a22}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-start}
 .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;align-items:start;margin-bottom:14px}
 .kpi{width:100%}
-/* Dentro dos cartões de KPI expandidos a tabela é curta (até 15 linhas) —
-   o cabeçalho fixo não é necessário aqui e estava duplicando visualmente
-   dentro dessa caixa pequena, então fica desligado só neste contexto. (23/07/2026) */
-.comp-scroll thead th{position:static}
+/* Cabeçalho fixo dentro dos cartões de KPI expandidos — igual ao resto do
+   sistema, só que relativo à caixinha pequena (top:0) em vez do navbar.
+   white-space:nowrap impede o texto de quebrar em 2 linhas (isso que
+   parecia "caixa dupla" — era o cabeçalho dobrando de altura). (23/07/2026) */
+.comp-scroll thead th{position:sticky;top:0;white-space:nowrap}
 .kpi-l{font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:5px;letter-spacing:.07em}
 .kpi-v{font-size:20px;font-weight:800}
 .kpi-s{font-size:11px;color:var(--mut);margin-top:2px}
