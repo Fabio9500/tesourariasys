@@ -5707,11 +5707,11 @@ function confirmarRenovarSeguro(id){
 let _filtroDashPFPJ = 'todos';
 // A cor de destaque central do sistema (--acc) é usada em quase todos os
 // botões/abas ativas (Lançamentos, Contas a Pagar, Contas a Receber etc.).
-// Ao trocar pra "Somente PF", ela vira laranja; em "Somente PJ" ou "Ver
-// Tudo" volta ao azul padrão — assim o layout inteiro reflete o filtro,
-// não só os botões específicos de Saldo PF/PJ. (23/07/2026, a pedido do Fabio)
+// PF = laranja, PJ = azul, Ver Tudo = verde (identidade própria, pra não
+// ficar igual ao azul do PJ). (23/07/2026, a pedido do Fabio)
 function aplicarCorTemaPFPJ(){
-  document.documentElement.style.setProperty('--acc', _filtroDashPFPJ==='PF' ? '#f0883e' : '#2f81f7');
+  const cor = _filtroDashPFPJ==='PF' ? '#f0883e' : _filtroDashPFPJ==='PJ' ? '#2f81f7' : '#2ea043';
+  document.documentElement.style.setProperty('--acc', cor);
 }
 function mudarFiltroDashPFPJ(tipo){ _filtroDashPFPJ = tipo; _cartaoSelecionadoDash = null; aplicarCorTemaPFPJ(); renderAba(); }
 let _dashSoTitulos = false;
