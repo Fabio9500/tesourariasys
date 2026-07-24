@@ -49,6 +49,11 @@ tr:hover td{background:#1e2a3a22}
    white-space:nowrap impede o texto de quebrar em 2 linhas (isso que
    parecia "caixa dupla" — era o cabeçalho dobrando de altura). (23/07/2026) */
 .comp-scroll thead th{position:sticky;top:0;white-space:nowrap}
+/* Bug conhecido do Chrome: cabeçalho fixo (sticky) em conjunto com bordas
+   "coladas" (border-collapse:collapse, usado no resto do sistema) faz a
+   primeira linha de dados "fantasmar" atrás do cabeçalho. Nessas duas
+   tabelas específicas usamos bordas separadas pra evitar o bug. (23/07/2026) */
+.comp-scroll table,.tabela-mobile-cards table{border-collapse:separate;border-spacing:0}
 .kpi-l{font-size:10px;color:var(--mut);text-transform:uppercase;margin-bottom:5px;letter-spacing:.07em}
 .kpi-v{font-size:20px;font-weight:800}
 .kpi-s{font-size:11px;color:var(--mut);margin-top:2px}
